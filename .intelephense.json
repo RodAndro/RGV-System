@@ -1,0 +1,29 @@
+{
+    "diagnostics": {
+        "undefinedTypes": false,
+        "undefinedVariables": false,
+        "undefinedMethods": false,
+        "undefinedFunctions": false,
+        "undefinedConstants": false,
+        "undefinedClassConstants": false,
+        "undefinedProperties": false,
+        "duplicateUseStatements": true,
+        "unnecessaryUseStatements": false,
+        "trapError": true,
+        "notImplemented": false,
+        "parseError": true,
+        "missingPhpStubs": false
+    },
+    "phpcbf": false,
+    "phpcs": false,
+    "completion": true,
+    "hover": true,
+    "highlight": true,
+    "references": true,
+    "suggest": {
+        "classMagic": false,
+        "globalConstants": true,
+        "globalFunctions": true
+    },
+    "maxMemory": 4095
+}

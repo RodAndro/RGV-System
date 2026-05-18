@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en" x-data="{ dark: localStorage.getItem('dark') === 'true' }" x-init="$watch('dark', val => { localStorage.setItem('dark', val ? 'true' : 'false'); document.documentElement.classList.toggle('dark', val); })">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>@yield('title', 'Admin Dashboard - RGV Multi-Tech Services')</title>
+    <script>if (localStorage.getItem('dark') === 'true') document.documentElement.classList.add('dark');</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' };</script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="stylesheet" href="/css/print.css" media="print">
+    <style>
+        :root {
+            --mantis: #74c365;
+            --mantis-dark: #468a3f;
+        }
+        [x-cloak] { display: none !important; }
+        .sidebar-link-mantis {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: #64748b;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .sidebar-link-mantis:hover {
+            background: linear-gradient(135deg, #f0f9ef 0%, #e0f3df 100%);
+            color: #74c365;
+            transform: translateX(4px);
+        }
+        .dark .sidebar-link-mantis { color: #94a3b8; }
+        .dark .sidebar-link-mantis:hover {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: #74c365;
+        }
+        .sidebar-link-active-mantis {
+            display: flex;
+            align-items: justify-between;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #74c365 0%, #5dad4f 100%);
+            color: white;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(116, 195, 101, 0.3);
+        }
+        .dropdown-menu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            padding-left: 48px;
+        }
+        .dropdown-menu.open {
+            max-height: 500px;
+            transition: max-height 0.3s ease-in;
+        }
+        .dropdown-item {
+            padding: 10px 16px;
+            color: #64748b;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: block;
+        }
+        .dropdown-item:hover {
+            background: #f0f9ef;
+            color: #74c365;
+        }
+        .dark .dropdown-item { color: #94a3b8; }
+        .dark .dropdown-item:hover {
+            background: #1e293b;
+            color: #74c365;
+        }
+        .chevron-icon {
+            transition: transform 0.3s ease;
+        }
+        .chevron-icon.rotate {
+            transform: rotate(180deg);
+        }
+        .nav-section {
+            margin-bottom: 8px;
+        }
+        .nav-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+            padding: 8px 16px;
+            margin-top: 16px;
+        }
+        .dark .nav-section-title { color: #64748b; }
+        .card-mantis {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+        .dark .card-mantis {
+            background: #1e293b;
+            border-color: #334155;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        .dark .card-mantis:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+        }
+        .card-mantis:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transform: translateY(-2px);
+        }
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, #e5e7eb, transparent);
+            margin: 24px 0;
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f9ef;
+        }
+        .dark .section-header { border-bottom-color: #1e3a1e; }
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+        }
+        .dark .section-title { color: #e2e8f0; }
+        .section-title i {
+            margin-right: 10px;
+            color: #74c365;
+        }
+        .badge-mantis-success {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #f0f9ef 0%, #e0f3df 100%);
+            color: #74c365;
+        }
+        .badge-mantis-warning {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #d97706;
+        }
+        .badge-mantis-danger {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #dc2626;
+        }
+        .badge-mantis-info {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            color: #2563eb;
+        }
+        .btn-mantis {
+            display: inline-flex;
+            align-items: center;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #74c365 0%, #5dad4f 100%);
+            color: white;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(116, 195, 101, 0.3);
+        }
+        .btn-mantis:hover {
+            background: linear-gradient(135deg, #5dad4f 0%, #468a3f 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(116, 195, 101, 0.4);
+        }
+        .btn-mantis-outline {
+            display: inline-flex;
+            align-items: center;
+            padding: 10px 20px;
+            background: white;
+            color: #74c365;
+            border: 1px solid #74c365;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .dark .btn-mantis-outline {
+            background: #1e293b;
+            border-color: #4ade80;
+            color: #4ade80;
+        }
+        .btn-mantis-outline:hover {
+            background: #f0f9ef;
+            transform: translateY(-2px);
+        }
+        .dark .btn-mantis-outline:hover {
+            background: #1e293b;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
+    <div class="flex min-h-screen" x-data="{ sidebarOpen: false }">
+        <!-- Mobile overlay backdrop -->
+        <div x-show="sidebarOpen" @click="sidebarOpen = false" class="lg:hidden fixed inset-0 bg-black/40 z-40" x-transition></div>
+
+        <!-- Sidebar -->
+        <div class="fixed top-0 left-0 h-full w-72 z-50 transform transition-transform duration-300 lg:relative lg:translate-x-0"
+            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
+            @include('layouts.partials.admin-sidebar')
+        </div>
+
+        <!-- Main Content -->
+        <main class="flex-1 min-w-0">
+            <!-- Top Navigation -->
+            <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 transition-colors duration-300">
+                <div class="flex justify-between items-center px-4 md:px-8 py-4">
+                    <div class="flex items-center min-w-0">
+                        <button class="lg:hidden text-gray-600 dark:text-gray-400 mr-3 flex-shrink-0" @click="sidebarOpen = !sidebarOpen">
+                            <i class="fas fa-bars text-xl"></i>
+                        </button>
+                        <h1 class="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 truncate transition-colors">@yield('header', 'Dashboard')</h1>
+                    </div>
+                    <div class="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
+                        <!-- Dark Mode Toggle -->
+                        <button @click="dark = !dark" class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-yellow-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Toggle dark mode">
+                            <svg class="w-5 h-5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+                            <svg class="w-5 h-5 hidden dark:inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path stroke-linecap="round" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                        </button>
+                        <a href="{{ route('home') }}" target="_blank" class="hidden sm:inline text-gray-600 dark:text-gray-400 hover:text-[#74c365] transition-colors text-sm">
+                            <i class="fas fa-external-link-alt mr-1"></i>View Site
+                        </a>
+                        <x-notification-bell />
+                        <a href="{{ route('profile.edit') }}" class="flex items-center hover:opacity-80 transition-opacity" title="Edit Profile">
+                            <div class="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-[#74c365]/30 flex-shrink-0">
+                                {{ auth()->user()->name[0] }}
+                            </div>
+                            <div class="ml-2 md:ml-3 hidden md:block">
+                                <p class="font-semibold text-gray-800 dark:text-gray-100 text-sm leading-tight transition-colors">{{ auth()->user()->name }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 transition-colors">{{ auth()->user()->isAdmin() ? 'Administrator' : 'Employee' }}</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            @if(session('success'))
+                <div class="mx-4 md:mx-8 mt-4 bg-gradient-to-r from-[#f0f9ef] to-[#e0f3df] dark:from-green-900/30 dark:to-green-800/20 border border-[#74c365] dark:border-green-700 text-[#468a3f] dark:text-green-300 px-4 py-3 rounded-xl transition-colors">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="mx-4 md:mx-8 mt-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl transition-colors">
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            @if(session()->has('impersonate.original_id'))
+                <div class="mx-4 md:mx-8 mt-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 px-4 py-3 rounded-xl flex items-center justify-between transition-colors">
+                    <span class="text-sm"><i class="fas fa-user-secret mr-2"></i>Impersonating <strong>{{ auth()->user()->name }}</strong></span>
+                    <form action="{{ route('impersonation.stop') }}" method="POST" class="flex-shrink-0 ml-3">
+                        @csrf
+                        <button type="submit" class="px-3 py-1 bg-amber-600 text-white rounded-lg text-xs hover:bg-amber-700 whitespace-nowrap">
+                            Stop
+                        </button>
+                    </form>
+                </div>
+            @endif
+
+            @php
+                $diskTotal = null; $diskFree = null;
+                try {
+                    $diskTotal = disk_total_space(base_path());
+                    $diskFree = disk_free_space(base_path());
+                } catch (\Throwable) {}
+                $storageWarning = $diskTotal && $diskFree && ($diskFree / $diskTotal) < 0.15;
+            @endphp
+            @if($storageWarning)
+                <div class="mx-4 md:mx-8 mt-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl transition-colors">
+                    <span class="text-sm">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        <strong>Storage Warning:</strong> Disk usage at {{ round(100 - ($diskFree / $diskTotal * 100), 1) }}%.
+                        Only {{ round($diskFree / 1024 / 1024 / 1024, 1) }} GB remaining.
+                        Free up space to prevent data loss.
+                    </span>
+                </div>
+            @endif
+
+            @yield('content')
+        </main>
+    </div>
+
+    <x-toast-container />
+    <x-session-timeout-warning />
+    <x-unsaved-changes-warning />
+
+    @if(session('success'))
+        <script>
+            document.addEventListener('alpine:init', () => {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { message: @json(session('success')), type: 'success' } }));
+            });
+        </script>
+    @endif
+    @if(session('error'))
+        <script>
+            document.addEventListener('alpine:init', () => {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { message: @json(session('error')), type: 'error' } }));
+            });
+        </script>
+    @endif
+
+    @stack('scripts')
+
+    <script>
+        function toggleDropdown(dropdownId) {
+            const dropdown = document.getElementById(dropdownId);
+            const chevron = document.getElementById(dropdownId.replace('-dropdown', '-chevron'));
+
+            dropdown.classList.toggle('open');
+            chevron.classList.toggle('rotate');
+        }
+
+        // Keep dropdowns open based on current page
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+
+            // Open relevant dropdown based on current route
+            if (currentPath.includes('bookings')) {
+                document.getElementById('bookings-dropdown').classList.add('open');
+                document.getElementById('bookings-chevron').classList.add('rotate');
+            } else if (currentPath.includes('inventory')) {
+                document.getElementById('inventory-dropdown').classList.add('open');
+                document.getElementById('inventory-chevron').classList.add('rotate');
+            } else if (currentPath.includes('reports')) {
+                document.getElementById('reports-dropdown').classList.add('open');
+                document.getElementById('reports-chevron').classList.add('rotate');
+            } else if (currentPath.includes('users')) {
+                document.getElementById('users-dropdown').classList.add('open');
+                document.getElementById('users-chevron').classList.add('rotate');
+            }
+        });
+    </script>
+</body>
+</html>

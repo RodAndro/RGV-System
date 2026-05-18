@@ -1,0 +1,13 @@
+{
+    "diagnostics": {
+        "enable": true,
+        "suppressNotices": true,
+        "argumentCount": false
+    },
+    "files": {
+        "exclude": ["**/vendor"]
+    },
+    "php": {
+        "version": "8.2"
+    }
+}

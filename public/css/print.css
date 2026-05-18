@@ -1,0 +1,11 @@
+@media print {
+    header, aside, nav, .no-print, form, button, a.btn, .sidebar, #sidebar { display: none !important; }
+    body { background: white !important; color: black !important; font-size: 12pt; }
+    main, .content, .p-8 { margin: 0 !important; padding: 0 !important; max-width: 100% !important; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+    th { background: #eee; }
+    a { color: black; text-decoration: none; }
+    .card-mantis { box-shadow: none !important; border: 1px solid #ccc !important; }
+    .badge-mantis-success, .badge-mantis-warning, .badge-mantis-danger { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
