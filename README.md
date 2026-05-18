@@ -1,73 +1,127 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# RGV System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**RGV Multi-Tech Services** — Business Operations Management System
 
-## RGV System
+Laravel 12 | PHP 8.2+ | SQLite | Tailwind CSS + Alpine.js
 
-Performance and scalability work for the book catalog is documented in `docs/book-performance.md`.
+---
 
-Useful commands:
+## Overview
+
+A web-based system for managing service bookings, inventory, and equipment borrowing. Three user roles access separate portals:
+
+- **Public** — Submit and track service bookings, use AI chatbot
+- **Employee** — View assigned bookings, request/return inventory items
+- **Admin** — Full control over bookings, inventory, users, reports, backups, and settings
+
+## Core Modules
+
+| Module | Description |
+|--------|-------------|
+| **Bookings** | Public submits service request → Admin approves → Assigns employee → Completed. Real-time tracking via reference number. |
+| **Inventory** | Track items with categories, suppliers, stock levels, QR codes. Low-stock alerts. Borrow/return workflow. |
+| **Borrow Requests** | Employees request items → Admin approves → Borrowed → Returned with condition report → Stock restored. |
+| **Users & Roles** | Spatie RBAC (Admin/Employee). MFA support (TOTP + email). Impersonation, login history, force-logout. |
+| **Notifications** | 14 notification types across email + in-app channels. Bell icon with real-time polling. Per-user preferences. |
+| **Reports** | Bookings, inventory, borrow requests, users. Export to PDF/Excel/CSV/JSON. AI-powered insights and forecasts. |
+| **Import/Export** | Bulk CSV/Excel import with duplicate strategies. Multi-format export with background queuing. |
+| **Settings** | Branding, Email (SMTP), Security, Backup, Notifications, Maintenance mode, API rate limits. |
+| **Backups** | Full + DB-only scheduled backups. SHA-256 integrity verification. Downloadable zips. Retention policies. |
+| **Audit & Trash** | Tamper-evident audit trail with HMAC-SHA256 checksums. Soft-delete trash with restore/force-delete. |
+| **AI Integration** | Chatbot (Ollama → Gemini → rule-based fallback). AI report generation for insights, forecasts, and recommendations. |
+
+## Key Numbers
+
+| Metric | Count |
+|--------|:----:|
+| Database tables | 36 |
+| Eloquent models | 21 |
+| Controllers | 30 |
+| Notification classes | 14 |
+| API endpoints | 19 |
+| Middleware | 8 |
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | Laravel 12, PHP 8.2+ |
+| Database | SQLite (configurable to MySQL/PostgreSQL) |
+| Auth | Laravel Breeze, Spatie Permission (RBAC), MFA (TOTP + email) |
+| Frontend | Tailwind CSS 3, Alpine.js 3, Blade templates |
+| PDF | barryvdh/laravel-dompdf |
+| Excel | maatwebsite/laravel-excel |
+| QR Codes | simplesoftwareio/simple-qrcode |
+| Backups | spatie/laravel-backup |
+| Activity Log | spatie/laravel-activitylog + custom tamper-evident audit |
+| AI | openai-php/client, Google Gemini, Ollama (local) |
+| Testing | PHPUnit 11 |
+
+## Quick Start
 
 ```bash
+# Clone and install
+git clone <repo-url> && cd rgv-system
+
+# Automated setup (installs deps, creates .env, generates key, migrates, builds assets)
+composer run-script setup
+
+# Or manual setup
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --force
+npm install && npm run build
+
+# Start dev environment (server, queue, logs, vite)
+composer run dev
+
+# Or just the server
+php artisan serve
+```
+
+### Environment
+
+```env
+DB_CONNECTION=mysql      # or pgsql, sqlite
+DB_DATABASE=rgv_system
+
+GEMINI_API_KEY=           # Optional — AI chatbot / report generation
+OPENAI_API_KEY=           # Optional — AI features
+```
+
+## Useful Commands
+
+```bash
+# Database
+php artisan migrate:fresh --seed
+
+# Book catalog performance
 php artisan db:seed --class=MassBookSeeder
 php artisan books:benchmark --iterations=10
 php artisan books:load-test --users=50 --requests=10
 php artisan books:warm-cache --sync
 php artisan books:refresh-bestseller-stats
+
+# Testing
+php artisan test
+
+# Code quality
+./vendor/bin/pint
 ```
 
-## About Laravel
+## Documentation
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
-
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
-
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-## Laravel Sponsors
-
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+| Document | Description |
+|----------|-------------|
+| [RGV-System-Overview.md](RGV-System-Overview.md) | Architecture, modules, API summary |
+| [RGV-System.md](RGV-System.md) | Full system documentation — models, controllers, routes |
+| [RGV-Database-Schema.md](RGV-Database-Schema.md) | Complete 36-table schema |
+| [RGV-Technical-Documentation.md](RGV-Technical-Documentation.md) | Architecture, security, AI, middleware |
+| [RGV-System-API.md](RGV-System-API.md) | API reference (all 19 endpoints) |
+| [RGV-User-Manual.md](RGV-User-Manual.md) | User guide for admin, employee, public |
+| [docs/book-performance.md](docs/book-performance.md) | Book catalog scalability and benchmarking |
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+MIT
