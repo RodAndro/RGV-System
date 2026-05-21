@@ -56,11 +56,11 @@
         }
     }">
     <button @click="open = !open" class="relative">
-        <i class="fas fa-bell text-gray-600 text-xl cursor-pointer hover:text-[#74c365] transition-colors"></i>
+        <i class="fas fa-bell text-gray-600 text-xl cursor-pointer hover:text-[#2563eb] transition-colors"></i>
         <span x-show="unreadCount > 0"
+            x-cloak
             class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center"
-            x-text="unreadCount"
-            x-transition></span>
+            x-text="unreadCount"></span>
     </button>
 
     <div x-show="open" @click.away="open = false" x-transition
@@ -69,7 +69,7 @@
             <h3 class="font-semibold text-gray-800 dark:text-gray-100">Notifications</h3>
             <div class="flex space-x-2">
                 <button x-show="unreadCount > 0" @click="markAllRead()"
-                    class="text-xs text-[#74c365] hover:underline" :disabled="markAllInFlight">
+                    class="text-xs text-[#2563eb] hover:underline" :disabled="markAllInFlight">
                     Mark all read
                 </button>
             </div>
@@ -90,14 +90,14 @@
                             <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5" x-text="n.message || ''"></p>
                             <p class="text-xs text-gray-400 dark:text-gray-500 mt-1" x-text="n.created_at"></p>
                         </div>
-                        <div class="ml-3 w-2 h-2 bg-[#74c365] rounded-full mt-2 flex-shrink-0"></div>
+                        <div class="ml-3 w-2 h-2 bg-[#2563eb] rounded-full mt-2 flex-shrink-0"></div>
                     </div>
                 </a>
             </template>
         </div>
         <div class="p-3 border-t border-gray-100 dark:border-gray-700 text-center">
             <a href="{{ auth()->user()->isAdmin() ? route('admin.notifications.index') : route('employee.notifications.index') }}"
-               class="text-sm text-[#74c365] font-medium hover:underline">
+               class="text-sm text-[#2563eb] font-medium hover:underline">
                 View All Notifications
             </a>
         </div>

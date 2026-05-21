@@ -2,11 +2,11 @@
     'pageType' => 'reports',
 ])
 
-<div x-data="chatbot()" x-init="initChatbot()" class="fixed bottom-6 right-6 z-50">
+<div x-data="chatbot()" x-init="initChatbot()" x-cloak class="fixed bottom-6 right-6 z-50">
     <!-- Chat Button -->
     <button 
         @click="toggleChat()" 
-        class="w-16 h-16 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-full shadow-lg shadow-[#74c365]/40 hover:shadow-xl hover:shadow-[#74c365]/50 transition-all duration-300 flex items-center justify-center group"
+        class="w-16 h-16 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-full shadow-lg shadow-[#2563eb]/40 hover:shadow-xl hover:shadow-[#2563eb]/50 transition-all duration-300 flex items-center justify-center group"
         :class="{ 'rotate-180': isOpen }"
     >
         <template x-if="isOpen">
@@ -32,7 +32,7 @@
         class="absolute bottom-20 right-0 w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
     >
         <!-- Header -->
-        <div class="bg-gradient-to-r from-[#74c365] to-[#5dad4f] p-4 flex items-center justify-between">
+        <div class="bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] p-4 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                     <i class="fas fa-robot text-white text-lg"></i>
@@ -48,14 +48,14 @@
         </div>
 
         <!-- Messages Container -->
-        <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900" id="chatMessages">
+        <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50" id="chatMessages">
             <template x-for="(message, index) in messages" :key="index">
                 <div :class="message.type === 'user' ? 'justify-end' : 'justify-start'" class="flex">
-                    <div :class="message.type === 'user' ? 'bg-[#74c365] text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'" class="max-w-[80%] rounded-2xl px-4 py-3 shadow-sm">
+                    <div :class="message.type === 'user' ? 'bg-[#2563eb] text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'" class="max-w-[80%] rounded-2xl px-4 py-3 shadow-sm">
                         <template x-if="message.type === 'bot'">
                             <div class="flex items-start space-x-2">
-                                <div class="w-6 h-6 bg-[#74c365]/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                                    <i class="fas fa-robot text-[#74c365] text-xs"></i>
+                                <div class="w-6 h-6 bg-[#2563eb]/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <i class="fas fa-robot text-[#2563eb] text-xs"></i>
                                 </div>
                                 <div>
                                     <div x-html="formatMessage(message.content)"></div>
@@ -77,8 +77,8 @@
             <div x-show="isTyping" class="flex justify-start">
                 <div class="bg-white rounded-2xl rounded-bl-none px-4 py-3 shadow-sm">
                     <div class="flex items-center space-x-2">
-                        <div class="w-6 h-6 bg-[#74c365]/10 rounded-full flex items-center justify-center">
-                            <i class="fas fa-robot text-[#74c365] text-xs"></i>
+                        <div class="w-6 h-6 bg-[#2563eb]/10 rounded-full flex items-center justify-center">
+                            <i class="fas fa-robot text-[#2563eb] text-xs"></i>
                         </div>
                         <div class="flex space-x-1">
                             <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
@@ -92,18 +92,18 @@
 
         <!-- Quick Actions -->
         <div x-show="messages.length === 0" class="p-3 border-t border-gray-200 bg-white">
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Quick Actions:</p>
+            <p class="text-xs text-gray-500 mb-2">Quick Actions:</p>
             <div class="flex flex-wrap gap-2">
-                <button @click="sendQuickMessage('Show me booking summary')" class="px-3 py-1.5 bg-[#f0f9ef] text-[#74c365] rounded-full text-xs hover:bg-[#e0f3df] transition-colors">
+                <button @click="sendQuickMessage('Show me booking summary')" class="px-3 py-1.5 bg-[#eff6ff] text-[#2563eb] rounded-full text-xs hover:bg-[#dbeafe] transition-colors">
                     📊 Booking Summary
                 </button>
-                <button @click="sendQuickMessage('What is the inventory status?')" class="px-3 py-1.5 bg-[#f0f9ef] text-[#74c365] rounded-full text-xs hover:bg-[#e0f3df] transition-colors">
+                <button @click="sendQuickMessage('What is the inventory status?')" class="px-3 py-1.5 bg-[#eff6ff] text-[#2563eb] rounded-full text-xs hover:bg-[#dbeafe] transition-colors">
                     📦 Inventory Status
                 </button>
-                <button @click="sendQuickMessage('How do I export reports?')" class="px-3 py-1.5 bg-[#f0f9ef] text-[#74c365] rounded-full text-xs hover:bg-[#e0f3df] transition-colors">
+                <button @click="sendQuickMessage('How do I export reports?')" class="px-3 py-1.5 bg-[#eff6ff] text-[#2563eb] rounded-full text-xs hover:bg-[#dbeafe] transition-colors">
                     📥 Export Reports
                 </button>
-                <button @click="sendQuickMessage('Track borrow requests')" class="px-3 py-1.5 bg-[#f0f9ef] text-[#74c365] rounded-full text-xs hover:bg-[#e0f3df] transition-colors">
+                <button @click="sendQuickMessage('Track borrow requests')" class="px-3 py-1.5 bg-[#eff6ff] text-[#2563eb] rounded-full text-xs hover:bg-[#dbeafe] transition-colors">
                     🔍 Track Requests
                 </button>
             </div>
@@ -117,12 +117,12 @@
                     x-model="inputMessage" 
                     @keydown.enter="sendMessage()"
                     placeholder="Ask me about reports..."
-                    class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#74c365]/50 focus:border-[#74c365] text-sm"
+                    class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50 focus:border-[#2563eb] text-sm"
                 >
                 <button 
                     type="submit"
                     :disabled="!inputMessage.trim() || isTyping"
-                    class="w-10 h-10 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-xl flex items-center justify-center text-white hover:shadow-lg hover:shadow-[#74c365]/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="w-10 h-10 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-xl flex items-center justify-center text-white hover:shadow-lg hover:shadow-[#2563eb]/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <i class="fas fa-paper-plane"></i>
                 </button>
@@ -142,12 +142,10 @@ function chatbot() {
         pageType: '{{ $pageType }}',
 
         initChatbot() {
-            // Load chat history from localStorage
             const saved = localStorage.getItem('chatbot_history');
             if (saved) {
                 this.messages = JSON.parse(saved);
             } else {
-                // Add welcome message
                 this.addBotMessage("Hello! I'm your AI Support Assistant. I can help you with:\n\n• 📊 Report analysis and summaries\n• 📦 Inventory insights\n• 🔍 Borrow request tracking\n• 👥 User statistics\n• 📥 Exporting reports\n\nHow can I assist you today?");
             }
         },
@@ -180,7 +178,7 @@ function chatbot() {
                     body: JSON.stringify({
                         message: userMessage,
                         pageType: this.pageType,
-                        history: this.messages.slice(-5) // Send last 5 messages for context
+                        history: this.messages.slice(-5)
                     })
                 });
 
@@ -237,7 +235,7 @@ function chatbot() {
         },
 
         saveHistory() {
-            localStorage.setItem('chatbot_history', JSON.stringify(this.messages.slice(-20))); // Keep last 20 messages
+            localStorage.setItem('chatbot_history', JSON.stringify(this.messages.slice(-20)));
         },
 
         scrollToBottom() {
@@ -250,7 +248,6 @@ function chatbot() {
         },
 
         formatMessage(content) {
-            // Convert markdown-like syntax to HTML
             return content
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                 .replace(/\n/g, '<br>')
@@ -260,26 +257,6 @@ function chatbot() {
         formatTime(timestamp) {
             return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
-    };
-}
-</script>
-}
-    };
-}
-</script>
-  };
-}
-</script>
-}
-    };
-}
-</script>
- new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
-    };
-}
-</script>
-}
     };
 }
 </script>

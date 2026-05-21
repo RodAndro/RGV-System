@@ -16,16 +16,16 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <style>
             :root {
-                --mantis: #74c365;
-                --mantis-dark: #468a3f;
+                --primary: #2563eb;
+                --primary-dark: #1e40af;
             }
         </style>
     </head>
-    <body class="font-sans text-gray-900 antialiased bg-gradient-to-br from-gray-50 to-[#f0f9ef]">
+    <body class="font-sans text-gray-900 antialiased bg-gradient-to-br from-gray-50 to-[#eff6ff]">
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
             <div class="mb-6">
                 <a href="/">
-                    <div class="w-20 h-20 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-2xl flex items-center justify-center shadow-lg shadow-[#74c365]/30">
+                    <div class="w-20 h-20 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-2xl flex items-center justify-center shadow-lg shadow-[#2563eb]/30">
                         <i class="fas fa-cogs text-white text-3xl"></i>
                     </div>
                 </a>

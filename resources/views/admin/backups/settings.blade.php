@@ -7,7 +7,7 @@
     <section class="bg-white rounded-lg shadow p-6">
         <div class="flex items-center justify-between mb-6">
             <h1 class="text-2xl font-semibold text-gray-900">Backup Settings</h1>
-            <a href="{{ route('admin.backups.index') }}" class="text-sm text-[#468a3f] hover:underline">
+            <a href="{{ route('admin.backups.index') }}" class="text-sm text-[#1e40af] hover:underline">
                 <i class="fas fa-arrow-left mr-1"></i>Back to Backups
             </a>
         </div>
@@ -56,7 +56,7 @@
                     <p class="text-xs text-gray-400 mt-1 ml-6">Requires AWS credentials to be configured in the environment.</p>
                 </div>
 
-                <button type="submit" class="rounded bg-[#74c365] px-6 py-2 font-semibold text-white">Save Settings</button>
+                <button type="submit" class="rounded bg-[#2563eb] px-6 py-2 font-semibold text-white">Save Settings</button>
             </form>
         </div>
     </section>

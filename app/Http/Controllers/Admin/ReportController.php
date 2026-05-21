@@ -41,13 +41,16 @@ class ReportController extends Controller
         }
 
         $stats = [
-            'total' => (clone $query)->count(),
-            'pending' => (clone $query)->where('status', 'pending')->count(),
-            'approved' => (clone $query)->where('status', 'approved')->count(),
-            'completed' => (clone $query)->where('status', 'completed')->count(),
+            'total' => \App\Models\Booking::count(),
+            'pending' => \App\Models\Booking::where('status', 'pending')->count(),
+            'approved' => \App\Models\Booking::where('status', 'approved')->count(),
+            'completed' => \App\Models\Booking::where('status', 'completed')->count(),
+            'rejected' => \App\Models\Booking::where('status', 'rejected')->count(),
+            'cancelled' => \App\Models\Booking::where('status', 'cancelled')->count(),
         ];
 
-        $bookings = $query->latest()->paginate($request->get('per_page', 20))->appends($request->except('page'));
+        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
+        $bookings = $query->latest()->paginate($perPage)->appends($request->except('page'));
         return view('admin.reports.bookings', compact('bookings', 'stats'));
     }
 
@@ -62,11 +65,13 @@ class ReportController extends Controller
         $stats = [
             'total' => Inventory::count(),
             'available' => Inventory::where('status', 'available')->count(),
-            'low_stock' => Inventory::lowStock()->count(),
+            'borrowed' => Inventory::where('status', 'borrowed')->count(),
             'maintenance' => Inventory::where('status', 'maintenance')->count(),
+            'damaged' => Inventory::where('status', 'damaged')->count(),
         ];
 
-        $inventory = $query->latest()->paginate($request->get('per_page', 20))->appends($request->except('page'));
+        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
+        $inventory = $query->latest()->paginate($perPage)->appends($request->except('page'));
         return view('admin.reports.inventory', compact('inventory', 'stats'));
     }
 
@@ -81,11 +86,14 @@ class ReportController extends Controller
         $stats = [
             'total' => BorrowRequest::count(),
             'pending' => BorrowRequest::where('status', 'pending')->count(),
+            'approved' => BorrowRequest::where('status', 'approved')->count(),
             'borrowed' => BorrowRequest::where('status', 'borrowed')->count(),
             'returned' => BorrowRequest::where('status', 'returned')->count(),
+            'rejected' => BorrowRequest::where('status', 'rejected')->count(),
         ];
 
-        $borrowRequests = $query->latest()->paginate($request->get('per_page', 20))->appends($request->except('page'));
+        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
+        $borrowRequests = $query->latest()->paginate($perPage)->appends($request->except('page'));
         return view('admin.reports.borrow-requests', compact('borrowRequests', 'stats'));
     }
 
@@ -109,7 +117,8 @@ class ReportController extends Controller
             'active' => User::where('is_active', true)->count(),
         ];
 
-        $users = $query->latest()->paginate($request->get('per_page', 20))->appends($request->except('page'));
+        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
+        $users = $query->latest()->paginate($perPage)->appends($request->except('page'));
         return view('admin.reports.users', compact('users', 'stats'));
     }
 }

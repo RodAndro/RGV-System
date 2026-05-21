@@ -12,7 +12,7 @@
         </a>
     </div>
                 @if(session('success'))
-                    <div class="bg-gradient-to-r from-[#f0f9ef] to-[#e0f3df] border border-[#74c365] text-[#468a3f] px-4 py-3 rounded-xl mb-6">
+                    <div class="bg-gradient-to-r from-[#eff6ff] to-[#dbeafe] border border-[#2563eb] text-[#1e40af] px-4 py-3 rounded-xl mb-6">
                         {{ session('success') }}
                     </div>
                 @endif
@@ -25,8 +25,8 @@
                                 <p class="text-gray-500 text-sm">Total Requests</p>
                                 <p class="text-3xl font-bold text-gray-800">{{ $borrowRequests->total() }}</p>
                             </div>
-                            <div class="bg-[#f0f9ef] w-12 h-12 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-hand-holding text-[#74c365] text-xl"></i>
+                            <div class="bg-[#eff6ff] w-12 h-12 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-hand-holding text-[#2563eb] text-xl"></i>
                             </div>
                         </div>
                     </div>
@@ -56,10 +56,10 @@
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-gray-500 text-sm">Returned</p>
-                                <p class="text-3xl font-bold text-[#74c365]">{{ $borrowRequests->where('status', 'returned')->count() }}</p>
+                                <p class="text-3xl font-bold text-[#2563eb]">{{ $borrowRequests->where('status', 'returned')->count() }}</p>
                             </div>
-                            <div class="bg-[#f0f9ef] w-12 h-12 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-undo text-[#74c365] text-xl"></i>
+                            <div class="bg-[#eff6ff] w-12 h-12 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-undo text-[#2563eb] text-xl"></i>
                             </div>
                         </div>
                     </div>
@@ -76,7 +76,7 @@
                 <div class="card-mantis overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="w-full">
-                            <thead class="bg-gradient-to-r from-[#f0f9ef] to-white">
+                            <thead class="bg-gradient-to-r from-[#eff6ff] to-white">
                                 <tr>
                                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Request #</th>
                                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Borrow Date</th>
@@ -88,9 +88,9 @@
                             </thead>
                             <tbody class="divide-y divide-gray-100">
                                 @forelse($borrowRequests as $request)
-                                    <tr class="hover:bg-[#f0f9ef]/50 transition-colors">
+                                    <tr class="hover:bg-[#eff6ff]/50 transition-colors">
                                         <td class="px-6 py-4">
-                                            <span class="font-mono text-sm font-semibold text-[#74c365]">{{ $request->request_number }}</span>
+                                            <span class="font-mono text-sm font-semibold text-[#2563eb]">{{ $request->request_number }}</span>
                                         </td>
                                         <td class="px-6 py-4 text-sm text-gray-600">{{ $request->borrow_date->format('M d, Y') }}</td>
                                         <td class="px-6 py-4 text-sm text-gray-600">{{ $request->due_date->format('M d, Y') }}</td>
@@ -102,11 +102,11 @@
                                         </td>
                                         <td class="px-6 py-4">
                                             <div class="flex space-x-2">
-                                                <a href="{{ route('employee.borrow-requests.show', $request) }}" class="w-9 h-9 bg-[#f0f9ef] text-[#74c365] rounded-lg flex items-center justify-center hover:bg-[#e0f3df] transition-colors" title="View">
+                                                <a href="{{ route('employee.borrow-requests.show', $request) }}" class="w-9 h-9 bg-[#eff6ff] text-[#2563eb] rounded-lg flex items-center justify-center hover:bg-[#dbeafe] transition-colors" title="View">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
                                                 @if($request->status == 'borrowed')
-                                                    <a href="{{ route('employee.borrow-requests.show', $request) }}#return" class="w-9 h-9 bg-[#f0f9ef] text-[#74c365] rounded-lg flex items-center justify-center hover:bg-[#e0f3df] transition-colors" title="Return Items">
+                                                    <a href="{{ route('employee.borrow-requests.show', $request) }}#return" class="w-9 h-9 bg-[#eff6ff] text-[#2563eb] rounded-lg flex items-center justify-center hover:bg-[#dbeafe] transition-colors" title="Return Items">
                                                         <i class="fas fa-undo"></i>
                                                     </a>
                                                 @endif
@@ -116,8 +116,8 @@
                                 @empty
                                     <tr>
                                         <td colspan="6" class="px-6 py-12 text-center text-gray-500">
-                                            <div class="w-16 h-16 bg-[#f0f9ef] rounded-full flex items-center justify-center mx-auto mb-4">
-                                                <i class="fas fa-hand-holding text-[#74c365] text-2xl"></i>
+                                            <div class="w-16 h-16 bg-[#eff6ff] rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <i class="fas fa-hand-holding text-[#2563eb] text-2xl"></i>
                                             </div>
                                             <p class="font-medium">No borrow requests yet</p>
                                             <a href="{{ route('employee.borrow-requests.create') }}" class="btn-mantis mt-4 inline-block">Create your first request</a>

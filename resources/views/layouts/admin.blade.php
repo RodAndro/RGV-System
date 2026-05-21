@@ -13,39 +13,41 @@
     <link rel="stylesheet" href="/css/print.css" media="print">
     <style>
         :root {
-            --mantis: #74c365;
-            --mantis-dark: #468a3f;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
         }
         [x-cloak] { display: none !important; }
         .sidebar-link-mantis {
             display: flex;
             align-items: center;
-            padding: 12px 16px;
-            border-radius: 12px;
+            padding: 11px 14px;
+            border-radius: 10px;
             color: #64748b;
             font-weight: 500;
+            font-size: 14.5px;
             transition: all 0.3s ease;
             cursor: pointer;
         }
         .sidebar-link-mantis:hover {
-            background: linear-gradient(135deg, #f0f9ef 0%, #e0f3df 100%);
-            color: #74c365;
+            background: rgba(37, 99, 235, 0.1);
+            color: #2563eb;
             transform: translateX(4px);
         }
         .dark .sidebar-link-mantis { color: #94a3b8; }
         .dark .sidebar-link-mantis:hover {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            color: #74c365;
+            background: rgba(37, 99, 235, 0.15);
+            color: #60a5fa;
         }
         .sidebar-link-active-mantis {
             display: flex;
-            align-items: justify-between;
-            padding: 12px 16px;
-            background: linear-gradient(135deg, #74c365 0%, #5dad4f 100%);
+            align-items: center;
+            padding: 11px 14px;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: white;
-            border-radius: 12px;
+            border-radius: 10px;
             font-weight: 600;
-            box-shadow: 0 4px 15px rgba(116, 195, 101, 0.3);
+            font-size: 14.5px;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
         }
         .dropdown-menu {
             max-height: 0;
@@ -58,22 +60,23 @@
             transition: max-height 0.3s ease-in;
         }
         .dropdown-item {
-            padding: 10px 16px;
+            padding: 7px 14px;
             color: #64748b;
             font-weight: 500;
+            font-size: 13px;
             border-radius: 8px;
             transition: all 0.2s ease;
             cursor: pointer;
             display: block;
         }
         .dropdown-item:hover {
-            background: #f0f9ef;
-            color: #74c365;
+            background: rgba(37, 99, 235, 0.08);
+            color: #2563eb;
         }
         .dark .dropdown-item { color: #94a3b8; }
         .dark .dropdown-item:hover {
-            background: #1e293b;
-            color: #74c365;
+            background: rgba(37, 99, 235, 0.15);
+            color: #60a5fa;
         }
         .chevron-icon {
             transition: transform 0.3s ease;
@@ -89,9 +92,9 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: #94a3b8;
-            padding: 8px 16px;
-            margin-top: 16px;
+            color: #64748b;
+            padding: 6px 14px;
+            margin-top: 10px;
         }
         .dark .nav-section-title { color: #64748b; }
         .card-mantis {
@@ -122,11 +125,11 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 20px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid #f0f9ef;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #eff6ff;
         }
-        .dark .section-header { border-bottom-color: #1e3a1e; }
+        .dark .section-header { border-bottom-color: #1e3a5f; }
         .section-title {
             font-size: 18px;
             font-weight: 700;
@@ -137,7 +140,7 @@
         .dark .section-title { color: #e2e8f0; }
         .section-title i {
             margin-right: 10px;
-            color: #74c365;
+            color: #2563eb;
         }
         .badge-mantis-success {
             display: inline-block;
@@ -145,8 +148,8 @@
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
-            background: linear-gradient(135deg, #f0f9ef 0%, #e0f3df 100%);
-            color: #74c365;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            color: #2563eb;
         }
         .badge-mantis-warning {
             display: inline-block;
@@ -179,36 +182,36 @@
             display: inline-flex;
             align-items: center;
             padding: 10px 20px;
-            background: linear-gradient(135deg, #74c365 0%, #5dad4f 100%);
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: white;
             border-radius: 10px;
             font-weight: 600;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(116, 195, 101, 0.3);
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
         }
         .btn-mantis:hover {
-            background: linear-gradient(135deg, #5dad4f 0%, #468a3f 100%);
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(116, 195, 101, 0.4);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
         }
         .btn-mantis-outline {
             display: inline-flex;
             align-items: center;
             padding: 10px 20px;
             background: white;
-            color: #74c365;
-            border: 1px solid #74c365;
+            color: #2563eb;
+            border: 1px solid #2563eb;
             border-radius: 10px;
             font-weight: 600;
             transition: all 0.3s ease;
         }
         .dark .btn-mantis-outline {
             background: #1e293b;
-            border-color: #4ade80;
-            color: #4ade80;
+            border-color: #60a5fa;
+            color: #60a5fa;
         }
         .btn-mantis-outline:hover {
-            background: #f0f9ef;
+            background: #eff6ff;
             transform: translateY(-2px);
         }
         .dark .btn-mantis-outline:hover {
@@ -217,18 +220,21 @@
     </style>
 </head>
 <body class="bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
-    <div class="flex min-h-screen" x-data="{ sidebarOpen: false }">
+    <div class="flex h-screen overflow-hidden" x-data="{ sidebarOpen: false }">
         <!-- Mobile overlay backdrop -->
         <div x-show="sidebarOpen" @click="sidebarOpen = false" class="lg:hidden fixed inset-0 bg-black/40 z-40" x-transition></div>
 
         <!-- Sidebar -->
-        <div class="fixed top-0 left-0 h-full w-72 z-50 transform transition-transform duration-300 lg:relative lg:translate-x-0"
+        <div class="fixed top-0 left-0 h-full w-72 z-50 transform transition-transform duration-300 lg:translate-x-0"
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
             @include('layouts.partials.admin-sidebar')
         </div>
 
+        <!-- Sidebar spacer (prevents content from going under fixed sidebar) -->
+        <div class="w-72 flex-shrink-0 hidden lg:block"></div>
+
         <!-- Main Content -->
-        <main class="flex-1 min-w-0">
+        <main class="flex-1 min-w-0 overflow-y-auto h-screen">
             <!-- Top Navigation -->
             <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 transition-colors duration-300">
                 <div class="flex justify-between items-center px-4 md:px-8 py-4">
@@ -239,17 +245,16 @@
                         <h1 class="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 truncate transition-colors">@yield('header', 'Dashboard')</h1>
                     </div>
                     <div class="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
-                        <!-- Dark Mode Toggle -->
                         <button @click="dark = !dark" class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-yellow-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Toggle dark mode">
                             <svg class="w-5 h-5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
                             <svg class="w-5 h-5 hidden dark:inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path stroke-linecap="round" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
                         </button>
-                        <a href="{{ route('home') }}" target="_blank" class="hidden sm:inline text-gray-600 dark:text-gray-400 hover:text-[#74c365] transition-colors text-sm">
+                        <a href="{{ route('home') }}" target="_blank" class="hidden sm:inline text-gray-600 dark:text-gray-400 hover:text-[#2563eb] dark:hover:text-[#60a5fa] transition-colors text-sm">
                             <i class="fas fa-external-link-alt mr-1"></i>View Site
                         </a>
                         <x-notification-bell />
                         <a href="{{ route('profile.edit') }}" class="flex items-center hover:opacity-80 transition-opacity" title="Edit Profile">
-                            <div class="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-[#74c365]/30 flex-shrink-0">
+                            <div class="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/30 flex-shrink-0">
                                 {{ auth()->user()->name[0] }}
                             </div>
                             <div class="ml-2 md:ml-3 hidden md:block">
@@ -263,7 +268,7 @@
 
             <!-- Page Content -->
             @if(session('success'))
-                <div class="mx-4 md:mx-8 mt-4 bg-gradient-to-r from-[#f0f9ef] to-[#e0f3df] dark:from-green-900/30 dark:to-green-800/20 border border-[#74c365] dark:border-green-700 text-[#468a3f] dark:text-green-300 px-4 py-3 rounded-xl transition-colors">
+                <div class="mx-4 md:mx-8 mt-4 bg-gradient-to-r from-[#eff6ff] to-[#dbeafe] dark:from-blue-900/30 dark:to-blue-800/20 border border-[#2563eb] dark:border-blue-700 text-[#1d4ed8] dark:text-blue-300 px-4 py-3 rounded-xl transition-colors">
                     {{ session('success') }}
                 </div>
             @endif
@@ -334,30 +339,11 @@
         function toggleDropdown(dropdownId) {
             const dropdown = document.getElementById(dropdownId);
             const chevron = document.getElementById(dropdownId.replace('-dropdown', '-chevron'));
-
-            dropdown.classList.toggle('open');
-            chevron.classList.toggle('rotate');
-        }
-
-        // Keep dropdowns open based on current page
-        document.addEventListener('DOMContentLoaded', function() {
-            const currentPath = window.location.pathname;
-
-            // Open relevant dropdown based on current route
-            if (currentPath.includes('bookings')) {
-                document.getElementById('bookings-dropdown').classList.add('open');
-                document.getElementById('bookings-chevron').classList.add('rotate');
-            } else if (currentPath.includes('inventory')) {
-                document.getElementById('inventory-dropdown').classList.add('open');
-                document.getElementById('inventory-chevron').classList.add('rotate');
-            } else if (currentPath.includes('reports')) {
-                document.getElementById('reports-dropdown').classList.add('open');
-                document.getElementById('reports-chevron').classList.add('rotate');
-            } else if (currentPath.includes('users')) {
-                document.getElementById('users-dropdown').classList.add('open');
-                document.getElementById('users-chevron').classList.add('rotate');
+            if (dropdown && chevron) {
+                dropdown.classList.toggle('open');
+                chevron.classList.toggle('rotate');
             }
-        });
+        }
     </script>
 </body>
 </html>

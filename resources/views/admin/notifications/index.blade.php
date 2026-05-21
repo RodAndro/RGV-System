@@ -13,7 +13,7 @@
             @if($unreadCount > 0)
                 <form action="{{ route('admin.notifications.mark-all-read') }}" method="POST" class="inline">
                     @csrf
-                    <button type="submit" class="text-[#74c365] hover:text-[#5dad4f] font-medium text-sm">
+                    <button type="submit" class="text-[#2563eb] hover:text-[#1d4ed8] font-medium text-sm">
                         <i class="fas fa-check-double mr-1"></i>Mark All as Read
                     </button>
                 </form>
@@ -36,14 +36,14 @@
                                         @if($notification->read_at)
                                             <i class="fas fa-envelope-open text-gray-400 mr-2"></i>
                                         @else
-                                            <i class="fas fa-envelope text-[#74c365] mr-2"></i>
+                                            <i class="fas fa-envelope text-[#2563eb] mr-2"></i>
                                         @endif
                                     <h3 class="font-semibold text-gray-800">{{ $notification->title ?? 'Notification' }}</h3>
                                         <span class="ml-3 text-xs text-gray-500">{{ $notification->created_at->diffForHumans() }}</span>
                                     </div>
                                     <p class="text-gray-600 text-sm mb-2">{{ $notification->message ?? '' }}</p>
                                     @if($notification->link)
-                                        <a href="{{ route('admin.notifications.open', $notification->id) }}" class="text-[#74c365] text-sm font-medium hover:underline">
+                                        <a href="{{ route('admin.notifications.open', $notification->id) }}" class="text-[#2563eb] text-sm font-medium hover:underline">
                                             <i class="fas fa-external-link-alt mr-1"></i>View Details
                                         </a>
                                     @endif
@@ -52,7 +52,7 @@
                                     @if(!$notification->read_at)
                                         <form action="{{ route('admin.notifications.mark-read', $notification->id) }}" method="POST">
                                             @csrf
-                                            <button type="submit" class="text-gray-500 hover:text-[#74c365] transition-colors p-2" title="Mark as Read">
+                                            <button type="submit" class="text-gray-500 hover:text-[#2563eb] transition-colors p-2" title="Mark as Read">
                                                 <i class="fas fa-check"></i>
                                             </button>
                                         </form>

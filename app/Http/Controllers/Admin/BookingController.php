@@ -46,10 +46,19 @@ class BookingController extends Controller
         $dir = $request->get('direction') === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sort, $dir);
 
-        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 20;
+        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $bookings = $query->paginate($perPage)->appends($request->except('page'));
 
-        return view('admin.bookings.index', compact('bookings'));
+        $stats = [
+            'total' => \App\Models\Booking::count(),
+            'pending' => \App\Models\Booking::where('status', 'pending')->count(),
+            'approved' => \App\Models\Booking::where('status', 'approved')->count(),
+            'completed' => \App\Models\Booking::where('status', 'completed')->count(),
+            'rejected' => \App\Models\Booking::where('status', 'rejected')->count(),
+            'cancelled' => \App\Models\Booking::where('status', 'cancelled')->count(),
+        ];
+
+        return view('admin.bookings.index', compact('bookings', 'stats'));
     }
 
     public function show(Booking $booking)

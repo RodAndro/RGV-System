@@ -24,7 +24,7 @@
             <button type="button" onclick="previewImport('inventory')" class="rounded bg-gray-600 px-4 py-2 font-semibold text-white text-sm">
                 <i class="fas fa-eye mr-1"></i>Preview
             </button>
-            <button type="button" onclick="submitImport('inventory')" class="rounded bg-[#74c365] px-4 py-2 font-semibold text-white text-sm">
+            <button type="button" onclick="submitImport('inventory')" class="rounded bg-[#2563eb] px-4 py-2 font-semibold text-white text-sm">
                 Queue Import
             </button>
         </form>
@@ -41,7 +41,7 @@
             <button type="button" onclick="previewImport('users')" class="rounded bg-gray-600 px-4 py-2 font-semibold text-white text-sm">
                 <i class="fas fa-eye mr-1"></i>Preview
             </button>
-            <button type="button" onclick="submitImport('users')" class="rounded bg-[#74c365] px-4 py-2 font-semibold text-white text-sm">
+            <button type="button" onclick="submitImport('users')" class="rounded bg-[#2563eb] px-4 py-2 font-semibold text-white text-sm">
                 Queue User Import
             </button>
         </form>
@@ -92,7 +92,7 @@
                                 </td>
                                 <td>
                                     <div class="w-24 bg-gray-200 rounded-full h-2">
-                                        <div class="bg-[#74c365] h-2 rounded-full transition-all" :style="'width:' + progress + '%'"></div>
+                                        <div class="bg-[#2563eb] h-2 rounded-full transition-all" :style="'width:' + progress + '%'"></div>
                                     </div>
                                     <span class="text-xs text-gray-500" x-text="progress + '%'"></span>
                                 </td>
@@ -128,7 +128,7 @@
                                 <td>{{ $export->record_count }}</td>
                                 <td>
                                     @if($export->file_path)
-                                        <a class="text-[#468a3f]" href="{{ route('admin.import-export.exports.download', $export) }}">Download</a>
+                                        <a class="text-[#1e40af]" href="{{ route('admin.import-export.exports.download', $export) }}">Download</a>
                                     @endif
                                 </td>
                             </tr>

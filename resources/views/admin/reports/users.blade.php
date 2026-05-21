@@ -8,7 +8,7 @@
 <div class="p-8">
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <div class="flex justify-between items-center mb-6">
-        <a href="{{ route('admin.reports.index') }}" class="text-gray-600 hover:text-[#74c365] transition-colors flex items-center">
+        <a href="{{ route('admin.reports.index') }}" class="text-gray-600 hover:text-[#2563eb] transition-colors flex items-center">
             <i class="fas fa-arrow-left mr-2"></i>Back to Reports
         </a>
     </div>
@@ -30,10 +30,10 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-gray-500 text-sm">Admins</p>
-                    <p class="text-3xl font-bold text-[#74c365]">{{ $stats['admins'] }}</p>
+                    <p class="text-3xl font-bold text-[#2563eb]">{{ $stats['admins'] }}</p>
                 </div>
-                <div class="bg-[#f0f9ef] w-12 h-12 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-user-shield text-[#74c365] text-xl"></i>
+                <div class="bg-[#eff6ff] w-12 h-12 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-user-shield text-[#2563eb] text-xl"></i>
                 </div>
             </div>
         </div>
@@ -52,10 +52,10 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-gray-500 text-sm">Active</p>
-                    <p class="text-3xl font-bold text-[#74c365]">{{ $stats['active'] }}</p>
+                    <p class="text-3xl font-bold text-[#2563eb]">{{ $stats['active'] }}</p>
                 </div>
-                <div class="bg-[#f0f9ef] w-12 h-12 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-check-circle text-[#74c365] text-xl"></i>
+                <div class="bg-[#eff6ff] w-12 h-12 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-check-circle text-[#2563eb] text-xl"></i>
                 </div>
             </div>
         </div>

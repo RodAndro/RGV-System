@@ -40,7 +40,7 @@
                 @if($loop->last || !$crumb['url'])
                     <span class="text-gray-800 font-medium" aria-current="page">{{ $crumb['label'] }}</span>
                 @else
-                    <a href="{{ $crumb['url'] }}" class="hover:text-[#74c365] transition-colors">{{ $crumb['label'] }}</a>
+                    <a href="{{ $crumb['url'] }}" class="hover:text-[#2563eb] transition-colors">{{ $crumb['label'] }}</a>
                 @endif
             </li>
         @endforeach

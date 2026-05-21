@@ -1,12 +1,12 @@
-<aside class="w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 h-full shadow-xl flex flex-col overflow-y-auto transition-colors duration-300">
-    <div class="p-6">
-        <div class="flex items-center mb-8">
-            <div class="w-10 h-10 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-xl flex items-center justify-center shadow-lg shadow-[#74c365]/30">
-                <i class="fas fa-cogs text-white text-lg"></i>
+<aside class="w-72 bg-gradient-to-b from-[#2563eb]/5 to-white dark:from-gray-900 dark:to-gray-900 border-r border-blue-100 dark:border-gray-700 h-full shadow-xl flex flex-col transition-colors duration-300">
+    <div class="px-4 pt-4 pb-2 flex-1 overflow-y-auto">
+        <div class="flex items-center mb-4">
+            <div class="w-8 h-8 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30 flex-shrink-0">
+                <i class="fas fa-cogs text-white text-sm"></i>
             </div>
-            <span class="font-bold text-lg text-gray-800 dark:text-gray-100 ml-3 transition-colors">RGV Employee</span>
+            <span class="font-bold text-base text-gray-800 dark:text-gray-100 ml-2 transition-colors">RGV Employee</span>
         </div>
-        <nav>
+        <nav class="space-y-0.5">
             <a href="{{ route('employee.dashboard') }}" class="sidebar-link-mantis {{ request()->routeIs('employee.dashboard') ? 'sidebar-link-active-mantis' : '' }}">
                 <i class="fas fa-tachometer-alt mr-3 w-5"></i>Dashboard
             </a>
@@ -46,7 +46,7 @@
             </div>
         </nav>
     </div>
-    <div class="mt-auto p-6 border-t border-gray-100 dark:border-gray-800">
+    <div class="flex-shrink-0 p-4 border-t border-gray-100 dark:border-gray-800">
         <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="flex items-center px-4 py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all duration-300 w-full text-left font-medium">
             <i class="fas fa-sign-out-alt mr-3 w-5"></i>Logout
         </a>

@@ -1,4 +1,4 @@
-﻿@extends('layouts.admin')
+@extends('layouts.admin')
 
 @section('title', 'Site Settings')
 
@@ -20,7 +20,7 @@
             ] as $key => $label)
                 <button @click="tab = '{{ $key }}'"
                     class="px-4 py-2 text-sm font-medium rounded-t-lg transition-colors"
-                    :class="tab === '{{ $key }}' ? 'bg-white dark:bg-gray-800 border border-b-white dark:border-b-gray-800 border-gray-200 dark:border-gray-600 text-[#74c365] -mb-px' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'">
+                    :class="tab === '{{ $key }}' ? 'bg-white dark:bg-gray-800 border border-b-white dark:border-b-gray-800 border-gray-200 dark:border-gray-600 text-[#2563eb] -mb-px' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'">
                     {{ $label }}
                 </button>
             @endforeach
@@ -50,7 +50,7 @@
                         class="mt-1 h-9 w-16 rounded border-gray-300 cursor-pointer">
                 </div>
 
-                <button type="submit" class="rounded bg-[#74c365] px-6 py-2 font-semibold text-white">Save Branding</button>
+                <button type="submit" class="rounded bg-[#2563eb] px-6 py-2 font-semibold text-white">Save Branding</button>
             </form>
         </div>
 
@@ -114,7 +114,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="rounded bg-[#74c365] px-6 py-2 font-semibold text-white">Save Email Settings</button>
+                <button type="submit" class="rounded bg-[#2563eb] px-6 py-2 font-semibold text-white">Save Email Settings</button>
             </form>
         </div>
 
@@ -143,7 +143,7 @@
                         class="mt-1 block w-32 rounded border-gray-300" min="1" max="20" required>
                 </div>
 
-                <button type="submit" class="rounded bg-[#74c365] px-6 py-2 font-semibold text-white">Save Security</button>
+                <button type="submit" class="rounded bg-[#2563eb] px-6 py-2 font-semibold text-white">Save Security</button>
             </form>
         </div>
 
@@ -175,12 +175,12 @@
                 </div>
 
                 <div class="text-sm text-gray-500 mt-2">
-                    <a href="{{ route('admin.backups.settings') }}" class="text-[#468a3f] hover:underline">
+                    <a href="{{ route('admin.backups.settings') }}" class="text-[#1e40af] hover:underline">
                         <i class="fas fa-external-link-alt mr-1"></i>Advanced backup settings
                     </a>
                 </div>
 
-                <button type="submit" class="rounded bg-[#74c365] px-6 py-2 font-semibold text-white">Save Backup</button>
+                <button type="submit" class="rounded bg-[#2563eb] px-6 py-2 font-semibold text-white">Save Backup</button>
             </form>
         </div>
 
@@ -205,7 +205,7 @@
                     <p class="text-xs text-gray-400 mt-1 ml-6">When disabled, no email notifications will be sent from the system.</p>
                 </div>
 
-                <button type="submit" class="rounded bg-[#74c365] px-6 py-2 font-semibold text-white">Save Notifications</button>
+                <button type="submit" class="rounded bg-[#2563eb] px-6 py-2 font-semibold text-white">Save Notifications</button>
             </form>
         </div>
 
@@ -237,7 +237,7 @@
                     <p class="text-xs text-gray-400 mt-1">IPs that can still access the site during maintenance.</p>
                 </div>
 
-                <button type="submit" class="rounded bg-[#74c365] px-6 py-2 font-semibold text-white">Save Maintenance</button>
+                <button type="submit" class="rounded bg-[#2563eb] px-6 py-2 font-semibold text-white">Save Maintenance</button>
             </form>
         </div>
 
@@ -270,7 +270,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="rounded bg-[#74c365] px-6 py-2 font-semibold text-white">Save API Settings</button>
+                <button type="submit" class="rounded bg-[#2563eb] px-6 py-2 font-semibold text-white">Save API Settings</button>
             </form>
         </div>
     </section>

@@ -7,7 +7,7 @@
 @section('content')
 <div class="p-8">
     <div class="mb-8">
-        <a href="{{ route('employee.dashboard') }}" class="text-gray-600 hover:text-[#74c365] transition-colors flex items-center">
+        <a href="{{ route('employee.dashboard') }}" class="text-gray-600 hover:text-[#2563eb] transition-colors flex items-center">
             <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
         </a>
     </div>

@@ -22,7 +22,7 @@ class UserController extends Controller
             $query->where('name', 'like', $letter . '%');
         }
 
-        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 20;
+        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $users = $query->latest()->paginate($perPage)->appends($request->except('page'));
         return view('admin.users.index', compact('users'));
     }

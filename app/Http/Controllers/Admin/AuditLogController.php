@@ -31,7 +31,7 @@ class AuditLogController extends Controller
             ->pluck('user_id')
             ->toArray();
 
-        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 25;
+        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $logs = $this->query($request)
             ->latest()
             ->paginate($perPage)
@@ -55,7 +55,7 @@ class AuditLogController extends Controller
     public function export(Request $request)
     {
         $format = $request->input('format', 'csv');
-        $maxRows = $format === 'pdf' ? 500 : 50000;
+        $maxRows = $format === 'pdf' ? 100 : 50000;
         $logs = $this->query($request)->latest()->limit($maxRows)->get();
 
         if ($format === 'pdf') {

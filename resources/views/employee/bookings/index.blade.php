@@ -20,7 +20,7 @@
             <tbody class="bg-white divide-y divide-gray-100">
                 @forelse($bookings as $booking)
                     <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap font-medium text-[#74c365]">{{ $booking->reference_number }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap font-medium text-[#2563eb]">{{ $booking->reference_number }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-gray-800">{{ $booking->full_name }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-gray-600">
                             {{ $booking->preferred_date->format('M d, Y') }} at {{ $booking->preferred_time }}
@@ -37,7 +37,7 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
-                            <a href="{{ route('employee.bookings.show', $booking) }}" class="text-[#74c365] hover:text-[#5dad4f] font-medium">
+                            <a href="{{ route('employee.bookings.show', $booking) }}" class="text-[#2563eb] hover:text-[#1d4ed8] font-medium">
                                 <i class="fas fa-eye mr-1"></i>View
                             </a>
                         </td>

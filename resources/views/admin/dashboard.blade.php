@@ -17,12 +17,12 @@
                                 <p class="text-gray-500 text-sm">Total Work Request</p>
                                 <p class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ $stats['total_bookings'] }}</p>
                             </div>
-                            <div class="bg-[#f0f9ef] w-12 h-12 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-calendar-check text-[#74c365] text-xl"></i>
+                            <div class="bg-[#eff6ff] w-12 h-12 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-calendar-check text-[#2563eb] text-xl"></i>
                             </div>
                         </div>
                         <div class="mt-4 flex items-center text-sm">
-                            <span class="text-[#74c365] font-semibold"><i class="fas fa-arrow-up mr-1"></i>12%</span>
+                            <span class="text-[#2563eb] font-semibold"><i class="fas fa-arrow-up mr-1"></i>12%</span>
                             <span class="text-gray-500 ml-2">from last month</span>
                         </div>
                     </a>
@@ -38,7 +38,7 @@
                             </div>
                         </div>
                         <div class="mt-4">
-                            <span class="text-[#74c365] text-sm font-semibold">View All Pending</span>
+                            <span class="text-[#2563eb] text-sm font-semibold">View All Pending</span>
                         </div>
                     </a>
 
@@ -48,13 +48,13 @@
                                 <p class="text-gray-500 text-sm">Inventory Items</p>
                                 <p class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ $stats['inventory_count'] }}</p>
                             </div>
-                            <div class="bg-[#f0f9ef] w-12 h-12 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-boxes text-[#74c365] text-xl"></i>
+                            <div class="bg-[#eff6ff] w-12 h-12 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-boxes text-[#2563eb] text-xl"></i>
                             </div>
                         </div>
                         <div class="mt-4 flex items-center text-sm">
                             <span class="text-red-500 font-semibold">{{ $stats['low_stock_alerts'] }} low stock</span>
-                            <span class="text-[#74c365] ml-2 font-semibold">View Low Stock</span>
+                            <span class="text-[#2563eb] ml-2 font-semibold">View Low Stock</span>
                         </div>
                     </a>
 
@@ -64,12 +64,12 @@
                                 <p class="text-gray-500 text-sm">Total Employees</p>
                                 <p class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ $stats['total_employees'] }}</p>
                             </div>
-                            <div class="bg-[#f0f9ef] w-12 h-12 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-users text-[#74c365] text-xl"></i>
+                            <div class="bg-[#eff6ff] w-12 h-12 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-users text-[#2563eb] text-xl"></i>
                             </div>
                         </div>
                         <div class="mt-4">
-                            <span class="text-[#74c365] text-sm font-semibold">View All Employees</span>
+                            <span class="text-[#2563eb] text-sm font-semibold">View All Employees</span>
                         </div>
                     </a>
                 </div>
@@ -98,83 +98,47 @@
                 <div class="section-header">
                     <h2 class="section-title"><i class="fas fa-clock"></i>Recent Activity</h2>
                 </div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Recent Work Requests -->
-                    <div class="card-mantis p-6">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-bold text-gray-800">Recent Work Request</h3>
-                            <a href="{{ route('admin.bookings.index') }}" class="text-[#74c365] text-sm font-semibold hover:underline">View All</a>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="text-left text-gray-500 text-sm">
-                                        <th class="pb-3">Name</th>
-                                        <th class="pb-3">Date</th>
-                                        <th class="pb-3">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($recentBookings as $booking)
-                                        <tr class="border-t border-gray-100">
-                                            <td class="py-3">
-                                                <p class="font-semibold text-gray-800">{{ $booking->full_name }}</p>
-                                                <p class="text-xs text-gray-500">{{ $booking->reference_number }}</p>
-                                            </td>
-                                            <td class="py-3 text-sm text-gray-600 dark:text-gray-300">{{ $booking->preferred_date->format('M d, Y') }}</td>
-                                            <td class="py-3">
-                                                @if($booking->status == 'pending')
-                                                    <span class="badge-mantis-warning">{{ ucfirst($booking->status) }}</span>
-                                                @elseif($booking->status == 'approved')
-                                                    <span class="badge-mantis-success">{{ ucfirst($booking->status) }}</span>
-                                                @elseif($booking->status == 'rejected')
-                                                    <span class="badge-mantis-danger">{{ ucfirst($booking->status) }}</span>
-                                                @elseif($booking->status == 'completed')
-                                                    <span class="badge-mantis-success">{{ ucfirst($booking->status) }}</span>
-                                                @else
-                                                    <span class="badge-mantis-info">{{ ucfirst($booking->status) }}</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="3" class="py-4 text-center text-gray-500">No recent work request</td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
+                <div class="card-mantis overflow-hidden mb-6">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="text-base font-bold text-gray-800">Recent Activity</h3>
+                        <a href="{{ route('admin.bookings.index') }}" class="text-[#2563eb] text-sm font-semibold hover:underline">View All</a>
                     </div>
-
-                    <!-- Pending Actions -->
-                    <div class="card-mantis p-6">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-bold text-gray-800">Pending Actions</h3>
-                        </div>
-                        <div class="space-y-4">
-                            @forelse($pendingBookings as $booking)
-                                <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-xl">
-                                    <div>
-                                        <p class="font-semibold text-gray-800">{{ $booking->full_name }}</p>
-                                        <p class="text-sm text-gray-600 dark:text-gray-300">{{ $booking->preferred_date->format('M d, Y') }} at {{ $booking->preferred_time }}</p>
-                                    </div>
-                                    <div class="flex space-x-2">
-                                        <a href="{{ route('admin.bookings.show', $booking) }}" class="text-[#74c365] hover:text-[#5dad4f]">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <form action="{{ route('admin.bookings.approve', $booking) }}" method="POST">
-                                            @csrf
-                                            <button type="submit" class="text-[#74c365] hover:text-[#5dad4f]">
-                                                <i class="fas fa-check"></i>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase">
+                                <th class="px-6 py-2 border-b border-r border-gray-200">Name</th>
+                                <th class="px-6 py-2 border-b border-r border-gray-200">Reference</th>
+                                <th class="px-6 py-2 border-b border-r border-gray-200">Date</th>
+                                <th class="px-6 py-2 border-b border-gray-200">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($recentBookings->take(4) as $booking)
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-3 border-b border-r border-gray-100 text-sm font-semibold text-gray-800">{{ $booking->full_name }}</td>
+                                    <td class="px-6 py-3 border-b border-r border-gray-100 text-xs text-[#2563eb] font-mono">{{ $booking->reference_number }}</td>
+                                    <td class="px-6 py-3 border-b border-r border-gray-100 text-sm text-gray-600">{{ $booking->preferred_date->format('M d, Y') }}</td>
+                                    <td class="px-6 py-3 border-b border-gray-100 text-sm">
+                                        @if($booking->status == 'pending')
+                                            <span class="badge-mantis-warning">{{ ucfirst($booking->status) }}</span>
+                                        @elseif($booking->status == 'approved')
+                                            <span class="badge-mantis-success">{{ ucfirst($booking->status) }}</span>
+                                        @elseif($booking->status == 'rejected')
+                                            <span class="badge-mantis-danger">{{ ucfirst($booking->status) }}</span>
+                                        @elseif($booking->status == 'completed')
+                                            <span class="badge-mantis-success">{{ ucfirst($booking->status) }}</span>
+                                        @else
+                                            <span class="badge-mantis-info">{{ ucfirst($booking->status) }}</span>
+                                        @endif
+                                    </td>
+                                </tr>
                             @empty
-                                <p class="text-center text-gray-500 py-4">No pending work request</p>
+                                <tr>
+                                    <td colspan="4" class="px-6 py-4 text-center text-gray-500">No recent work request</td>
+                                </tr>
                             @endforelse
-                        </div>
-                    </div>
+                        </tbody>
+                    </table>
                 </div>
 </div>
 <script>
@@ -192,7 +156,7 @@
                 datasets: [{
                     label: 'Work Request',
                     data: @json(array_values($monthlyBookings)),
-                    borderColor: '#74c365',
+                    borderColor: '#2563eb',
                     backgroundColor: 'rgba(116, 195, 101, 0.1)',
                     fill: true,
                     tension: 0.4
@@ -220,7 +184,7 @@
                         {{ $stats['completed_bookings'] }},
                         {{ $stats['rejected_bookings'] }}
                     ],
-                    backgroundColor: ['#fbbf24', '#74c365', '#5dad4f', '#ef4444']
+                    backgroundColor: ['#fbbf24', '#3b82f6', '#10b981', '#ef4444']
                 }]
             },
             options: {

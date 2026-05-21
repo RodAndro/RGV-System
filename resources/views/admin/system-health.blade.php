@@ -29,7 +29,7 @@
                 <span x-text="stats.system?.disk_usage_percent || 0"></span>%
             </p>
             <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5 mt-2">
-                <div class="h-2.5 rounded-full transition-all" :class="(stats.system?.disk_usage_percent || 0) > 85 ? 'bg-red-500' : 'bg-[#74c365]'"
+                <div class="h-2.5 rounded-full transition-all" :class="(stats.system?.disk_usage_percent || 0) > 85 ? 'bg-red-500' : 'bg-[#2563eb]'"
                     :style="'width: ' + (stats.system?.disk_usage_percent || 0) + '%'"></div>
             </div>
             <p class="text-xs text-gray-400 mt-1">

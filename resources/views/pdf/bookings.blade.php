@@ -6,7 +6,7 @@
     @include('pdf.partials.styles')
     <style>
         table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; word-wrap: break-word; }
-        th { background-color: #468a3f; color: white; padding: 8px 6px; text-align: left; font-size: 11px; }
+        th { background-color: #1e40af; color: white; padding: 8px 6px; text-align: left; font-size: 11px; }
         td { border: 1px solid #e5e7eb; padding: 6px; font-size: 11px; overflow-wrap: break-word; }
         tr:nth-child(even) { background-color: #f9fafb; }
         .col-ref { width: 12%; }

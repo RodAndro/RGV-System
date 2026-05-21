@@ -7,7 +7,7 @@
         <template x-for="col in columns" :key="col.key">
             <label class="flex items-center space-x-2 py-1 cursor-pointer">
                 <input type="checkbox" :checked="!hidden.includes(col.key)" @change="hidden.includes(col.key) ? hidden = hidden.filter(h => h !== col.key) : hidden.push(col.key); localStorage.setItem('tableColumns_{{ $tableKey ?? 'default' }}', JSON.stringify(hidden))"
-                    class="rounded border-gray-300 text-[#74c365] focus:ring-[#74c365]">
+                    class="rounded border-gray-300 text-[#2563eb] focus:ring-[#2563eb]">
                 <span class="text-sm text-gray-700 dark:text-gray-300" x-text="col.label"></span>
             </label>
         </template>

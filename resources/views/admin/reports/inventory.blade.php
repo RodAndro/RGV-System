@@ -5,125 +5,96 @@
 @section('header', 'Inventory Report')
 
 @section('content')
-<div class="p-8">
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <div class="flex justify-between items-center mb-6">
-        <a href="{{ route('admin.reports.index') }}" class="text-gray-600 hover:text-[#74c365] transition-colors flex items-center">
-            <i class="fas fa-arrow-left mr-2"></i>Back to Reports
-        </a>
-    </div>
+<div class="p-4 md:p-8">
+    <a href="{{ route('admin.reports.index') }}" class="inline-flex items-center text-gray-600 hover:text-[#2563eb] transition-colors text-sm mb-3">
+        <i class="fas fa-arrow-left mr-1"></i>Back to Reports
+    </a>
 
-    <!-- Filters Section -->
-    <div class="section-header">
-        <h2 class="section-title"><i class="fas fa-filter"></i>Filter Inventory</h2>
-    </div>
-    <div class="card-mantis p-6 mb-8">
-        <form method="GET" action="{{ route('admin.reports.inventory') }}">
-            <div class="flex flex-wrap gap-4">
-                <select name="status" class="px-4 py-2.5 pr-10 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100">
-                    <option value="">All Status</option>
-                    <option value="available" {{ request('status') == 'available' ? 'selected' : '' }}>Available</option>
-                    <option value="borrowed" {{ request('status') == 'borrowed' ? 'selected' : '' }}>Borrowed</option>
-                    <option value="maintenance" {{ request('status') == 'maintenance' ? 'selected' : '' }}>Maintenance</option>
-                    <option value="damaged" {{ request('status') == 'damaged' ? 'selected' : '' }}>Damaged</option>
-                </select>
-                <button type="submit" class="btn-mantis px-6">
-                    <i class="fas fa-search mr-2"></i>Search
-                </button>
-                <a href="{{ route('admin.reports.inventory') }}" class="btn-mantis-outline px-6">Clear</a>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-4">
+        <div class="card-mantis px-4 py-3 flex items-center gap-3">
+            <div class="bg-gray-50 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-boxes text-gray-600"></i>
             </div>
-        </form>
-    </div>
-
-    <!-- Summary Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="card-mantis p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm">Total Items</p>
-                    <p class="text-3xl font-bold text-gray-800">{{ $stats['total'] }}</p>
-                </div>
-                <div class="bg-[#f0f9ef] w-12 h-12 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-boxes text-[#74c365] text-xl"></i>
-                </div>
+            <div class="min-w-0">
+                <p class="text-xs text-gray-500 truncate">All</p>
+                <p class="text-lg font-bold text-gray-800">{{ $stats['total'] }}</p>
             </div>
         </div>
-        <div class="card-mantis p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm">Available</p>
-                    <p class="text-3xl font-bold text-[#74c365]">{{ $stats['available'] }}</p>
-                </div>
-                <div class="bg-blue-50 w-12 h-12 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-check-circle text-blue-500 text-xl"></i>
-                </div>
+        <div class="card-mantis px-4 py-3 flex items-center gap-3">
+            <div class="bg-blue-50 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-check-circle text-blue-600"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs text-gray-500 truncate">Available</p>
+                <p class="text-lg font-bold text-blue-600">{{ $stats['available'] }}</p>
             </div>
         </div>
-        <div class="card-mantis p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm">Low Stock</p>
-                    <p class="text-3xl font-bold text-yellow-600">{{ $stats['low_stock'] }}</p>
-                </div>
-                <div class="bg-yellow-50 w-12 h-12 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-exclamation-triangle text-yellow-600 text-xl"></i>
-                </div>
+        <div class="card-mantis px-4 py-3 flex items-center gap-3">
+            <div class="bg-yellow-50 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-hand-holding text-yellow-600"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs text-gray-500 truncate">Borrowed</p>
+                <p class="text-lg font-bold text-yellow-600">{{ $stats['borrowed'] ?? 0 }}</p>
             </div>
         </div>
-        <div class="card-mantis p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm">Maintenance</p>
-                    <p class="text-3xl font-bold text-orange-600">{{ $stats['maintenance'] }}</p>
-                </div>
-                <div class="bg-orange-50 w-12 h-12 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-wrench text-orange-600 text-xl"></i>
-                </div>
+        <div class="card-mantis px-4 py-3 flex items-center gap-3">
+            <div class="bg-orange-50 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-wrench text-orange-600"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs text-gray-500 truncate">Maintenance</p>
+                <p class="text-lg font-bold text-orange-600">{{ $stats['maintenance'] }}</p>
+            </div>
+        </div>
+        <div class="card-mantis px-4 py-3 flex items-center gap-3">
+            <div class="bg-red-50 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-exclamation-triangle text-red-600"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs text-gray-500 truncate">Damaged</p>
+                <p class="text-lg font-bold text-red-600">{{ $stats['damaged'] ?? 0 }}</p>
             </div>
         </div>
     </div>
 
-    <div class="section-divider"></div>
-
-    <!-- Inventory Table Section -->
     <div class="section-header">
         <h2 class="section-title"><i class="fas fa-list"></i>All Inventory Data</h2>
         <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-500 dark:text-gray-400">Showing {{ $inventory->total() }} records</span>
             <x-per-page-selector />
         </div>
     </div>
 
     <div class="card-mantis overflow-hidden">
-        <table class="w-full">
-            <thead class="bg-gray-50 dark:bg-gray-800">
+        <table class="w-full border-collapse">
+            <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item Code</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Condition</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Item Code</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Name</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Category</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Quantity</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-gray-200">Condition</th>
                 </tr>
             </thead>
-            <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-700">
+            <tbody>
                 @forelse($inventory as $item)
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap font-medium">{{ $item->item_code }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ $item->name }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ $item->category->name }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-sm font-medium">{{ $item->item_code }}</td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-sm">{{ $item->name }}</td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-sm">{{ $item->category->name }}</td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-sm">
                             {{ $item->quantity }}
                             @if($item->isLowStock())
-                                <span class="badge-mantis-danger"> (Low Stock)</span>
+                                <span class="badge-mantis-danger text-xs"> (Low Stock)</span>
                             @endif
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-sm">
                             <span class="badge-mantis-{{ $item->status == 'available' ? 'success' : ($item->status == 'borrowed' ? 'warning' : ($item->status == 'maintenance' ? 'warning' : 'danger')) }}">
                                 {{ ucfirst($item->status) }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ ucfirst($item->condition) }}</td>
+                        <td class="px-4 py-3 border-b border-gray-100 text-sm">{{ ucfirst($item->condition) }}</td>
                     </tr>
                 @empty
                     <tr>
@@ -133,7 +104,7 @@
             </tbody>
         </table>
         @if($inventory->hasPages())
-            <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700">
+            <div class="px-6 py-4 border-t border-gray-100">
                 {{ $inventory->links() }}
             </div>
         @endif

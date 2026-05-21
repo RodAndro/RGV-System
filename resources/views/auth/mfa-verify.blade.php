@@ -10,9 +10,9 @@
         </div>
     @endif
 
-    <div class="mb-6 bg-[#74c365]/10 border border-[#74c365]/30 p-4 rounded-lg text-center">
+    <div class="mb-6 bg-[#2563eb]/10 border border-[#2563eb]/30 p-4 rounded-lg text-center">
         <p class="text-xs text-gray-500 mb-2">Current Code <span class="text-gray-400">(changes every 30s)</span></p>
-        <p id="totp-code" class="font-mono text-3xl font-bold text-[#74c365] tracking-[0.3em] select-all">{{ $currentCode }}</p>
+        <p id="totp-code" class="font-mono text-3xl font-bold text-[#2563eb] tracking-[0.3em] select-all">{{ $currentCode }}</p>
         <p class="text-xs text-gray-400 mt-1">Expires in <span id="totp-countdown">30</span>s</p>
     </div>
 

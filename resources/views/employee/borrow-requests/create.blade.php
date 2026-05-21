@@ -23,19 +23,19 @@
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Reason for Borrowing *</label>
                 <textarea name="reason" rows="3" required
-                    class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50"
+                    class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50"
                     placeholder="Explain why you need to borrow these items"></textarea>
             </div>
             <div class="grid md:grid-cols-2 gap-6 mb-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Borrow Date *</label>
                     <input type="date" name="borrow_date" value="{{ old('borrow_date') }}" required min="{{ date('Y-m-d') }}"
-                        class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50">
+                        class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Due Date *</label>
                     <input type="date" name="due_date" value="{{ old('due_date') }}" required
-                        class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50">
+                        class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50">
                 </div>
             </div>
     </div>
@@ -65,7 +65,7 @@
                     <div class="grid md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm text-gray-600 mb-1">Select Item</label>
-                            <select name="items[{{ $index }}][inventory_id]" class="item-select w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-white">
+                            <select name="items[{{ $index }}][inventory_id]" class="item-select w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-white">
                                 <option value="">Choose an item</option>
                                 @foreach($availableInventory as $item)
                                     <option value="{{ $item->id }}" data-max="{{ $item->quantity }}" {{ (string)($oldItem['inventory_id'] ?? '') === (string)$item->id ? 'selected' : '' }}>
@@ -78,14 +78,14 @@
                             <label class="block text-sm text-gray-600 mb-1">Quantity</label>
                             <input type="number" name="items[{{ $index }}][quantity]" min="1"
                                 value="{{ old('items.'.$index.'.quantity', $oldItem['quantity'] ?? '') }}"
-                                class="item-quantity w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-white"
+                                class="item-quantity w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-white"
                                 placeholder="Enter quantity">
                         </div>
                     </div>
                 </div>
             @endforeach
         </div>
-        <button type="button" onclick="addItemRow()" class="mt-2 text-[#74c365] hover:text-[#5dad4f] font-semibold transition-colors">
+        <button type="button" onclick="addItemRow()" class="mt-2 text-[#2563eb] hover:text-[#1d4ed8] font-semibold transition-colors">
             <i class="fas fa-plus-circle mr-2"></i>Add Another Item
         </button>
     </div>
@@ -110,7 +110,7 @@
         <div class="grid md:grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm text-gray-600 mb-1">Select Item</label>
-                <select name="items[__INDEX__][inventory_id]" class="item-select w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-white">
+                <select name="items[__INDEX__][inventory_id]" class="item-select w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-white">
                     <option value="">Choose an item</option>
                     @foreach($availableInventory as $item)
                         <option value="{{ $item->id }}" data-max="{{ $item->quantity }}">{{ $item->name }} (Available: {{ $item->quantity }} {{ $item->unit }})</option>
@@ -120,7 +120,7 @@
             <div>
                 <label class="block text-sm text-gray-600 mb-1">Quantity</label>
                 <input type="number" name="items[__INDEX__][quantity]" min="1"
-                    class="item-quantity w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-white"
+                    class="item-quantity w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-white"
                     placeholder="Enter quantity">
             </div>
         </div>

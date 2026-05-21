@@ -4,75 +4,79 @@
 
 @section('content')
 <div class="p-6 space-y-6">
-    <section class="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
-        <div class="flex items-center justify-between gap-4">
-            <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Audit Logs</h1>
+    <section class="card-mantis p-6">
+        <div class="flex items-center justify-between gap-4 mb-4">
+            <h1 class="text-2xl font-semibold text-gray-800">Audit Logs</h1>
             <div class="flex gap-2">
-                <a class="rounded bg-gray-900 px-4 py-2 text-white" href="{{ route('admin.audit.export', request()->query() + ['format' => 'csv']) }}">CSV</a>
-                <a class="rounded bg-gray-900 px-4 py-2 text-white" href="{{ route('admin.audit.export', request()->query() + ['format' => 'pdf']) }}">PDF</a>
+                <a class="px-3 py-2 border border-[#2563eb] rounded-lg text-xs text-[#2563eb] hover:bg-[#eff6ff] transition-colors font-medium" href="{{ route('admin.audit.export', request()->query() + ['format' => 'csv']) }}">
+                    <i class="fas fa-file-csv mr-1"></i>CSV
+                </a>
+                <a class="px-3 py-2 border border-[#2563eb] rounded-lg text-xs text-[#2563eb] hover:bg-[#eff6ff] transition-colors font-medium" href="{{ route('admin.audit.export', request()->query() + ['format' => 'pdf']) }}">
+                    <i class="fas fa-file-pdf mr-1"></i>PDF
+                </a>
                 <form action="{{ route('admin.audit.clear-all') }}" method="POST" onsubmit="return confirm('Delete ALL audit logs? This cannot be undone.');">
                     @csrf
-                    <button type="submit" class="rounded bg-red-600 px-4 py-2 text-white text-sm font-semibold hover:bg-red-700">
+                    <button type="submit" class="px-3 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors">
                         <i class="fas fa-trash mr-1"></i>Clear All
                     </button>
                 </form>
             </div>
         </div>
 
-        <div class="section-header mt-4">
-            <h2 class="section-title"><i class="fas fa-filter"></i>Filter Audit Logs</h2>
+        <div class="section-header">
+            <h2 class="section-title"><i class="fas fa-filter"></i>Filter</h2>
         </div>
 
-        <form method="GET" action="{{ route('admin.audit.index') }}" class="flex flex-wrap gap-4 items-end">
-            <div class="flex-1 min-w-[150px]">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Event</label>
-                <input name="event" value="{{ request('event') }}" placeholder="Search events..." class="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-300 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-white dark:bg-white dark:text-gray-900">
-            </div>
-            <div class="min-w-[150px]">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">From</label>
-                <input name="date_from" value="{{ request('date_from') }}" type="date" class="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-300 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-white dark:bg-white dark:text-gray-900">
-            </div>
-            <div class="min-w-[150px]">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">To</label>
-                <input name="date_to" value="{{ request('date_to') }}" type="date" class="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-300 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-white dark:bg-white dark:text-gray-900">
-            </div>
-            <button type="submit" class="btn-mantis px-6">
-                <i class="fas fa-search mr-2"></i>Search
+        <form method="GET" action="{{ route('admin.audit.index') }}" class="flex flex-wrap items-center gap-2 mb-4">
+            <input name="event" value="{{ request('event') }}" placeholder="Search events..." class="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50">
+            <input name="date_from" value="{{ request('date_from') }}" type="date" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50">
+            <input name="date_to" value="{{ request('date_to') }}" type="date" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50">
+            <button type="submit" class="btn-mantis px-4 py-2 text-sm">
+                <i class="fas fa-search mr-1"></i>Search
             </button>
-            <a href="{{ route('admin.audit.index') }}" class="btn-mantis-outline px-6">
+            <a href="{{ route('admin.audit.index') }}" class="btn-mantis-outline px-4 py-2 text-sm">
                 Clear
             </a>
         </form>
     </section>
 
-    <section class="bg-white dark:bg-gray-900 rounded-lg shadow p-6 overflow-x-auto">
-        <div class="flex items-center justify-between mb-4">
-            <span class="text-sm text-gray-500 dark:text-gray-400">Showing {{ $logs->total() }} logs</span>
+    <section class="card-mantis overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-3 border-b border-gray-100">
             <x-per-page-selector />
         </div>
-        <table class="min-w-full text-sm">
-            <thead><tr class="text-left text-gray-500 dark:text-gray-400"><th>Date</th><th>Event</th><th>User</th><th>Subject</th><th>IP</th><th>Checksum</th><th>Flags</th></tr></thead>
+        <table class="w-full border-collapse text-sm">
+            <thead>
+                <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase">
+                    <th class="px-4 py-3 border-b border-r border-gray-200">Date</th>
+                    <th class="px-4 py-3 border-b border-r border-gray-200">Event</th>
+                    <th class="px-4 py-3 border-b border-r border-gray-200">User</th>
+                    <th class="px-4 py-3 border-b border-r border-gray-200">Subject</th>
+                    <th class="px-4 py-3 border-b border-r border-gray-200">IP</th>
+                    <th class="px-4 py-3 border-b border-r border-gray-200">Checksum</th>
+                    <th class="px-4 py-3 border-b border-gray-200">Flags</th>
+                </tr>
+            </thead>
             <tbody>
                 @foreach($logs as $log)
-                    <tr class="border-t dark:border-gray-700 {{ $log->event === 'failed login' ? 'bg-red-50 dark:bg-red-900/20' : ($log->event === 'error' ? 'bg-amber-50 dark:bg-amber-900/20' : '') }}">
-                        <td class="py-2 dark:text-gray-100">{{ $log->created_at }}</td>
-                        <td>
+                    <tr class="hover:bg-gray-50 transition-colors {{ $log->event === 'failed login' ? 'bg-red-50' : ($log->event === 'error' ? 'bg-amber-50' : '') }}">
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-xs">{{ $log->created_at }}</td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100">
                             @if($log->event === 'failed login')
-                                <span class="text-red-600 font-medium"><i class="fas fa-exclamation-triangle mr-1"></i>{{ $log->event }}</span>
+                                <span class="text-red-600 font-medium text-xs"><i class="fas fa-exclamation-triangle mr-1"></i>{{ $log->event }}</span>
                             @elseif($log->event === 'error')
-                                <span class="text-amber-600 font-medium"><i class="fas fa-bug mr-1"></i>{{ $log->event }}</span>
+                                <span class="text-amber-600 font-medium text-xs"><i class="fas fa-bug mr-1"></i>{{ $log->event }}</span>
                             @else
-                                <span class="dark:text-gray-100">{{ $log->event }}</span>
+                                <span class="text-xs">{{ $log->event }}</span>
                             @endif
                         </td>
-                        <td class="dark:text-gray-100">{{ $log->user?->email ?? 'System' }}</td>
-                        <td class="dark:text-gray-100">{{ class_basename($log->auditable_type ?? '') }} #{{ $log->auditable_id }}</td>
-                        <td class="dark:text-gray-100">{{ $log->ip_address }}</td>
-                        <td class="dark:text-gray-100">{{ $log->isChecksumValid() ? 'Valid' : 'Invalid' }}</td>
-                        <td class="py-2">
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-xs">{{ $log->user?->email ?? 'System' }}</td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-xs">{{ class_basename($log->auditable_type ?? '') }} #{{ $log->auditable_id }}</td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-xs">{{ $log->ip_address }}</td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-xs">{{ $log->isChecksumValid() ? 'Valid' : 'Invalid' }}</td>
+                        <td class="px-4 py-3 border-b border-gray-100 text-xs">
                             <div class="flex flex-wrap gap-1">
                                 @if(!$log->isChecksumValid())
-                                    <span class="badge-mantis-danger animate-pulse"><i class="fas fa-shield-halved mr-1"></i>TAMPERED</span>
+                                    <span class="badge-mantis-danger"><i class="fas fa-shield-halved mr-1"></i>TAMPERED</span>
                                 @endif
                                 @if(in_array($log->ip_address, $bruteForceIps))
                                     <span class="badge-mantis-warning"><i class="fas fa-user-lock mr-1"></i>Brute Force</span>
@@ -81,7 +85,7 @@
                                     <span class="badge-mantis-warning"><i class="fas fa-bolt mr-1"></i>Burst</span>
                                 @endif
                                 @if($log->created_at && $log->created_at->hour >= 0 && $log->created_at->hour < 5)
-                                    <span class="text-gray-400 dark:text-gray-300" title="Unusual hour ({{ $log->created_at->format('H:i') }})"><i class="fas fa-moon"></i></span>
+                                    <span class="text-gray-400" title="Unusual hour ({{ $log->created_at->format('H:i') }})"><i class="fas fa-moon"></i></span>
                                 @endif
                             </div>
                         </td>
@@ -89,7 +93,9 @@
                 @endforeach
             </tbody>
         </table>
-        {{ $logs->links() }}
+        <div class="px-6 py-4 border-t border-gray-100">
+            {{ $logs->links() }}
+        </div>
     </section>
 </div>
 @endsection

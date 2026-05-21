@@ -7,7 +7,7 @@
 @section('content')
 <div class="p-8">
     <div class="mb-6">
-        <a href="{{ route('admin.borrow-requests.index') }}" class="text-gray-600 hover:text-[#74c365] transition-colors flex items-center">
+        <a href="{{ route('admin.borrow-requests.index') }}" class="text-gray-600 hover:text-[#2563eb] transition-colors flex items-center">
             <i class="fas fa-arrow-left mr-2"></i>Back to Borrow Requests
         </a>
     </div>
@@ -42,7 +42,7 @@
                     <form action="{{ route('admin.borrow-requests.reject', $borrowRequest) }}" method="POST">
                         @csrf
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Remarks</label>
-                        <textarea name="remarks" rows="2" required class="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#74c365] dark:bg-gray-800 dark:text-gray-100 mb-2"></textarea>
+                        <textarea name="remarks" rows="2" required class="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] dark:bg-gray-800 dark:text-gray-100 mb-2"></textarea>
                         <button type="submit" class="px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all font-medium text-sm">Confirm Reject</button>
                     </form>
                 </div>

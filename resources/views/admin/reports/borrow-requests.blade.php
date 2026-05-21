@@ -5,22 +5,75 @@
 @section('header', 'Borrow Requests Report')
 
 @section('content')
-<div class="p-8">
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <div class="flex justify-between items-center mb-6">
-        <a href="{{ route('admin.reports.index') }}" class="text-gray-600 hover:text-[#74c365] transition-colors flex items-center">
-            <i class="fas fa-arrow-left mr-2"></i>Back to Reports
-        </a>
+<div class="p-4 md:p-8">
+    <a href="{{ route('admin.reports.index') }}" class="inline-flex items-center text-gray-600 hover:text-[#2563eb] transition-colors text-sm mb-3">
+        <i class="fas fa-arrow-left mr-1"></i>Back to Reports
+    </a>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-4">
+        <div class="card-mantis px-4 py-3 flex items-center gap-3">
+            <div class="bg-gray-50 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-hand-holding text-gray-600"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs text-gray-500 truncate">All</p>
+                <p class="text-lg font-bold text-gray-800">{{ $stats['total'] }}</p>
+            </div>
+        </div>
+        <div class="card-mantis px-4 py-3 flex items-center gap-3">
+            <div class="bg-yellow-50 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-clock text-yellow-600"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs text-gray-500 truncate">Pending</p>
+                <p class="text-lg font-bold text-yellow-600">{{ $stats['pending'] }}</p>
+            </div>
+        </div>
+        <div class="card-mantis px-4 py-3 flex items-center gap-3">
+            <div class="bg-blue-50 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-check-circle text-blue-600"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs text-gray-500 truncate">Approved</p>
+                <p class="text-lg font-bold text-blue-600">{{ $stats['approved'] ?? 0 }}</p>
+            </div>
+        </div>
+        <div class="card-mantis px-4 py-3 flex items-center gap-3">
+            <div class="bg-purple-50 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-truck-loading text-purple-600"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs text-gray-500 truncate">Borrowed</p>
+                <p class="text-lg font-bold text-purple-600">{{ $stats['borrowed'] }}</p>
+            </div>
+        </div>
+        <div class="card-mantis px-4 py-3 flex items-center gap-3">
+            <div class="bg-green-50 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-undo text-green-600"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs text-gray-500 truncate">Returned</p>
+                <p class="text-lg font-bold text-green-600">{{ $stats['returned'] }}</p>
+            </div>
+        </div>
+        <div class="card-mantis px-4 py-3 flex items-center gap-3">
+            <div class="bg-red-50 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-times-circle text-red-600"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs text-gray-500 truncate">Rejected</p>
+                <p class="text-lg font-bold text-red-600">{{ $stats['rejected'] ?? 0 }}</p>
+            </div>
+        </div>
     </div>
 
-    <!-- Filters Section -->
     <div class="section-header">
-        <h2 class="section-title"><i class="fas fa-filter"></i>Filter Borrow Requests</h2>
+        <h2 class="section-title"><i class="fas fa-filter"></i>Filter</h2>
     </div>
-    <div class="card-mantis p-6 mb-8">
+    <div class="card-mantis p-4 mb-6">
         <form method="GET" action="{{ route('admin.reports.borrow-requests') }}">
-            <div class="flex flex-wrap gap-4">
-                <select name="status" class="px-4 py-2.5 pr-10 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100">
+            <div class="flex flex-wrap items-center gap-2">
+                <select name="status" class="pl-3 pr-8 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50">
                     <option value="">All Status</option>
                     <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
                     <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
@@ -28,94 +81,42 @@
                     <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
                     <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
                 </select>
-                <button type="submit" class="btn-mantis px-6">
-                    <i class="fas fa-search mr-2"></i>Search
+                <button type="submit" class="btn-mantis px-4 py-2 text-sm">
+                    <i class="fas fa-search mr-1"></i>Search
                 </button>
-                <a href="{{ route('admin.reports.borrow-requests') }}" class="btn-mantis-outline px-6">Clear</a>
+                <a href="{{ route('admin.reports.borrow-requests') }}" class="btn-mantis-outline px-4 py-2 text-sm">Clear</a>
             </div>
         </form>
     </div>
 
-    <!-- Summary Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="card-mantis p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm">Total Requests</p>
-                    <p class="text-3xl font-bold text-gray-800">{{ $stats['total'] }}</p>
-                </div>
-                <div class="bg-[#f0f9ef] w-12 h-12 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-hand-holding text-[#74c365] text-xl"></i>
-                </div>
-            </div>
-        </div>
-        <div class="card-mantis p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm">Pending</p>
-                    <p class="text-3xl font-bold text-yellow-600">{{ $stats['pending'] }}</p>
-                </div>
-                <div class="bg-yellow-50 w-12 h-12 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-clock text-yellow-600 text-xl"></i>
-                </div>
-            </div>
-        </div>
-        <div class="card-mantis p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm">Borrowed</p>
-                    <p class="text-3xl font-bold text-blue-600">{{ $stats['borrowed'] }}</p>
-                </div>
-                <div class="bg-blue-50 w-12 h-12 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-exchange-alt text-blue-600 text-xl"></i>
-                </div>
-            </div>
-        </div>
-        <div class="card-mantis p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm">Returned</p>
-                    <p class="text-3xl font-bold text-[#74c365]">{{ $stats['returned'] }}</p>
-                </div>
-                <div class="bg-[#f0f9ef] w-12 h-12 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-undo text-[#74c365] text-xl"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="section-divider"></div>
-
-    <!-- Borrow Requests Table Section -->
     <div class="section-header">
         <h2 class="section-title"><i class="fas fa-list"></i>All Borrow Requests Data</h2>
         <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-500 dark:text-gray-400">Showing {{ $borrowRequests->total() }} records</span>
             <x-per-page-selector />
         </div>
     </div>
 
     <div class="card-mantis overflow-hidden">
-        <table class="w-full">
-            <thead class="bg-gray-50 dark:bg-gray-800">
+        <table class="w-full border-collapse">
+            <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Request #</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Borrow Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Request #</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Employee</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Items</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Borrow Date</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Due Date</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-gray-200">Status</th>
                 </tr>
             </thead>
-            <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-700">
+            <tbody>
                 @forelse($borrowRequests as $request)
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap font-medium">{{ $request->request_number }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ $request->employee?->name ?? 'N/A' }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ $request->borrowItems->count() }} items</td>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ $request->borrow_date->format('M d, Y') }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ $request->due_date->format('M d, Y') }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-sm font-medium">{{ $request->request_number }}</td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-sm">{{ $request->employee?->name ?? 'N/A' }}</td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-sm">{{ $request->borrowItems->count() }} items</td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-sm">{{ $request->borrow_date->format('M d, Y') }}</td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-sm">{{ $request->due_date->format('M d, Y') }}</td>
+                        <td class="px-4 py-3 border-b border-gray-100 text-sm">
                             <span class="badge-mantis-{{ $request->status == 'pending' ? 'warning' : ($request->status == 'approved' ? 'success' : ($request->status == 'borrowed' ? 'warning' : ($request->status == 'returned' ? 'success' : 'danger'))) }}">
                                 {{ ucfirst($request->status) }}
                             </span>
@@ -129,7 +130,7 @@
             </tbody>
         </table>
         @if($borrowRequests->hasPages())
-            <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700">
+            <div class="px-6 py-4 border-t border-gray-100">
                 {{ $borrowRequests->links() }}
             </div>
         @endif

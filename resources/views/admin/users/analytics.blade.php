@@ -13,7 +13,7 @@
         </div>
         <div class="card-mantis p-6">
             <p class="text-sm text-gray-500">Active Today</p>
-            <p class="text-3xl font-bold text-[#74c365]">{{ \App\Models\LoginHistory::whereDate('logged_in_at', today())->distinct('user_id')->count() }}</p>
+            <p class="text-3xl font-bold text-[#2563eb]">{{ \App\Models\LoginHistory::whereDate('logged_in_at', today())->distinct('user_id')->count() }}</p>
         </div>
         <div class="card-mantis p-6">
             <p class="text-sm text-gray-500">Failed Logins Today</p>

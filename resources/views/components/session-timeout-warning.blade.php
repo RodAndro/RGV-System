@@ -39,7 +39,7 @@
             <i class="fas fa-clock text-amber-500 text-4xl mb-4"></i>
             <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">Session Expiring</h3>
             <p class="text-gray-600 mb-1">Your session will expire in</p>
-            <p class="text-3xl font-bold text-[#74c365] mb-4" x-text="Math.floor(countdown / 60) + ':' + String(countdown % 60).padStart(2, '0')"></p>
+            <p class="text-3xl font-bold text-[#2563eb] mb-4" x-text="Math.floor(countdown / 60) + ':' + String(countdown % 60).padStart(2, '0')"></p>
             <p class="text-sm text-gray-500 mb-6">You'll be logged out automatically. Extend your session to continue working.</p>
             <div class="flex justify-center space-x-3">
                 <button @click="extend()" class="btn-mantis px-6 py-3">

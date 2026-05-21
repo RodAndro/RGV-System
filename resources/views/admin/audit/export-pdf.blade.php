@@ -6,7 +6,7 @@
     @include('pdf.partials.styles')
     <style>
         table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; word-wrap: break-word; }
-        th { background-color: #468a3f; color: white; padding: 8px 6px; text-align: left; font-size: 11px; }
+        th { background-color: #1e40af; color: white; padding: 8px 6px; text-align: left; font-size: 11px; }
         td { border: 1px solid #e5e7eb; padding: 6px; font-size: 11px; overflow-wrap: break-word; }
         tr:nth-child(even) { background-color: #f9fafb; }
         .col-date { width: 20%; }
@@ -36,11 +36,11 @@
         <tbody>
             @foreach($logs as $log)
                 <tr>
-                    <td>{{ $log->created_at->format('M d, Y H:i') }}</td>
+                    <td>{{ $log->created_at?->format('M d, Y H:i') ?? '—' }}</td>
                     <td>{{ $log->event }}</td>
                     <td>{{ $log->user?->email ?? 'System' }}</td>
                     <td>{{ $log->ip_address }}</td>
-                    <td>{{ $log->subject_type ? class_basename($log->subject_type) . ' #' . $log->subject_id : '—' }}</td>
+                    <td>{{ $log->auditable_type ? class_basename($log->auditable_type) . ' #' . $log->auditable_id : '—' }}</td>
                     <td>
                         @if(method_exists($log, 'isChecksumValid'))
                             <span class="{{ $log->isChecksumValid() ? 'valid' : 'invalid' }}">

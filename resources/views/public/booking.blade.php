@@ -8,8 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --mantis: #74c365;
-            --mantis-dark: #468a3f;
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
         }
         .card-mantis {
             background: white;
@@ -29,7 +29,7 @@
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-gray-50 to-[#f0f9ef]">
+<body class="bg-gradient-to-br from-gray-50 to-[#eff6ff]">
     <!-- Navigation -->
     <nav class="bg-white/80 backdrop-blur-xl shadow-lg sticky top-0 z-50 border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -37,7 +37,7 @@
                 <div class="flex items-center">
                     <div class="flex-shrink-0 flex items-center">
                         <a href="{{ route('home') }}" class="flex items-center">
-                            <div class="w-10 h-10 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-xl flex items-center justify-center shadow-lg shadow-[#74c365]/30">
+                            <div class="w-10 h-10 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-xl flex items-center justify-center shadow-lg shadow-[#2563eb]/30">
                                 <i class="fas fa-cogs text-white text-xl"></i>
                             </div>
                             <span class="font-bold text-xl text-gray-800 ml-3">RGV Multi-Tech Services</span>
@@ -45,15 +45,15 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="{{ route('home') }}" class="text-gray-700 hover:text-[#74c365] font-medium transition-colors">
+                    <a href="{{ route('home') }}" class="text-gray-700 hover:text-[#2563eb] font-medium transition-colors">
                         <i class="fas fa-home mr-2"></i>Home
                     </a>
                     @guest
-                        <a href="{{ route('login') }}" class="text-gray-700 hover:text-[#74c365] font-medium transition-colors">
+                        <a href="{{ route('login') }}" class="text-gray-700 hover:text-[#2563eb] font-medium transition-colors">
                             <i class="fas fa-sign-in-alt mr-2"></i>Login
                         </a>
                     @else
-                        <a href="{{ route('dashboard') }}" class="text-gray-700 hover:text-[#74c365] font-medium transition-colors">
+                        <a href="{{ route('dashboard') }}" class="text-gray-700 hover:text-[#2563eb] font-medium transition-colors">
                             <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
                         </a>
                     @endguest
@@ -72,7 +72,7 @@
 
             <div class="card-mantis p-8">
                 @if(session('success'))
-                    <div class="bg-gradient-to-r from-[#f0f9ef] to-[#e0f3df] border border-[#74c365] text-[#468a3f] px-4 py-3 rounded-xl mb-6">
+                    <div class="bg-gradient-to-r from-[#eff6ff] to-[#dbeafe] border border-[#2563eb] text-[#1e40af] px-4 py-3 rounded-xl mb-6">
                         {{ session('success') }}
                     </div>
                 @endif
@@ -100,7 +100,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
                             <input type="text" name="full_name" value="{{ old('full_name') }}" required
-                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50"
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50"
                                 placeholder="Enter your full name">
                         </div>
 
@@ -108,7 +108,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
                             <input type="email" name="email" value="{{ old('email') }}" required
-                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50"
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50"
                                 placeholder="Enter your email">
                         </div>
 
@@ -116,7 +116,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Contact Number *</label>
                             <input type="text" name="contact_number" value="{{ old('contact_number') }}" required
-                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50"
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50"
                                 placeholder="Enter your contact number">
                         </div>
 
@@ -124,7 +124,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Purpose Category *</label>
                             <select name="purpose_category" required
-                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50">
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50">
                                 <option value="">Select category</option>
                                 <option value="equipment-repair" {{ old('purpose_category') == 'equipment-repair' ? 'selected' : '' }}>Equipment Repair</option>
                                 <option value="tool-rental" {{ old('purpose_category') == 'tool-rental' ? 'selected' : '' }}>Tool Rental</option>
@@ -138,7 +138,7 @@
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Address *</label>
                             <textarea name="address" rows="2" required
-                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50"
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50"
                                 placeholder="Enter your complete address">{{ old('address') }}</textarea>
                         </div>
 
@@ -146,14 +146,14 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Preferred Date *</label>
                             <input type="date" name="preferred_date" value="{{ old('preferred_date') }}" required min="{{ date('Y-m-d', strtotime('+1 day')) }}"
-                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50">
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50">
                         </div>
 
                         <!-- Preferred Time -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Preferred Time *</label>
                             <input type="time" name="preferred_time" value="{{ old('preferred_time') }}" required
-                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50">
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50">
                             <p class="text-xs text-gray-500 mt-1">Office Hours: 8:00 AM - 5:00 PM</p>
                         </div>
 
@@ -161,16 +161,16 @@
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Reason / Description *</label>
                             <textarea name="reason" rows="4" required
-                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50"
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50"
                                 placeholder="Please describe your request in detail">{{ old('reason') }}</textarea>
                         </div>
 
                         <!-- Attachment -->
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Attachment (Optional)</label>
-                            <div class="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-[#74c365] transition bg-gray-50">
+                            <div class="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-[#2563eb] transition bg-gray-50">
                                 <input type="file" name="attachment" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                    class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#f0f9ef] file:text-[#74c365] hover:file:bg-[#e0f3df]">
+                                    class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#eff6ff] file:text-[#2563eb] hover:file:bg-[#dbeafe]">
                                 <p class="text-xs text-gray-500 mt-2">Accepted formats: PDF, DOC, DOCX, JPG, PNG (Max 5MB)</p>
                             </div>
                         </div>
@@ -192,7 +192,7 @@
                     @csrf
                     <div class="flex flex-col sm:flex-row gap-4">
                         <input type="text" name="reference_number" required
-                            class="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50"
+                            class="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50"
                             placeholder="Enter your reference number (e.g., BK-XXXXX)">
                         <button type="submit"
                             class="btn-mantis">
@@ -205,7 +205,7 @@
     </section>
 
     <!-- Footer -->
-    <footer class="bg-gradient-to-r from-[#468a3f] to-[#74c365] text-white py-8">
+    <footer class="bg-gradient-to-r from-[#1e40af] to-[#2563eb] text-white py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p>&copy; 2026 RGV Multi-Tech Services. All rights reserved.</p>
         </div>

@@ -43,12 +43,20 @@ class InventoryController extends Controller
             });
         }
 
-        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 20;
+        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $inventories = $query->latest()->paginate($perPage)->appends($request->except('page'));
         $categories = InventoryCategory::active()->get();
         $suppliers = Supplier::active()->get();
         
-        return view('admin.inventories.index', compact('inventories', 'categories', 'suppliers'));
+        $stats = [
+            'total' => Inventory::count(),
+            'available' => Inventory::where('status', 'available')->count(),
+            'borrowed' => Inventory::where('status', 'borrowed')->count(),
+            'maintenance' => Inventory::where('status', 'maintenance')->count(),
+            'damaged' => Inventory::where('status', 'damaged')->count(),
+        ];
+        
+        return view('admin.inventories.index', compact('inventories', 'categories', 'suppliers', 'stats'));
     }
 
     public function create()

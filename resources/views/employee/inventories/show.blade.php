@@ -12,8 +12,8 @@
                 @if($inventory->image_path)
                     <img src="{{ asset('storage/' . $inventory->image_path) }}" alt="{{ $inventory->name }}" class="w-full h-80 object-cover">
                 @else
-                    <div class="w-full h-80 bg-gradient-to-br from-[#f0f9ef] to-[#e0f3df] flex items-center justify-center">
-                        <i class="fas fa-box text-[#74c365] text-6xl"></i>
+                    <div class="w-full h-80 bg-gradient-to-br from-[#eff6ff] to-[#dbeafe] flex items-center justify-center">
+                        <i class="fas fa-box text-[#2563eb] text-6xl"></i>
                     </div>
                 @endif
             </div>
@@ -21,7 +21,7 @@
                 <div class="flex items-center justify-between mb-6">
                     <div>
                         <p class="text-sm text-gray-500">Item Code</p>
-                        <p class="text-lg font-semibold text-[#74c365]">{{ $inventory->item_code }}</p>
+                        <p class="text-lg font-semibold text-[#2563eb]">{{ $inventory->item_code }}</p>
                     </div>
                     <span class="badge-mantis-{{ $inventory->status == 'available' ? 'success' : ($inventory->status == 'borrowed' ? 'warning' : ($inventory->status == 'maintenance' ? 'warning' : 'danger')) }}">
                         {{ ucfirst($inventory->status) }}

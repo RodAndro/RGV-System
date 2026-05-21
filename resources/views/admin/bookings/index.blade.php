@@ -7,62 +7,72 @@
 @section('content')
 <div class="p-8">
                 <!-- Summary Stats Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div class="card-mantis p-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-500 text-sm">Total Work Request</p>
-                                <p class="text-3xl font-bold text-gray-800">{{ $bookings->total() }}</p>
-                            </div>
-                            <div class="bg-blue-50 dark:bg-blue-900/30 w-12 h-12 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-calendar text-blue-500 text-xl"></i>
-                            </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-8">
+                    <div class="card-mantis px-4 py-3 flex items-center gap-3">
+                        <div class="bg-blue-50 dark:bg-blue-900/30 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-calendar text-blue-500"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-gray-500 truncate">Total</p>
+                            <p class="text-lg font-bold text-gray-800 dark:text-gray-100">{{ $stats['total'] }}</p>
                         </div>
                     </div>
-                    <div class="card-mantis p-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-500 text-sm">Pending</p>
-                                <p class="text-3xl font-bold text-yellow-600">{{ $bookings->where('status', 'pending')->count() }}</p>
-                            </div>
-                            <div class="bg-yellow-50 w-12 h-12 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-clock text-yellow-600 text-xl"></i>
-                            </div>
+                    <div class="card-mantis px-4 py-3 flex items-center gap-3">
+                        <div class="bg-yellow-50 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-clock text-yellow-600"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-gray-500 truncate">Pending</p>
+                            <p class="text-lg font-bold text-yellow-600">{{ $stats['pending'] }}</p>
                         </div>
                     </div>
-                    <div class="card-mantis p-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-500 text-sm">Approved</p>
-                                <p class="text-3xl font-bold text-[#74c365]">{{ $bookings->where('status', 'approved')->count() }}</p>
-                            </div>
-                            <div class="bg-[#f0f9ef] w-12 h-12 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-check-circle text-[#74c365] text-xl"></i>
-                            </div>
+                    <div class="card-mantis px-4 py-3 flex items-center gap-3">
+                        <div class="bg-blue-50 dark:bg-blue-900/30 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-check-circle text-blue-600"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-gray-500 truncate">Approved</p>
+                            <p class="text-lg font-bold text-blue-600">{{ $stats['approved'] }}</p>
                         </div>
                     </div>
-                    <div class="card-mantis p-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-500 text-sm">Completed</p>
-                                <p class="text-3xl font-bold text-blue-600">{{ $bookings->where('status', 'completed')->count() }}</p>
-                            </div>
-                            <div class="bg-blue-50 dark:bg-blue-900/30 w-12 h-12 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-check-double text-blue-600 text-xl"></i>
-                            </div>
+                    <div class="card-mantis px-4 py-3 flex items-center gap-3">
+                        <div class="bg-green-50 dark:bg-green-900/30 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-check-double text-green-600"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-gray-500 truncate">Completed</p>
+                            <p class="text-lg font-bold text-green-600">{{ $stats['completed'] }}</p>
+                        </div>
+                    </div>
+                    <div class="card-mantis px-4 py-3 flex items-center gap-3">
+                        <div class="bg-red-50 dark:bg-red-900/30 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-times-circle text-red-600"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-gray-500 truncate">Rejected</p>
+                            <p class="text-lg font-bold text-red-600">{{ $stats['rejected'] }}</p>
+                        </div>
+                    </div>
+                    <div class="card-mantis px-4 py-3 flex items-center gap-3">
+                        <div class="bg-gray-50 dark:bg-gray-800 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-ban text-gray-600"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-gray-500 truncate">Cancelled</p>
+                            <p class="text-lg font-bold text-gray-600">{{ $stats['cancelled'] }}</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="section-divider"></div>
+                <div class="mb-4"></div>
 
                 <!-- Filters Section -->
                 <div class="section-header">
-                    <h2 class="section-title"><i class="fas fa-filter"></i>Filter Work Request</h2>
+                    <h2 class="section-title"><i class="fas fa-filter"></i>Filter</h2>
                 </div>
-                <div class="card-mantis p-6 mb-8">
-                    <form action="{{ route('admin.bookings.index') }}" method="GET" class="flex flex-wrap gap-4">
-                        <select name="status" class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100">
+                <div class="card-mantis p-4 mb-6">
+                    <form action="{{ route('admin.bookings.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
+                        <select name="status" class="pl-3 pr-8 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100">
                             <option value="">All Status</option>
                             <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
                             <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
@@ -70,13 +80,13 @@
                             <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
                             <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                         </select>
-                        <input type="text" name="search" placeholder="Search by name or reference..." value="{{ request('search') }}" class="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100">
-                        <button type="submit" class="btn-mantis px-6">
-                            <i class="fas fa-search mr-2"></i>Search
+                        <input type="text" name="search" placeholder="Search by name or reference..." value="{{ request('search') }}" class="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100">
+                        <button type="submit" class="btn-mantis px-4 py-2 text-sm">
+                            <i class="fas fa-search mr-1"></i>Search
                         </button>
                         @if(request()->hasAny('status', 'search'))
-                            <a href="{{ route('admin.bookings.index') }}" class="text-gray-500 hover:text-gray-700 px-4 py-2.5">
-                                <i class="fas fa-times mr-2"></i>Clear
+                            <a href="{{ route('admin.bookings.index') }}" class="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm">
+                                <i class="fas fa-times mr-1"></i>Clear
                             </a>
                         @endif
                     </form>
@@ -86,55 +96,42 @@
                 <div class="section-header">
                     <h2 class="section-title"><i class="fas fa-list"></i>All Request</h2>
                     <div class="flex items-center gap-2">
-                        <span class="text-sm text-gray-500">Showing {{ $bookings->total() }} work requests</span>
                         <x-per-page-selector />
-                        <a href="{{ route('admin.import-export.bookings.export', request()->query() + ['format' => 'xlsx']) }}" class="px-3 py-1.5 border border-[#74c365] rounded-lg text-xs text-[#74c365] hover:bg-[#f0f9ef] dark:text-[#74c365] dark:border-[#74c365] dark:hover:bg-green-900/20 transition-colors">
+                        <a href="{{ route('admin.import-export.bookings.export', request()->query() + ['format' => 'xlsx']) }}" class="px-3 py-1.5 border border-[#2563eb] rounded-lg text-xs text-[#2563eb] hover:bg-[#eff6ff] dark:text-[#2563eb] dark:border-[#2563eb] dark:hover:bg-blue-900/20 transition-colors">
                             <i class="fas fa-download mr-1"></i>Export
                         </a>
                     </div>
                 </div>
                 <div class="card-mantis overflow-hidden">
                     <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead class="bg-gradient-to-r from-[#f0f9ef] to-white">
+                        <table class="w-full border-collapse">
+                            <thead class="bg-gradient-to-r from-[#eff6ff] to-white dark:from-gray-800 dark:to-gray-900">
                                 <tr>
-                                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                                        <a href="{{ route('admin.bookings.index', request()->except('page') + ['sort' => 'reference_number', 'direction' => request('sort') === 'reference_number' && request('direction') !== 'asc' ? 'asc' : 'desc']) }}" class="hover:text-[#74c365]">
-                                            Reference @if(request('sort') === 'reference_number') <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>@endif
-                                        </a>
-                                    </th>
-                                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                                        <a href="{{ route('admin.bookings.index', request()->except('page') + ['sort' => 'full_name', 'direction' => request('sort') === 'full_name' && request('direction') !== 'asc' ? 'asc' : 'desc']) }}" class="hover:text-[#74c365]">
-                                            Customer @if(request('sort') === 'full_name') <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>@endif
-                                        </a>
-                                    </th>
-                                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Contact</th>
-                                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Date & Time</th>
-                                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                                        <a href="{{ route('admin.bookings.index', request()->except('page') + ['sort' => 'status', 'direction' => request('sort') === 'status' && request('direction') !== 'asc' ? 'asc' : 'desc']) }}" class="hover:text-[#74c365]">
-                                            Status @if(request('sort') === 'status') <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }} text-xs"></i>@endif
-                                        </a>
-                                    </th>
-                                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Assigned To</th>
-                                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Actions</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-r border-gray-200 dark:border-gray-700">Reference</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-r border-gray-200 dark:border-gray-700">Customer</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-r border-gray-200 dark:border-gray-700">Contact</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-r border-gray-200 dark:border-gray-700">Date & Time</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-r border-gray-200 dark:border-gray-700">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-r border-gray-200 dark:border-gray-700">Assigned To</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-100">
+                            <tbody>
                                 @forelse($bookings as $booking)
-                                    <tr class="hover:bg-[#f0f9ef]/50 dark:hover:bg-gray-800/50 transition-colors">
-                                        <td class="px-6 py-4">
-                                            <span class="font-mono text-sm font-semibold text-[#74c365]">{{ $booking->reference_number }}</span>
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                        <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
+                                            <span class="font-mono text-xs font-semibold text-[#2563eb]">{{ $booking->reference_number }}</span>
                                         </td>
-                                        <td class="px-6 py-4">
-                                            <p class="font-semibold text-gray-800">{{ $booking->full_name }}</p>
-                                            <p class="text-sm text-gray-500">{{ $booking->email }}</p>
+                                        <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
+                                            <p class="font-semibold text-sm text-gray-800 dark:text-gray-100">{{ $booking->full_name }}</p>
+                                            <p class="text-xs text-gray-500">{{ $booking->email }}</p>
                                         </td>
-                                        <td class="px-6 py-4 text-sm text-gray-600">{{ $booking->contact_number }}</td>
-                                        <td class="px-6 py-4">
-                                            <p class="text-sm text-gray-800">{{ $booking->preferred_date->format('M d, Y') }}</p>
-                                            <p class="text-sm text-gray-500">{{ $booking->preferred_time }}</p>
+                                        <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400">{{ $booking->contact_number }}</td>
+                                        <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
+                                            <p class="text-xs text-gray-800 dark:text-gray-100">{{ $booking->preferred_date->format('M d, Y') }}</p>
+                                            <p class="text-xs text-gray-500">{{ $booking->preferred_time }}</p>
                                         </td>
-                                        <td class="px-6 py-4">
+                                        <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
                                             @if($booking->status == 'pending')
                                                 <span class="badge-mantis-warning">{{ ucfirst($booking->status) }}</span>
                                             @elseif($booking->status == 'approved')
@@ -149,18 +146,18 @@
                                                 <span class="badge-mantis-info">{{ ucfirst($booking->status) }}</span>
                                             @endif
                                         </td>
-                                        <td class="px-6 py-4 text-sm text-gray-600">
+                                        <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400">
                                             {{ $booking->employee ? $booking->employee->name : 'Unassigned' }}
                                         </td>
-                                        <td class="px-6 py-4">
+                                        <td class="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
                                             <div class="flex space-x-2">
-                                                <a href="{{ route('admin.bookings.show', $booking) }}" class="w-9 h-9 bg-[#f0f9ef] text-[#74c365] rounded-lg flex items-center justify-center hover:bg-[#e0f3df] transition-colors" title="View">
+                                                <a href="{{ route('admin.bookings.show', $booking) }}" class="w-9 h-9 bg-[#eff6ff] text-[#2563eb] rounded-lg flex items-center justify-center hover:bg-[#dbeafe] transition-colors" title="View">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
                                                 @if($booking->status == 'pending')
                                                     <form action="{{ route('admin.bookings.approve', $booking) }}" method="POST" class="inline">
                                                         @csrf
-                                                        <button type="submit" class="w-9 h-9 bg-[#f0f9ef] text-[#74c365] rounded-lg flex items-center justify-center hover:bg-[#e0f3df] transition-colors" title="Approve">
+                                                        <button type="submit" class="w-9 h-9 bg-[#eff6ff] text-[#2563eb] rounded-lg flex items-center justify-center hover:bg-[#dbeafe] transition-colors" title="Approve">
                                                             <i class="fas fa-check"></i>
                                                         </button>
                                                     </form>
@@ -176,8 +173,8 @@
                                 @empty
                                     <tr>
                                         <td colspan="7" class="px-6 py-12 text-center text-gray-500">
-                                            <div class="w-16 h-16 bg-[#f0f9ef] rounded-full flex items-center justify-center mx-auto mb-4">
-                                                <i class="fas fa-calendar-times text-[#74c365] text-2xl"></i>
+                                            <div class="w-16 h-16 bg-[#eff6ff] rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <i class="fas fa-calendar-times text-[#2563eb] text-2xl"></i>
                                             </div>
                                             <p class="font-medium">No work request found</p>
                                         </td>
@@ -206,7 +203,7 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Reason for Rejection *</label>
                     <textarea name="remarks" rows="4" required
-                        class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
+                        class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
                         placeholder="Please provide a reason for rejecting this work request"></textarea>
                 </div>
                 <div class="flex justify-end space-x-4">

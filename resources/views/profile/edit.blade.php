@@ -20,22 +20,22 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
                         <input type="text" name="name" value="{{ old('name', auth()->user()->name) }}" required
-                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] bg-gray-50">
+                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] bg-gray-50">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
                         <input type="email" name="email" value="{{ old('email', auth()->user()->email) }}" required
-                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] bg-gray-50">
+                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] bg-gray-50">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
                         <input type="tel" name="phone" value="{{ old('phone', auth()->user()->phone) }}"
-                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] bg-gray-50">
+                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] bg-gray-50">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
                         <textarea name="address" rows="2"
-                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] bg-gray-50">{{ old('address', auth()->user()->address) }}</textarea>
+                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] bg-gray-50">{{ old('address', auth()->user()->address) }}</textarea>
                     </div>
                     <div class="flex justify-end">
                         <button type="submit" class="btn-mantis">Save Changes</button>
@@ -56,17 +56,17 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
                         <input type="password" name="current_password" required
-                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] bg-gray-50">
+                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] bg-gray-50">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
                         <input type="password" name="password" required
-                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] bg-gray-50">
+                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] bg-gray-50">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
                         <input type="password" name="password_confirmation" required
-                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] bg-gray-50">
+                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] bg-gray-50">
                     </div>
                     <div class="flex justify-end">
                         <button type="submit" class="btn-mantis">Update Password</button>
@@ -82,9 +82,9 @@
             @if(auth()->user()->mfa_enabled)
                 <p class="text-sm text-green-700 font-medium mb-3">Two-factor authentication is enabled.</p>
                 @if(auth()->user()->mfa_secret)
-                <div class="bg-[#74c365]/10 border border-[#74c365]/30 p-4 rounded-lg mb-4">
+                <div class="bg-[#2563eb]/10 border border-[#2563eb]/30 p-4 rounded-lg mb-4">
                     <p class="text-xs text-gray-500 mb-2">Current Verification Code <span class="text-gray-400">(refreshes every 30s)</span>:</p>
-                    <p id="totp-code" class="font-mono text-3xl font-bold text-[#74c365] tracking-[0.3em] select-all">{{ auth()->user()->getCurrentTotpCode() }}</p>
+                    <p id="totp-code" class="font-mono text-3xl font-bold text-[#2563eb] tracking-[0.3em] select-all">{{ auth()->user()->getCurrentTotpCode() }}</p>
                     <p class="text-xs text-gray-400 mt-1">Expires in <span id="totp-countdown">30</span>s</p>
                 </div>
                 <div class="bg-gray-50 p-4 rounded-lg mb-4">
@@ -132,8 +132,8 @@
                             <span class="text-sm font-medium text-gray-700">{{ $label }}</span>
                             <div class="flex space-x-4">
                                 <input type="hidden" name="preferences[{{ $loop->index }}][type]" value="{{ $type }}">
-                                <label class="flex items-center space-x-1 text-sm"><input type="checkbox" name="preferences[{{ $loop->index }}][email_enabled]" value="1" {{ $p && $p->email_enabled ? 'checked' : '' }} class="rounded border-gray-300 text-[#74c365]"> Email</label>
-                                <label class="flex items-center space-x-1 text-sm"><input type="checkbox" name="preferences[{{ $loop->index }}][in_app_enabled]" value="1" {{ $p && $p->in_app_enabled ? 'checked' : '' }} class="rounded border-gray-300 text-[#74c365]"> In-App</label>
+                                <label class="flex items-center space-x-1 text-sm"><input type="checkbox" name="preferences[{{ $loop->index }}][email_enabled]" value="1" {{ $p && $p->email_enabled ? 'checked' : '' }} class="rounded border-gray-300 text-[#2563eb]"> Email</label>
+                                <label class="flex items-center space-x-1 text-sm"><input type="checkbox" name="preferences[{{ $loop->index }}][in_app_enabled]" value="1" {{ $p && $p->in_app_enabled ? 'checked' : '' }} class="rounded border-gray-300 text-[#2563eb]"> In-App</label>
                             </div>
                         </div>
                     @endforeach

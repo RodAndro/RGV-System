@@ -2,19 +2,19 @@
 
 > **RGV Multi-Tech Services** — Business Operations Management System
 >
-> Laravel 12.0 | PHP 8.2+ | SQLite | Tailwind CSS + Alpine.js
+> Backend: Laravel 12.0 | PHP 8.2+ | SQLite | Admin/Public: Tailwind CSS + Alpine.js | Mobile: Flutter (Android)
 
 ---
 
 ## What It Does
 
-A web-based system for managing service bookings, inventory, and equipment borrowing for RGV Multi-Tech Services. Three user roles access different portals:
+A dual-platform system for managing service bookings, inventory, and equipment borrowing for RGV Multi-Tech Services. Three user roles access different platforms:
 
-| Role | Access | Key Functions |
-|------|--------|--------------|
-| **Public** | No login required | Submit and track service bookings, use AI chatbot |
-| **Employee** | `/employee` | View assigned bookings, request/return inventory items |
-| **Admin** | `/admin` | Full control — bookings, inventory, users, reports, backups, settings |
+| Role | Platform | Key Functions |
+|------|----------|---------------|
+| **Public** | Web (`/`) | Submit and track service bookings, use AI chatbot |
+| **Employee** | Mobile App (Flutter Android) | View assigned bookings, scan QR codes to borrow/return tools, track borrowed items, view notifications |
+| **Admin** | Web (`/admin`) | Full control — bookings, inventory, users, reports, backups, settings, manage all operations |
 
 ---
 
@@ -24,7 +24,7 @@ A web-based system for managing service bookings, inventory, and equipment borro
 
 **Inventory** — Track items with categories, suppliers, stock levels, QR codes. Low-stock alerts. Borrow/return workflow with condition tracking.
 
-**Borrow Requests** — Employees request items → Admin approves → Items borrowed → Employee returns with condition report → Stock restored. Full lifecycle with soft-delete.
+**Borrow Requests** — Employees use mobile app to scan QR codes on tools → Request submission → Admin approves → Items marked borrowed → Employee scans QR on return → Condition report submitted via app → Stock restored. Full lifecycle with soft-delete. Real-time sync between web and mobile.
 
 **Users & Roles** — Spatie RBAC (Admin/Employee). MFA support (TOTP + email). Impersonation for admins. Login history and force-logout.
 
@@ -80,10 +80,11 @@ Rate limited at 30/60/300/1000 req/min per tier. Configurable via Site Settings.
 | Backend | Laravel 12, PHP 8.2+ |
 | Database | SQLite (configurable to MySQL/PostgreSQL) |
 | Auth | Laravel Breeze, Spatie Permission (RBAC), MFA (TOTP + email) |
-| Frontend | Tailwind CSS 3, Alpine.js 3, Blade templates |
+| Admin/Public Web | Tailwind CSS 3, Alpine.js 3, Blade templates |
+| Employee Mobile | Flutter (Android native) with QR code scanning |
+| QR Codes | simplesoftwareio/simple-qrcode (generation), Flutter camera (scanning) |
 | PDF | barryvdh/laravel-dompdf |
 | Excel | maatwebsite/laravel-excel |
-| QR Codes | simplesoftwareio/simple-qrcode |
 | Backups | spatie/laravel-backup |
 | Activity Log | spatie/laravel-activitylog + custom tamper-evident audit |
 | AI | openai-php/client, Google Gemini, Ollama (local) |
@@ -103,4 +104,4 @@ Rate limited at 30/60/300/1000 req/min per tier. Configurable via Site Settings.
 
 ---
 
-*Last Updated: May 18, 2026*
+*Last Updated: May 21, 2026*

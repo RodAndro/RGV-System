@@ -33,12 +33,12 @@
                                     <input type="hidden" name="preferences[{{ $loop->index }}][type]" value="{{ $type }}">
                                     <label class="flex items-center space-x-2 cursor-pointer">
                                         <input type="checkbox" name="preferences[{{ $loop->index }}][email_enabled]" value="1" {{ $pref->email_enabled ? 'checked' : '' }}
-                                            class="rounded border-gray-300 text-[#74c365] focus:ring-[#74c365]">
+                                            class="rounded border-gray-300 text-[#2563eb] focus:ring-[#2563eb]">
                                         <span class="text-sm text-gray-600">Email</span>
                                     </label>
                                     <label class="flex items-center space-x-2 cursor-pointer">
                                         <input type="checkbox" name="preferences[{{ $loop->index }}][in_app_enabled]" value="1" {{ $pref->in_app_enabled ? 'checked' : '' }}
-                                            class="rounded border-gray-300 text-[#74c365] focus:ring-[#74c365]">
+                                            class="rounded border-gray-300 text-[#2563eb] focus:ring-[#2563eb]">
                                         <span class="text-sm text-gray-600">In-App</span>
                                     </label>
                                 </div>
@@ -53,7 +53,7 @@
             </div>
 
             <div class="mt-4 text-center">
-                <a href="{{ route('profile.edit') }}" class="text-sm text-gray-600 hover:text-[#74c365] underline">
+                <a href="{{ route('profile.edit') }}" class="text-sm text-gray-600 hover:text-[#2563eb] underline">
                     Back to Profile
                 </a>
             </div>

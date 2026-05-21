@@ -8,8 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --mantis: #74c365;
-            --mantis-dark: #468a3f;
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
         }
         .card-mantis {
             background: white;
@@ -39,16 +39,16 @@
             color: #d97706;
         }
         .status-approved {
-            background: linear-gradient(135deg, #f0f9ef 0%, #e0f3df 100%);
-            color: #74c365;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            color: #2563eb;
         }
         .status-rejected {
             background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
             color: #dc2626;
         }
         .status-completed {
-            background: linear-gradient(135deg, #f0f9ef 0%, #e0f3df 100%);
-            color: #74c365;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            color: #2563eb;
         }
         .status-cancelled {
             background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
@@ -56,7 +56,7 @@
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-gray-50 to-[#f0f9ef]">
+<body class="bg-gradient-to-br from-gray-50 to-[#eff6ff]">
     <!-- Navigation -->
     <nav class="bg-white/80 backdrop-blur-xl shadow-lg sticky top-0 z-50 border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -64,7 +64,7 @@
                 <div class="flex items-center">
                     <div class="flex-shrink-0 flex items-center">
                         <a href="{{ route('home') }}" class="flex items-center">
-                            <div class="w-10 h-10 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-xl flex items-center justify-center shadow-lg shadow-[#74c365]/30">
+                            <div class="w-10 h-10 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-xl flex items-center justify-center shadow-lg shadow-[#2563eb]/30">
                                 <i class="fas fa-cogs text-white text-xl"></i>
                             </div>
                             <span class="font-bold text-xl text-gray-800 ml-3">RGV Multi-Tech Services</span>
@@ -72,10 +72,10 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="{{ route('home') }}" class="text-gray-700 hover:text-[#74c365] font-medium transition-colors">
+                    <a href="{{ route('home') }}" class="text-gray-700 hover:text-[#2563eb] font-medium transition-colors">
                         <i class="fas fa-home mr-2"></i>Home
                     </a>
-                    <a href="{{ route('booking.form') }}" class="text-gray-700 hover:text-[#74c365] font-medium transition-colors">
+                    <a href="{{ route('booking.form') }}" class="text-gray-700 hover:text-[#2563eb] font-medium transition-colors">
                         <i class="fas fa-calendar-plus mr-2"></i>Book Appointment
                     </a>
                 </div>
@@ -146,7 +146,7 @@
                     <div class="mt-6">
                         <p class="text-sm text-gray-500 mb-2">Attachment</p>
                         <a href="{{ asset('storage/' . $booking->attachment_path) }}" target="blank"
-                            class="inline-flex items-center text-[#74c365] hover:text-[#5dad4f] font-medium">
+                            class="inline-flex items-center text-[#2563eb] hover:text-[#1d4ed8] font-medium">
                             <i class="fas fa-file-alt mr-2"></i>View Attachment
                         </a>
                     </div>
@@ -160,7 +160,7 @@
                     <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
                     
                     <div class="relative pl-10 pb-8">
-                        <div class="absolute left-2 w-5 h-5 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-full border-4 border-white shadow-lg shadow-[#74c365]/30"></div>
+                        <div class="absolute left-2 w-5 h-5 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-full border-4 border-white shadow-lg shadow-[#2563eb]/30"></div>
                         <div>
                             <p class="font-semibold text-gray-800">Booking Submitted</p>
                             <p class="text-sm text-gray-500">{{ $booking->created_at->format('F d, Y - g:i A') }}</p>
@@ -169,7 +169,7 @@
 
                     @if($booking->approved_at)
                         <div class="relative pl-10 pb-8">
-                            <div class="absolute left-2 w-5 h-5 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-full border-4 border-white shadow-lg shadow-[#74c365]/30"></div>
+                            <div class="absolute left-2 w-5 h-5 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-full border-4 border-white shadow-lg shadow-[#2563eb]/30"></div>
                             <div>
                                 <p class="font-semibold text-gray-800">Booking Approved</p>
                                 <p class="text-sm text-gray-500">{{ $booking->approved_at->format('F d, Y - g:i A') }}</p>
@@ -189,7 +189,7 @@
 
                     @if($booking->completed_at)
                         <div class="relative pl-10 pb-8">
-                            <div class="absolute left-2 w-5 h-5 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-full border-4 border-white shadow-lg shadow-[#74c365]/30"></div>
+                            <div class="absolute left-2 w-5 h-5 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-full border-4 border-white shadow-lg shadow-[#2563eb]/30"></div>
                             <div>
                                 <p class="font-semibold text-gray-800">Booking Completed</p>
                                 <p class="text-sm text-gray-500">{{ $booking->completed_at->format('F d, Y - g:i A') }}</p>
@@ -211,8 +211,8 @@
 
             <!-- Actions -->
             @if($booking->status == 'approved' || $booking->status == 'completed')
-                <div class="bg-gradient-to-br from-[#f0f9ef] to-[#e0f3df] border border-[#74c365] rounded-2xl p-8 text-center">
-                    <div class="w-20 h-20 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#74c365]/30">
+                <div class="bg-gradient-to-br from-[#eff6ff] to-[#dbeafe] border border-[#2563eb] rounded-2xl p-8 text-center">
+                    <div class="w-20 h-20 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#2563eb]/30">
                         <i class="fas fa-check-circle text-white text-4xl"></i>
                     </div>
                     <h2 class="text-2xl font-bold text-gray-800 mb-2">Your Booking is Confirmed!</h2>
@@ -248,7 +248,7 @@
     </section>
 
     <!-- Footer -->
-    <footer class="bg-gradient-to-r from-[#468a3f] to-[#74c365] text-white py-8">
+    <footer class="bg-gradient-to-r from-[#1e40af] to-[#2563eb] text-white py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p>&copy; 2026 RGV Multi-Tech Services. All rights reserved.</p>
         </div>

@@ -40,9 +40,19 @@ class BorrowRequestController extends Controller
             });
         }
         
-        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 20;
+        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $borrowRequests = $query->latest()->paginate($perPage)->appends($request->except('page'));
-        return view('admin.borrow-requests.index', compact('borrowRequests'));
+        
+        $stats = [
+            'total' => \App\Models\BorrowRequest::count(),
+            'pending' => \App\Models\BorrowRequest::where('status', 'pending')->count(),
+            'approved' => \App\Models\BorrowRequest::where('status', 'approved')->count(),
+            'borrowed' => \App\Models\BorrowRequest::where('status', 'borrowed')->count(),
+            'returned' => \App\Models\BorrowRequest::where('status', 'returned')->count(),
+            'rejected' => \App\Models\BorrowRequest::where('status', 'rejected')->count(),
+        ];
+        
+        return view('admin.borrow-requests.index', compact('borrowRequests', 'stats'));
     }
 
     public function show(BorrowRequest $borrowRequest)

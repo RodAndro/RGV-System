@@ -8,8 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --mantis: #74c365;
-            --mantis-dark: #468a3f;
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
         }
         .sidebar-link-mantis {
             display: flex;
@@ -22,15 +22,15 @@
             cursor: pointer;
         }
         .sidebar-link-mantis:hover {
-            background: linear-gradient(135deg, #f0f9ef 0%, #e0f3df 100%);
-            color: #74c365;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            color: #2563eb;
             transform: translateX(4px);
         }
         .sidebar-link-active-mantis {
             display: flex;
             align-items: justify-between;
             padding: 12px 16px;
-            background: linear-gradient(135deg, #74c365 0%, #5dad4f 100%);
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: white;
             border-radius: 12px;
             font-weight: 600;
@@ -56,8 +56,8 @@
             display: block;
         }
         .dropdown-item:hover {
-            background: #f0f9ef;
-            color: #74c365;
+            background: #eff6ff;
+            color: #2563eb;
         }
         .chevron-icon {
             transition: transform 0.3s ease;
@@ -88,7 +88,7 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
         .btn-mantis {
-            background: linear-gradient(135deg, #74c365 0%, #5dad4f 100%);
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: white;
             padding: 10px 24px;
             border-radius: 10px;
@@ -102,7 +102,7 @@
             cursor: pointer;
         }
         .btn-mantis:hover {
-            background: linear-gradient(135deg, #5dad4f 0%, #468a3f 100%);
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(116, 195, 101, 0.4);
         }
@@ -121,8 +121,8 @@
             border-radius: 20px;
             font-size: 14px;
             font-weight: 600;
-            background: linear-gradient(135deg, #f0f9ef 0%, #e0f3df 100%);
-            color: #74c365;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            color: #2563eb;
         }
         .badge-mantis-danger {
             display: inline-block;
@@ -141,7 +141,7 @@
         <aside class="w-72 bg-white border-r border-gray-200 fixed h-full shadow-xl z-50 flex flex-col">
             <div class="p-6">
                 <div class="flex items-center mb-8">
-                    <div class="w-10 h-10 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-xl flex items-center justify-center shadow-lg shadow-[#74c365]/30">
+                    <div class="w-10 h-10 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-xl flex items-center justify-center shadow-lg shadow-[#2563eb]/30">
                         <i class="fas fa-cogs text-white text-lg"></i>
                     </div>
                     <span class="font-bold text-lg text-gray-800 ml-3">RGV Employee</span>
@@ -186,7 +186,7 @@
             <header class="bg-white/80 backdrop-blur-xl border-b border-gray-200 sticky top-0 z-40">
                 <div class="flex justify-between items-center px-8 py-5">
                     <div class="flex items-center space-x-4">
-                        <a href="{{ route('employee.borrow-requests.index') }}" class="text-gray-600 hover:text-[#74c365] transition-colors flex items-center">
+                        <a href="{{ route('employee.borrow-requests.index') }}" class="text-gray-600 hover:text-[#2563eb] transition-colors flex items-center">
                             <i class="fas fa-arrow-left mr-2"></i>Back to Requests
                         </a>
                         <h1 class="text-2xl font-bold text-gray-800">Borrow Request Details</h1>
@@ -197,7 +197,7 @@
             <!-- Content -->
             <div class="p-8">
                 @if(session('success'))
-                    <div class="bg-gradient-to-r from-[#f0f9ef] to-[#e0f3df] border border-[#74c365] text-[#468a3f] px-4 py-3 rounded-xl mb-6">
+                    <div class="bg-gradient-to-r from-[#eff6ff] to-[#dbeafe] border border-[#2563eb] text-[#1e40af] px-4 py-3 rounded-xl mb-6">
                         {{ session('success') }}
                     </div>
                 @endif
@@ -209,7 +209,7 @@
                             <div class="flex justify-between items-start mb-6">
                                 <div>
                                     <p class="text-sm text-gray-500 mb-1">Request Number</p>
-                                    <p class="font-mono text-2xl font-bold text-[#74c365]">{{ $borrowRequest->request_number }}</p>
+                                    <p class="font-mono text-2xl font-bold text-[#2563eb]">{{ $borrowRequest->request_number }}</p>
                                 </div>
                                 <span class="badge-mantis-{{ $borrowRequest->status == 'pending' ? 'warning' : ($borrowRequest->status == 'approved' ? 'success' : ($borrowRequest->status == 'borrowed' ? 'warning' : ($borrowRequest->status == 'returned' ? 'success' : 'danger'))) }}">
                                     {{ ucfirst($borrowRequest->status) }}
@@ -361,7 +361,7 @@
                                 <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
                                 
                                 <div class="relative pl-10 pb-6">
-                                    <div class="absolute left-2 w-5 h-5 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-full border-4 border-white shadow-lg shadow-[#74c365]/30"></div>
+                                    <div class="absolute left-2 w-5 h-5 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-full border-4 border-white shadow-lg shadow-[#2563eb]/30"></div>
                                     <div>
                                         <p class="font-semibold text-gray-800">Request Submitted</p>
                                         <p class="text-sm text-gray-500">{{ $borrowRequest->created_at->format('F d, Y - g:i A') }}</p>
@@ -370,7 +370,7 @@
 
                                 @if($borrowRequest->approved_at)
                                     <div class="relative pl-10 pb-6">
-                                        <div class="absolute left-2 w-5 h-5 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-full border-4 border-white shadow-lg shadow-[#74c365]/30"></div>
+                                        <div class="absolute left-2 w-5 h-5 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-full border-4 border-white shadow-lg shadow-[#2563eb]/30"></div>
                                         <div>
                                             <p class="font-semibold text-gray-800">Request Approved</p>
                                             <p class="text-sm text-gray-500">{{ $borrowRequest->approved_at->format('F d, Y - g:i A') }}</p>
@@ -390,7 +390,7 @@
 
                                 @if($borrowRequest->returned_at)
                                     <div class="relative pl-10">
-                                        <div class="absolute left-2 w-5 h-5 bg-gradient-to-br from-[#74c365] to-[#5dad4f] rounded-full border-4 border-white shadow-lg shadow-[#74c365]/30"></div>
+                                        <div class="absolute left-2 w-5 h-5 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-full border-4 border-white shadow-lg shadow-[#2563eb]/30"></div>
                                         <div>
                                             <p class="font-semibold text-gray-800">Items Returned</p>
                                             <p class="text-sm text-gray-500">{{ $borrowRequest->returned_at->format('F d, Y - g:i A') }}</p>
@@ -425,7 +425,7 @@
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Condition Returned *</label>
                                     <select name="items[{{ $loop->index }}][condition_returned]" required
-                                        class="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-white">
+                                        class="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-white">
                                         <option value="new">New</option>
                                         <option value="good" selected>Good</option>
                                         <option value="fair">Fair</option>
@@ -436,7 +436,7 @@
                             <div class="mt-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Damage Notes (if damaged)</label>
                                 <textarea name="items[{{ $loop->index }}][damage_notes]" rows="2"
-                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#74c365] focus:border-[#74c365] transition-all bg-white"
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-white"
                                     placeholder="Describe any damage"></textarea>
                             </div>
                         </div>

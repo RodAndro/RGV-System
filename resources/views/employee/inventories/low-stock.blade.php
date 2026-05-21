@@ -9,8 +9,8 @@
     <div class="card-mantis p-4 mb-6">
         <form action="{{ route('employee.inventories.low-stock') }}" method="GET" class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input type="text" name="search" value="{{ request('search') }}" placeholder="Search items..."
-                class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-1 focus:ring-[#74c365]">
-            <select name="category" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-1 focus:ring-[#74c365]">
+                class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-1 focus:ring-[#2563eb]">
+            <select name="category" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-1 focus:ring-[#2563eb]">
                 <option value="">All Categories</option>
                 @foreach($categories as $cat)
                     <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>

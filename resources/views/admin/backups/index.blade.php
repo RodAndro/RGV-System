@@ -17,7 +17,7 @@
                 </a>
                 <form method="POST" action="{{ route('admin.backups.run') }}">
                     @csrf
-                    <button class="rounded bg-[#74c365] px-4 py-2 font-semibold text-white">Run Manual Backup</button>
+                    <button class="rounded bg-[#2563eb] px-4 py-2 font-semibold text-white">Run Manual Backup</button>
                 </form>
                 <form action="{{ route('admin.backups.clear-all') }}" method="POST" onsubmit="return confirm('Delete ALL backup records? This cannot be undone.');">
                     @csrf
@@ -42,15 +42,25 @@
         @endif
     </section>
 
-    <section class="bg-white rounded-lg shadow p-6 overflow-x-auto">
-        <table class="min-w-full text-sm">
-            <thead><tr class="text-left text-gray-500"><th>Date</th><th>Disk</th><th>Status</th><th>Size</th><th>Checksum</th><th>Message</th><th></th></tr></thead>
+    <section class="card-mantis overflow-hidden">
+        <table class="w-full border-collapse text-sm">
+            <thead>
+                <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase">
+                    <th class="px-4 py-3 border-b border-r border-gray-200">Date</th>
+                    <th class="px-4 py-3 border-b border-r border-gray-200">Disk</th>
+                    <th class="px-4 py-3 border-b border-r border-gray-200">Status</th>
+                    <th class="px-4 py-3 border-b border-r border-gray-200">Size</th>
+                    <th class="px-4 py-3 border-b border-r border-gray-200">Checksum</th>
+                    <th class="px-4 py-3 border-b border-r border-gray-200">Message</th>
+                    <th class="px-4 py-3 border-b border-gray-200">Actions</th>
+                </tr>
+            </thead>
             <tbody>
                 @foreach($backups as $backup)
-                    <tr class="border-t">
-                        <td class="py-2">{{ $backup->created_at }}</td>
-                        <td>{{ $backup->disk }}</td>
-                        <td>
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-xs">{{ $backup->created_at }}</td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-xs">{{ $backup->disk }}</td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100">
                             @if($backup->status === 'success')
                                 <span class="badge-mantis-success">Success</span>
                             @elseif($backup->status === 'failed')
@@ -61,8 +71,8 @@
                                 {{ $backup->status }}
                             @endif
                         </td>
-                        <td>{{ $backup->size_formatted }}</td>
-                        <td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-xs">{{ $backup->size_formatted }}</td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-xs">
                             @if($backup->checksum)
                                 @php $verifyResult = $backup->verifyChecksum(); @endphp
                                 @if($verifyResult === true)
@@ -76,17 +86,16 @@
                                 <span class="text-gray-400">—</span>
                             @endif
                         </td>
-                        <td>{{ Str::limit($backup->message, 80) }}</td>
-                        <td>
+                        <td class="px-4 py-3 border-b border-r border-gray-100 text-xs">{{ Str::limit($backup->message, 80) }}</td>
+                        <td class="px-4 py-3 border-b border-gray-100 text-xs">
                             @if($backup->checksum && $backup->file_path)
                                 <div class="flex items-center gap-2">
-                                    <a href="{{ route('admin.backups.download', $backup) }}"
-                                       class="text-sm text-[#74c365] hover:text-[#5dad4f] font-medium">
+                                    <a href="{{ route('admin.backups.download', $backup) }}" class="text-[#2563eb] hover:text-[#1d4ed8] font-medium">
                                         <i class="fas fa-download mr-1"></i>Download
                                     </a>
                                     <form method="POST" action="{{ route('admin.backups.verify', $backup) }}" class="inline">
                                         @csrf
-                                        <button class="text-sm text-[#468a3f] hover:underline">
+                                        <button class="text-[#1e40af] hover:underline">
                                             <i class="fas fa-shield-halved mr-1"></i>Verify
                                         </button>
                                     </form>
@@ -97,7 +106,9 @@
                 @endforeach
             </tbody>
         </table>
-        {{ $backups->links() }}
+        <div class="px-6 py-4 border-t border-gray-100">
+            {{ $backups->links() }}
+        </div>
     </section>
 </div>
 @endsection

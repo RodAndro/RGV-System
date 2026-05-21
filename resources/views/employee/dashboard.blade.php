@@ -17,8 +17,8 @@
                                 <p class="text-gray-500 text-sm">My Requests</p>
                                 <p class="text-3xl font-bold text-gray-800">{{ $stats['my_borrow_requests'] }}</p>
                             </div>
-                            <div class="bg-[#f0f9ef] w-12 h-12 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-hand-holding text-[#74c365] text-xl"></i>
+                            <div class="bg-[#eff6ff] w-12 h-12 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-hand-holding text-[#2563eb] text-xl"></i>
                             </div>
                         </div>
                     </div>
@@ -39,10 +39,10 @@
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-gray-500 text-sm">Approved</p>
-                                <p class="text-3xl font-bold text-[#74c365]">{{ $stats['approved_requests'] }}</p>
+                                <p class="text-3xl font-bold text-[#2563eb]">{{ $stats['approved_requests'] }}</p>
                             </div>
-                            <div class="bg-[#f0f9ef] w-12 h-12 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-check-circle text-[#74c365] text-xl"></i>
+                            <div class="bg-[#eff6ff] w-12 h-12 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-check-circle text-[#2563eb] text-xl"></i>
                             </div>
                         </div>
                     </div>
@@ -51,10 +51,10 @@
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-gray-500 text-sm">Borrowed</p>
-                                <p class="text-3xl font-bold text-[#5dad4f]">{{ $stats['borrowed_items'] }}</p>
+                                <p class="text-3xl font-bold text-[#1d4ed8]">{{ $stats['borrowed_items'] }}</p>
                             </div>
-                            <div class="bg-[#f0f9ef] w-12 h-12 rounded-xl flex items-center justify-center">
-                                <i class="fas fa-box text-[#74c365] text-xl"></i>
+                            <div class="bg-[#eff6ff] w-12 h-12 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-box text-[#2563eb] text-xl"></i>
                             </div>
                         </div>
                     </div>
@@ -83,7 +83,7 @@
                     <div class="card-mantis p-6">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-bold text-gray-800">Available Inventory</h3>
-                            <a href="{{ route('employee.inventories.index') }}" class="text-[#74c365] text-sm font-semibold hover:underline">View All</a>
+                            <a href="{{ route('employee.inventories.index') }}" class="text-[#2563eb] text-sm font-semibold hover:underline">View All</a>
                         </div>
                         <div class="space-y-3 max-h-96 overflow-y-auto">
                             @forelse($availableInventory as $item)
@@ -92,8 +92,8 @@
                                         @if($item->image_path)
                                             <img src="{{ asset('storage/' . $item->image_path) }}" class="w-12 h-12 object-cover rounded-xl mr-3">
                                         @else
-                                            <div class="w-12 h-12 bg-[#f0f9ef] rounded-xl flex items-center justify-center mr-3">
-                                                <i class="fas fa-box text-[#74c365]"></i>
+                                            <div class="w-12 h-12 bg-[#eff6ff] rounded-xl flex items-center justify-center mr-3">
+                                                <i class="fas fa-box text-[#2563eb]"></i>
                                             </div>
                                         @endif
                                         <div>
@@ -115,7 +115,7 @@
                     <div class="card-mantis p-6">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-bold text-gray-800">My Recent Requests</h3>
-                            <a href="{{ route('employee.borrow-requests.index') }}" class="text-[#74c365] text-sm font-semibold hover:underline">View All</a>
+                            <a href="{{ route('employee.borrow-requests.index') }}" class="text-[#2563eb] text-sm font-semibold hover:underline">View All</a>
                         </div>
                         <div class="space-y-3 max-h-96 overflow-y-auto">
                             @forelse($myBorrowRequests as $request)

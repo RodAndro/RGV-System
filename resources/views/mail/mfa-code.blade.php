@@ -3,7 +3,7 @@
 
 Your verification code is:
 
-<div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; text-align: center; padding: 20px; background: #f0f9ef; border-radius: 8px; margin: 20px 0;">
+<div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; text-align: center; padding: 20px; background: #eff6ff; border-radius: 8px; margin: 20px 0;">
 {{ $code }}
 </div>
 
