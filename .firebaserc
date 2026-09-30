@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "rgv-system"
+  },
+  "targets": {
+    "rgv-system": {
+      "hosting": {
+        "rgv-multi-tech-services": [
+          "rgv-multi-tech-services"
+        ]
+      }
+    }
+  }
+}

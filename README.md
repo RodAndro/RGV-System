@@ -131,9 +131,8 @@ See [mobile/README.md](mobile/README.md) for Flutter setup and
 
 ## Deployment
 
-For a free Render web service with Supabase PostgreSQL, see
-[docs/render-deployment.md](docs/render-deployment.md). Free hosting has sleep,
-storage, and compute limits; it is suitable for testing, not production.
+For Firebase Hosting with Laravel on Cloud Run and Supabase PostgreSQL, see
+[docs/firebase-cloud-run-deployment.md](docs/firebase-cloud-run-deployment.md).
 
 ## Documentation
 

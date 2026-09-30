@@ -44,9 +44,9 @@ RUN composer dump-autoload --no-dev --optimize \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R ug+rwx storage bootstrap/cache
 
-COPY docker/render-entrypoint.sh /usr/local/bin/render-entrypoint
-RUN chmod +x /usr/local/bin/render-entrypoint
+COPY docker/container-entrypoint.sh /usr/local/bin/container-entrypoint
+RUN chmod +x /usr/local/bin/container-entrypoint
 
 EXPOSE 8080
 
-CMD ["render-entrypoint"]
+CMD ["container-entrypoint"]
