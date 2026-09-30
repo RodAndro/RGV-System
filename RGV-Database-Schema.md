@@ -2,7 +2,7 @@
 
 > **RGV Multi-Tech Services** — Complete Database Schema Reference
 >
-> Tables: 36 | Migrations: 26 | Models: 21 | ORM: Laravel Eloquent | Last Updated: May 18, 2026
+> Tables: 38 | Migrations: 28 | Models: 22 | ORM: Laravel Eloquent | Last Updated: September 30, 2026
 
 ---
 
@@ -114,10 +114,10 @@
 
 | Group | Tables | Description |
 |-------|--------|-------------|
-| **Auth / User Core** | `users`, `password_reset_tokens`, `sessions`, `login_history` | Authentication, sessions, login tracking |
+| **Auth / User Core** | `users`, `password_reset_tokens`, `sessions`, `login_history`, `personal_access_tokens` | Web sessions, Sanctum mobile tokens, login tracking |
 | **Permissions** | `permissions`, `roles`, `model_has_permissions`, `model_has_roles`, `role_has_permissions` | Spatie RBAC |
 | **Activity Logging** | `activity_log`, `audit_logs` | Spatie activitylog + custom tamper-evident audit |
-| **Core Business** | `bookings`, `inventories`, `inventory_categories`, `suppliers`, `borrow_requests`, `borrow_items`, `notifications`, `reports` | Main business domain |
+| **Core Business** | `bookings`, `inventories`, `inventory_categories`, `suppliers`, `borrow_requests`, `borrow_items`, `borrow_return_evidences`, `notifications`, `reports` | Main business domain, including mobile return proof |
 | **Platform Ops** | `import_logs`, `export_logs`, `scheduled_tasks`, `api_rate_limits`, `backup_monitoring`, `settings`, `notification_preferences` | System operations |
 | **Books / Performance** | `books`, `mv_bestseller_stats`, `query_performance_logs`, `search_indexing_queue`, `book_shards` | Book catalog + performance |
 | **Infrastructure** | `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs` | Laravel framework tables |
@@ -270,6 +270,7 @@ Employee requests to borrow inventory items.
 | `admin_remarks` | TEXT | YES | — | Admin notes |
 | `approved_at` | TIMESTAMP | YES | — | Approval timestamp |
 | `rejected_at` | TIMESTAMP | YES | — | Rejection timestamp |
+| `cancelled_at` | TIMESTAMP | YES | — | Cancellation timestamp |
 | `borrowed_at` | TIMESTAMP | YES | — | When items taken |
 | `returned_at` | TIMESTAMP | YES | — | When items returned |
 | `lock_version` | UNSIGNED INT | NO | 1 | Optimistic locking |
@@ -303,6 +304,8 @@ Pivot table linking borrow requests to inventory items, with additional tracking
 | `borrow_request_id` | FK → borrow_requests.id | NO | CASCADE | Parent borrow request |
 | `inventory_id` | FK → inventories.id | NO | CASCADE | Borrowed item |
 | `quantity` | INT | NO | 1 | Quantity borrowed |
+| `reserved_quantity` | UNSIGNED INT | NO | 0 | Quantity reserved while request is pending |
+| `return_evidence_id` | FK → borrow_return_evidences.id | YES | SET NULL | Photo evidence for this return |
 | `condition_borrowed` | VARCHAR | NO | `good` | Condition when borrowed |
 | `condition_returned` | VARCHAR | YES | — | Condition when returned |
 | `is_returned` | BOOLEAN | NO | false | Return status |
@@ -316,6 +319,31 @@ Pivot table linking borrow requests to inventory items, with additional tracking
 **Relationships:**
 - `borrowRequest()` → BelongsTo → `BorrowRequest`
 - `inventory()` → BelongsTo → `Inventory`
+- `returnEvidence()` → BelongsTo → `BorrowReturnEvidence`
+
+### `borrow_return_evidences`
+
+Return-photo upload metadata. The image itself is stored in Google Drive; this
+table records its Drive identifier and links the upload to the borrow request.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | BIGINT PK | NO | AUTO_INCREMENT | Primary key |
+| `borrow_request_id` | FK → borrow_requests.id | NO | CASCADE | Parent request |
+| `idempotency_key` | VARCHAR UNIQUE | NO | — | Prevent duplicate processing on retry |
+| `drive_file_id` | VARCHAR | YES | — | Google Drive file identifier |
+| `file_name` | VARCHAR | NO | — | Stored evidence filename |
+| `mime_type` | VARCHAR | YES | — | Uploaded file MIME type |
+| `uploaded_by` | FK → users.id | YES | SET NULL | Employee who uploaded the evidence |
+| `uploaded_at` | TIMESTAMP | YES | — | Upload timestamp |
+| `created_at` | TIMESTAMP | YES | — | — |
+| `updated_at` | TIMESTAMP | YES | — | — |
+
+**Indexes:** Unique `idempotency_key`, `[borrow_request_id, uploaded_at]`
+
+**Relationships:**
+- `borrowRequest()` → BelongsTo → `BorrowRequest`
+- `uploadedBy()` → BelongsTo → `User`
 
 ---
 
@@ -444,6 +472,26 @@ Generated reports (PDF, Excel, CSV) with optional AI generation.
 | `user_agent` | TEXT | YES |
 | `payload` | LONGTEXT | NO |
 | `last_activity` | INT | NO |
+
+### `personal_access_tokens` (Laravel Sanctum)
+
+Bearer tokens used by the Android employee app. Tokens are hashed in storage;
+the plaintext token is returned only when issued.
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | BIGINT PK | NO | Primary key |
+| `tokenable_type` | VARCHAR | NO | Model type for polymorphic owner |
+| `tokenable_id` | BIGINT | NO | User identifier |
+| `name` | TEXT | NO | Device/token name |
+| `token` | VARCHAR(64) UNIQUE | NO | Hashed bearer token |
+| `abilities` | TEXT | YES | Token abilities |
+| `last_used_at` | TIMESTAMP | YES | Last authenticated use |
+| `expires_at` | TIMESTAMP | YES | Optional expiry |
+| `created_at` | TIMESTAMP | YES | — |
+| `updated_at` | TIMESTAMP | YES | — |
+
+**Indexes:** Unique `token`; `expires_at`
 
 ---
 
@@ -839,6 +887,7 @@ Generated reports (PDF, Excel, CSV) with optional AI generation.
 | `borrow_requests` | — | `[employee_id, status]` | Employee borrow listing |
 | `reports` | — | `[type, report_date]` | Report queries |
 | `borrow_items` | — | `[borrow_request_id, inventory_id]` | Borrow item lookup |
+| `borrow_return_evidences` | — | `[borrow_request_id, uploaded_at]` | Evidence lookup per request |
 | `books` | `books_catalog_cover_idx` | `[is_active, category_id, price, id]` | Catalog cover queries |
 | `books` | `books_category_filter_idx` | `[category_id, is_active, stock, price]` | Category filtering |
 | `books` | `books_active_created_idx` | `[is_active, created_at, id]` | Recent books |
@@ -878,6 +927,22 @@ CREATE TABLE users (
     lock_version INT UNSIGNED NOT NULL DEFAULT 1,
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL
+);
+
+-- Sanctum tokens for mobile API authentication
+CREATE TABLE personal_access_tokens (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tokenable_type VARCHAR(255) NOT NULL,
+    tokenable_id BIGINT NOT NULL,
+    name TEXT NOT NULL,
+    token VARCHAR(64) UNIQUE NOT NULL,
+    abilities TEXT NULL,
+    last_used_at TIMESTAMP NULL,
+    expires_at TIMESTAMP NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX (tokenable_type, tokenable_id),
+    INDEX (expires_at)
 );
 
 -- Bookings
@@ -981,6 +1046,7 @@ CREATE TABLE borrow_requests (
     admin_remarks TEXT NULL,
     approved_at TIMESTAMP NULL,
     rejected_at TIMESTAMP NULL,
+    cancelled_at TIMESTAMP NULL,
     borrowed_at TIMESTAMP NULL,
     returned_at TIMESTAMP NULL,
     lock_version INT UNSIGNED NOT NULL DEFAULT 1,
@@ -993,12 +1059,31 @@ CREATE TABLE borrow_requests (
     FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- Return-photo metadata; file content is stored in Google Drive
+CREATE TABLE borrow_return_evidences (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    borrow_request_id BIGINT NOT NULL,
+    idempotency_key VARCHAR(255) UNIQUE NOT NULL,
+    drive_file_id VARCHAR(255) NULL,
+    file_name VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(255) NULL,
+    uploaded_by BIGINT NULL,
+    uploaded_at TIMESTAMP NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX (borrow_request_id, uploaded_at),
+    FOREIGN KEY (borrow_request_id) REFERENCES borrow_requests(id) ON DELETE CASCADE,
+    FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
 -- Borrow Items
 CREATE TABLE borrow_items (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     borrow_request_id BIGINT NOT NULL,
     inventory_id BIGINT NOT NULL,
     quantity INT NOT NULL DEFAULT 1,
+    reserved_quantity INT UNSIGNED NOT NULL DEFAULT 0,
+    return_evidence_id BIGINT NULL,
     condition_borrowed VARCHAR(255) NOT NULL DEFAULT 'good',
     condition_returned VARCHAR(255) NULL,
     is_returned BOOLEAN NOT NULL DEFAULT FALSE,
@@ -1008,7 +1093,8 @@ CREATE TABLE borrow_items (
     updated_at TIMESTAMP NULL,
     INDEX (borrow_request_id, inventory_id),
     FOREIGN KEY (borrow_request_id) REFERENCES borrow_requests(id) ON DELETE CASCADE,
-    FOREIGN KEY (inventory_id) REFERENCES inventories(id) ON DELETE CASCADE
+    FOREIGN KEY (inventory_id) REFERENCES inventories(id) ON DELETE CASCADE,
+    FOREIGN KEY (return_evidence_id) REFERENCES borrow_return_evidences(id) ON DELETE SET NULL
 );
 
 -- Notifications

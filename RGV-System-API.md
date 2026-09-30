@@ -2,7 +2,7 @@
 
 > **RGV Multi-Tech Services** — Complete API Reference
 >
-> Version: 1.5 | Framework: Laravel 12.0 | Last Updated: May 18, 2026
+> Version: 1.6 | Framework: Laravel 12.0 | Last Updated: September 30, 2026
 
 ---
 
@@ -16,10 +16,11 @@
    - [GET /api/books](#get-apibooks)
    - [GET /api/books/search](#get-apibookssearch)
    - [GET /api/books/{isbn}](#get-apibooksisbn)
-5. [AI & Chatbot Endpoints](#ai--chatbot-endpoints)
+5. [Mobile Employee API](#mobile-employee-api)
+6. [AI & Chatbot Endpoints](#ai--chatbot-endpoints)
    - [POST /api/chatbot/query](#post-apichatbotquery)
    - [POST /ask-gemini](#post-ask-gemini)
-6. [Admin JSON Endpoints](#admin-json-endpoints)
+7. [Admin JSON Endpoints](#admin-json-endpoints)
    - [GET /admin/dashboard/stats](#get-admindashboardstats)
    - [GET /admin/notifications/unread-count](#get-adminnotificationsunread-count)
    - [GET /admin/ai/insights](#get-adminaiinsights)
@@ -27,21 +28,21 @@
    - [GET /admin/ai/inventory-recommendations](#get-adminaiinventory-recommendations)
    - [GET /admin/import-export/imports/{importLog}](#get-adminimport-exportimportsimportlog)
    - [GET /admin/import-export/{type}/export](#get-adminimport-exporttypeexport)
-7. [Employee JSON Endpoints](#employee-json-endpoints)
+8. [Employee JSON Endpoints](#employee-json-endpoints)
    - [GET /employee/notifications/unread-count](#get-employeenotificationsunread-count)
-8. [Profile & Session Endpoints](#profile--session-endpoints)
+9. [Profile & Session Endpoints](#profile--session-endpoints)
    - [GET /profile/export-personal-data](#get-profileexport-personal-data)
    - [POST /session/extend](#post-sessionextend)
-9. [Auth Endpoints](#auth-endpoints)
-10. [Middleware Reference](#middleware-reference)
-11. [Error Responses](#error-responses)
-12. [Response Headers](#response-headers)
+10. [Auth Endpoints](#auth-endpoints)
+11. [Middleware Reference](#middleware-reference)
+12. [Error Responses](#error-responses)
+13. [Response Headers](#response-headers)
 
 ---
 
 ## Overview
 
-The RGV System exposes 19+ JSON endpoints across three categories:
+The RGV System exposes public, administrative, employee, and mobile JSON APIs:
 
 | Category | Count | Base Path | Auth Required |
 |----------|-------|-----------|:---:|
@@ -49,6 +50,7 @@ The RGV System exposes 19+ JSON endpoints across three categories:
 | **AI & Chatbot** | 2 | `/api/chatbot`, `/ask-gemini` | No |
 | **Admin JSON** | 7 | `/admin/` | Admin |
 | **Employee JSON** | 1 | `/employee/` | Employee + MFA |
+| **Mobile Employee API** | 15 | `/api/v1/mobile/` | Sanctum bearer token + active employee |
 | **Profile & Session** | 2 | `/profile/`, `/session/` | Auth |
 | **Auth** | 18 | `/register`, `/login`, `/logout`, `/mfa/verify`, etc. | Varies |
 
@@ -58,13 +60,13 @@ The RGV System exposes 19+ JSON endpoints across three categories:
 - **Web routes** returning JSON (`/admin/*`, `/employee/*`) use `snake_case` keys.
 - **Cursor pagination** is used for list endpoints (no offset-based pages).
 - **ETag caching** is supported on inventory and book list endpoints.
-- **Rate limiting** applies to all `/api/*` routes via the tiered rate limiter.
+- **Public API rate limiting** uses the tiered rate limiter. Mobile login is limited to 20/minute and protected employee resource routes to 120/minute.
 
 ---
 
 ## Authentication
 
-Most endpoints that return JSON use **Laravel session-based authentication** (cookie `XSRF-TOKEN`). Public API routes under `/api/*` are unauthenticated.
+Web endpoints use **Laravel session-based authentication** (cookie `XSRF-TOKEN`). Public API routes under `/api/*` are unauthenticated. The employee mobile API uses **Sanctum bearer tokens** issued by its login/MFA endpoints; it does not authenticate with browser session cookies.
 
 #### CSRF Protection
 
@@ -76,9 +78,32 @@ X-CSRF-TOKEN: {token}
 
 Or include it in the request body as `_token`.
 
-#### Bearer Token (Future)
+### Mobile Employee API
 
-API token authentication (Sanctum) is not currently implemented. All authenticated API access uses session cookies.
+`/api/v1/mobile/auth/login` issues a Sanctum token to an active user with the
+`employee` role, or a short-lived MFA token when MFA is enabled. Protected mobile
+routes require `Authorization: Bearer <token>`. The mobile API uses `snake_case`
+responses and has its own rate limits. See [RGV-Mobile-API.md](RGV-Mobile-API.md)
+for the complete route, payload, and return-photo upload reference.
+
+The route prefix is `/api/v1/mobile`:
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| POST | `/auth/login` | Login or start MFA challenge |
+| POST | `/auth/mfa/verify` | Verify MFA and issue employee token |
+| POST | `/auth/logout` | Revoke current token |
+| GET | `/me` | Current employee profile |
+| GET | `/dashboard` | Employee dashboard data |
+| GET | `/inventory/lookup` | Resolve scanned/manual item code |
+| GET | `/inventory/search` | Search active inventory |
+| GET, POST | `/borrow-requests` | List requests or create/reserve stock |
+| GET | `/borrow-requests/{id}` | Request details |
+| POST | `/borrow-requests/{id}/cancel` | Cancel a pending request |
+| GET | `/borrow-requests/returnable` | Items eligible for return |
+| POST | `/borrow-requests/{id}/return` | Return items with proof photo |
+| PATCH | `/profile` | Update employee name |
+| PUT | `/password` | Change password |
 
 ---
 
@@ -734,6 +759,9 @@ Redirects to dashboard. Session cookie set.
 |-----------|-------|-------|-------------|
 | `TieredRateLimitMiddleware` | `api.rate` | `/api/*` | Per-tier rate limiting with configurable limits |
 | `CamelCaseJsonResponse` | `camel.json` | `/api/*` | Converts all JSON keys from snake_case to camelCase |
+| Laravel Sanctum | `auth:sanctum` | `/api/v1/mobile/*` | Authenticates mobile bearer tokens |
+| `EnsureActiveEmployee` | `active.employee` | `/api/v1/mobile/*` | Requires an active account with the `employee` role |
+| Laravel throttle | `throttle` | mobile login/API | 20/minute login; 120/minute protected employee routes |
 | `IsAdmin` | `admin` | `/admin/*` | Requires `auth()->user()->isAdmin()`, returns 403 |
 | `IsEmployee` | `employee` | `/employee/*` | Requires `auth()->user()->isEmployee()`, returns 403 |
 | `RequireMfa` | `mfa` | `/employee/*` | Requires MFA verification if enabled on account |

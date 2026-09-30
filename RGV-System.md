@@ -53,6 +53,8 @@
 - **PDF Generation**: barryvdh/laravel-dompdf
 - **Excel Export**: maatwebsite/excel
 - **QR Code Generation**: simplesoftwareio/simple-qrcode
+- **Employee Mobile App**: Flutter for Android (`mobile/`)
+- **Mobile API Authentication**: Laravel Sanctum bearer tokens
 - **Activity Logging**: spatie/laravel-activitylog
 - **Backup Management**: spatie/laravel-backup
 - **Role-Based Access**: spatie/laravel-permission
@@ -625,6 +627,12 @@ POST /booking/search              → PublicController@searchBooking (search boo
 POST /api/chatbot/query → ChatbotController@query (chatbot interaction)
 ```
 
+The employee Android app uses the authenticated `/api/v1/mobile` route group.
+Login and MFA issue Sanctum tokens; protected routes require an active account
+with the `employee` role. The API supports dashboard/profile, QR and manual
+inventory lookup, borrow requests, cancellations, and photo-backed returns.
+See [RGV-Mobile-API.md](RGV-Mobile-API.md) for the complete route contract.
+
 ---
 
 ### Authentication Routes (`/auth`)
@@ -902,12 +910,9 @@ php artisan key:generate
 
 **Edit `.env` file with your database credentials:**
 ```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=rgv_system
-DB_USERNAME=root
-DB_PASSWORD=your_password
+# Set DB_CONNECTION and DB_* for the selected database.
+# .env.example includes Supabase PostgreSQL and local SQLite examples.
+# Supply real credentials through the deployment environment; do not commit them.
 
 MAIL_DRIVER=smtp
 MAIL_HOST=your_mail_host
@@ -990,8 +995,9 @@ composer run-script setup
 - View available inventory
 - View own notifications
 - Update own profile
+- Use the Android app with the same active employee account
 
-**Access**: `/employee/*`
+**Access**: `/employee/*` and `/api/v1/mobile/*` (Sanctum bearer token)
 
 ---
 
@@ -1223,6 +1229,7 @@ php artisan optimize
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-05-11 | Initial release |
+| 1.1 | 2026-09-30 | Added Flutter employee app, Sanctum mobile API, borrow reservations, and Drive return evidence |
 
 ---
 
@@ -1238,5 +1245,5 @@ For questions, issues, or support, please contact the development team or create
 
 ---
 
-*Last Updated: May 18, 2026*
+*Last Updated: September 30, 2026*
 *Documentation Generated for RGV-System Laravel Application*

@@ -2,7 +2,7 @@
 
 > **RGV Multi-Tech Services** — Business Operations Management System
 >
-> > Version: 1.5 | Framework: Laravel 12.0 | PHP: ^8.2 | **Last Updated: May 18, 2026**
+> > Version: 1.6 | Framework: Laravel 12.0 | PHP: ^8.2 | **Last Updated: September 30, 2026**
 
 ---
 
@@ -13,6 +13,7 @@
 3. [Directory Structure](#directory-structure)
 4. [Authentication & Authorization](#authentication--authorization)
 5. [API Reference](#api-reference)
+  - [Mobile Employee API](#mobile-employee-api)
 6. [Web Routes Reference](#web-routes-reference)
 7. [Middleware](#middleware)
 8. [Services](#services)
@@ -58,7 +59,7 @@ The RGV System follows the **Laravel MVC** pattern with additional service and r
 
 **Role Hierarchy:**
 - **Admin** — Full system access, user management, reports, configurations
-- **Employee** — Assigned bookings, borrow requests, inventory viewing
+- **Employee** — Assigned bookings through web; borrow requests and inventory lookup through web and Android app
 - **Public/Unauthenticated** — Booking form submission, booking tracking, chatbot
 
 ---
@@ -71,8 +72,9 @@ The RGV System follows the **Laravel MVC** pattern with additional service and r
 |-----------|-----------|---------|
 | Framework | Laravel | 12.0 |
 | Language | PHP | ^8.2 |
-| Database | SQLite (dev) | — |
+| Database | SQLite locally; MySQL/PostgreSQL supported | — |
 | Auth Scaffolding | Laravel Breeze | ^2.4 |
+| Mobile API Authentication | Laravel Sanctum bearer tokens | ^4.3 |
 | RBAC | Spatie Laravel-Permission | * |
 | Activity Logging | Spatie Laravel-Activitylog | ^4.12 |
 | Backups | Spatie Laravel-Backup | * |
@@ -91,6 +93,15 @@ The RGV System follows the **Laravel MVC** pattern with additional service and r
 | JS Framework | Alpine.js | ^3.4.2 |
 | HTTP Client | Axios | ^1.11.0 |
 
+### Employee Mobile
+
+| Component | Technology |
+|-----------|-----------|
+| App | Flutter (Android) |
+| QR scanning | `mobile_scanner` |
+| API client | Dart `http` with Sanctum bearer tokens |
+| Token storage | `flutter_secure_storage` |
+
 ### AI Services
 
 | Service | Model | Usage |
@@ -108,15 +119,16 @@ rgv-system/
 ├── app/
 │   ├── Http/
 │   │   ├── Controllers/
-│   │   │   ├── Admin/            (12 controllers)
-│   │   │   ├── Api/              (2 controllers)
-│   │   │   ├── Auth/             (10 controllers - Breeze)
-│   │   │   ├── Employee/         (5 controllers)
-│   │   │   └── [root]            (7 controllers)
-│   │   └── Middleware/           (6 middleware classes)
-│   ├── Models/                   (21 Eloquent models)
-│   ├── Services/                 (5 service classes)
-│   ├── Notifications/            (12 notification classes)
+│   │   │   ├── Admin/
+│   │   │   ├── Api/
+│   │   │   │   └── Mobile/       (employee API)
+│   │   │   ├── Auth/             (Breeze)
+│   │   │   ├── Employee/
+│   │   │   └── [root]
+│   │   └── Middleware/           (web and API middleware)
+│   ├── Models/                   (Eloquent models)
+│   ├── Services/                 (business and integration services)
+│   ├── Notifications/            (notification classes)
 │   ├── Repositories/             (data access layer)
 │   ├── Jobs/                     (queued jobs)
 │   ├── Mail/                     (email classes)
@@ -125,11 +137,12 @@ rgv-system/
 │   ├── Observers/                (model observers)
 │   └── Traits/                   (shared traits)
 ├── bootstrap/                    (app bootstrap)
-├── config/                       (14 config files)
+├── config/                       (application and integration config)
 ├── database/
-│   ├── migrations/               (24 migration files)
-│   ├── factories/                (6 model factories)
+│   ├── migrations/
+│   ├── factories/
 │   └── seeders/                  (database seeders)
+├── mobile/                       (Flutter Android employee app)
 ├── public/                       (web root - index.php, assets)
 ├── resources/
 │   ├── views/                    (Blade templates)
@@ -144,7 +157,7 @@ rgv-system/
 │   └── js/                       (JavaScript source)
 ├── routes/
 │   ├── web.php                   (main web routes)
-│   ├── api.php                   (public API routes)
+│   ├── api.php                   (public and /v1/mobile API routes)
 │   ├── auth.php                  (Breeze auth routes)
 │   └── console.php               (Artisan commands)
 ├── storage/                      (logs, cache, uploads)
@@ -164,12 +177,17 @@ rgv-system/
 4. Optional MFA (TOTP or email-based) after password confirmation
 5. Role-based redirect: Admin → `/admin/dashboard`, Employee → `/employee/dashboard`
 
+The Android app authenticates through `/api/v1/mobile/auth/login` and uses
+Sanctum bearer tokens instead of browser sessions. Access requires an active
+account with the `employee` role; mobile MFA is completed before a normal
+employee token is issued.
+
 ### Roles & Permissions (Spatie)
 
 | Role | Guard | Description |
 |------|-------|-------------|
 | Admin | web | Full system access, can impersonate users |
-| Employee | web | Assigned bookings, borrow requests, inventory viewing |
+| Employee | web | Assigned bookings on web; active employees can use the mobile borrow, inventory, return, and account APIs |
 
 Permissions are managed via Spatie Laravel-Permission package with 5 tables:
 - `permissions` — permission definitions
@@ -192,6 +210,14 @@ Admins can impersonate other users via `POST /admin/users/{user}/impersonate` an
 ---
 
 ## API Reference
+
+### Mobile Employee API
+
+The Flutter client uses `/api/v1/mobile` and Sanctum bearer authentication.
+The API provides login/MFA, dashboard and profile data, inventory lookup and
+search, borrow requests, cancellation, and returns with photo evidence. Mobile
+responses use `snake_case` and bypass the public API's `camel.json` middleware.
+See [RGV-Mobile-API.md](RGV-Mobile-API.md) for the endpoint and payload contract.
 
 ### Public Books API
 
@@ -432,6 +458,9 @@ Dashboard, assigned bookings, borrow requests, inventory viewing, notifications.
 | `mfa` | `RequireMfa` | Redirects to MFA verify if MFA enabled & not verified |
 | `api.rate` | `TieredRateLimitMiddleware` | Tiered rate limiting by user tier |
 | `camel.json` | `CamelCaseJsonResponse` | Converts JSON keys to camelCase |
+| `auth:sanctum` | Laravel Sanctum | Authenticates employee mobile bearer tokens |
+| `active.employee` | `EnsureActiveEmployee` | Requires an active account with the `employee` role |
+| `throttle` | Laravel throttle | Limits mobile login and authenticated API requests |
 
 ---
 
@@ -444,6 +473,8 @@ Dashboard, assigned bookings, borrow requests, inventory viewing, notifications.
 | `GeminiService` | Google Gemini AI API integration |
 | `OllamaService` | Local Ollama LLM integration (llama3.1) |
 | `SystemMetricsService` | System performance and usage metrics |
+| `BorrowService` | Borrow reservations and stock transitions for approval, cancellation, and return |
+| `GoogleDriveService` | Server-side upload of return-photo evidence |
 
 ---
 
@@ -557,7 +588,13 @@ OPENAI_API_KEY=
 GEMINI_API_KEY=
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 OLLAMA_MODEL=llama3.1
+GOOGLE_DRIVE_CREDENTIALS_PATH=/secure/path/service-account.json
+GOOGLE_DRIVE_FOLDER_ID=<shared-folder-id>
 ```
+
+For mobile production deployments, see [RGV-Mobile-API.md](RGV-Mobile-API.md)
+for database, Sanctum, and Google Drive settings. Keep service-account keys on
+the Laravel server and out of source control.
 
 ### Config Files
 
@@ -572,4 +609,4 @@ OLLAMA_MODEL=llama3.1
 | `mail.php` | Email driver settings |
 | `permission.php` | Spatie permission models and settings |
 | `scout.php` | Search indexing configuration |
-| `services.php` | Third-party service keys (OpenAI, Gemini, Ollama) |
+| `services.php` | Third-party service settings (OpenAI, Gemini, Ollama, Google Drive) |

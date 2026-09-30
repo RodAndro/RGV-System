@@ -90,7 +90,8 @@ The public-facing features allow customers to book services and track their requ
 
 ## Employee Guide
 
-Employees manage assigned bookings, request to borrow inventory items, and view the inventory catalog.
+Employees manage assigned bookings through the web portal and use the Android app for inventory lookup, borrow requests, and item returns.
+The dashboard, booking, notification, and profile steps below describe the web portal; Android app steps are in **Using the Android App**.
 
 ### Logging In
 
@@ -107,6 +108,31 @@ The dashboard provides an overview of:
 - **Your borrow requests** — active and pending
 - **Notifications** — recent updates
 - **Quick stats** — summary of your work
+
+### Using the Android App
+
+Sign in with the same active account an administrator assigned the `employee`
+role. If MFA is enabled, complete the verification step in the app. The mobile
+dashboard shows borrow-request counts and recent requests; assigned bookings
+and notifications remain in the web portal.
+
+#### Borrowing an Item
+
+1. Tap **Borrow**.
+2. Scan the item's QR code, or enter its item code manually if scanning is unavailable.
+3. Review the item returned by inventory lookup, then complete and submit the borrow request.
+4. The request remains pending until an administrator approves it; pending requests reserve available stock.
+
+#### Returning Items
+
+1. Tap **Return** and select the borrowed items you are returning.
+2. Set each item's condition and add damage notes when needed.
+3. Attach a return-proof photo using the camera or image gallery, then tap **Submit Return**.
+4. The server uploads the photo to Google Drive. Stock is restored only after the upload succeeds.
+
+#### Account Settings
+
+Use **Account** to update your name or change your password.
 
 ### Managing Assigned Bookings
 
@@ -588,4 +614,4 @@ Accessible from the Admin menu → **AI**:
 
 ---
 
-*Last Updated: May 18, 2026*
+*Last Updated: September 30, 2026*

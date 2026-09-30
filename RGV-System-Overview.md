@@ -2,7 +2,7 @@
 
 > **RGV Multi-Tech Services** — Business Operations Management System
 >
-> Backend: Laravel 12.0 | PHP 8.2+ | SQLite | Admin/Public: Tailwind CSS + Alpine.js | Mobile: Flutter (Android)
+> Backend: Laravel 12.0 | PHP 8.2+ | SQLite locally / PostgreSQL or MySQL configurable | Admin/Public: Tailwind CSS + Alpine.js | Mobile: Flutter (Android)
 
 ---
 
@@ -13,7 +13,7 @@ A dual-platform system for managing service bookings, inventory, and equipment b
 | Role | Platform | Key Functions |
 |------|----------|---------------|
 | **Public** | Web (`/`) | Submit and track service bookings, use AI chatbot |
-| **Employee** | Mobile App (Flutter Android) | View assigned bookings, scan QR codes to borrow/return tools, track borrowed items, view notifications |
+| **Employee** | Web portal + Flutter Android app | Manage assigned bookings on web; use the app for inventory lookup, borrow requests, returns, and account settings |
 | **Admin** | Web (`/admin`) | Full control — bookings, inventory, users, reports, backups, settings, manage all operations |
 
 ---
@@ -24,11 +24,11 @@ A dual-platform system for managing service bookings, inventory, and equipment b
 
 **Inventory** — Track items with categories, suppliers, stock levels, QR codes. Low-stock alerts. Borrow/return workflow with condition tracking.
 
-**Borrow Requests** — Employees use mobile app to scan QR codes on tools → Request submission → Admin approves → Items marked borrowed → Employee scans QR on return → Condition report submitted via app → Stock restored. Full lifecycle with soft-delete. Real-time sync between web and mobile.
+**Borrow Requests** — In the Android app, employees scan a QR code or enter an item code, submit a request, and wait for admin approval. Pending requests reserve stock. For returns, employees select borrowed items, report condition, and submit a required proof photo; stock is restored only after the server-side Drive upload succeeds. Web and mobile use the same Laravel data and business rules.
 
 **Users & Roles** — Spatie RBAC (Admin/Employee). MFA support (TOTP + email). Impersonation for admins. Login history and force-logout.
 
-**Notifications** — 14 notification types across email + in-app channels. Bell icon with real-time polling. Click-to-mark-read. Per-user notification preferences.
+**Notifications** — 14 notification types across email + in-app channels in the web portals. The Android app currently does not expose notifications.
 
 **Reports** — Bookings, inventory, borrow requests, users. Export to PDF/Excel/CSV/JSON. AI-powered insights, forecasts, and inventory recommendations.
 
@@ -48,14 +48,14 @@ A dual-platform system for managing service bookings, inventory, and equipment b
 
 | Metric | Count |
 |--------|:----:|
-| Database tables | 36 |
-| Eloquent models | 21 |
-| Migration files | 26 |
-| Controllers | 30 |
+| Application tables | 38 |
+| Eloquent models | 22 |
+| Migration files | 28 |
+| Controllers | 42 |
 | Notification classes | 14 |
-| API endpoints | 19 |
+| JSON API endpoints | 34+ |
 | Admin routes | 60+ |
-| Middleware | 8 |
+| Middleware | 9 |
 
 ---
 
@@ -67,9 +67,12 @@ A dual-platform system for managing service bookings, inventory, and equipment b
 | AI | `/api/chatbot/query`, `/ask-gemini` | None |
 | Admin | Dashboard stats, notifications, AI insights, import/export status | Admin |
 | Employee | Notification count | Employee+MFA |
+| Mobile Employee | `/api/v1/mobile/*` (15 routes) | Sanctum bearer token + active `employee` role |
 | Auth | Login, register, logout, MFA, password reset | Varies |
 
-Rate limited at 30/60/300/1000 req/min per tier. Configurable via Site Settings.
+The public API uses tiered limits (30/60/300/1000 requests per minute,
+configurable in Site Settings). Mobile login is limited to 20/minute and
+protected employee mobile routes to 120/minute.
 
 ---
 
@@ -79,7 +82,7 @@ Rate limited at 30/60/300/1000 req/min per tier. Configurable via Site Settings.
 |-------|-----------|
 | Backend | Laravel 12, PHP 8.2+ |
 | Database | SQLite (configurable to MySQL/PostgreSQL) |
-| Auth | Laravel Breeze, Spatie Permission (RBAC), MFA (TOTP + email) |
+| Auth | Laravel Breeze, Spatie Permission (RBAC), MFA (TOTP + email), Sanctum bearer tokens for mobile |
 | Admin/Public Web | Tailwind CSS 3, Alpine.js 3, Blade templates |
 | Employee Mobile | Flutter (Android native) with QR code scanning |
 | QR Codes | simplesoftwareio/simple-qrcode (generation), Flutter camera (scanning) |
@@ -97,11 +100,13 @@ Rate limited at 30/60/300/1000 req/min per tier. Configurable via Site Settings.
 | Document | Description |
 |----------|-------------|
 | `RGV-System.md` | Full system architecture, routes, modules |
-| `RGV-Database-Schema.md` | Complete database schema (36 tables) |
-| `RGV-Technical-Documentation.md` | Architecture, security, AI, middleware |
-| `RGV-System-API.md` | API reference (all 19 endpoints) |
-| `RGV-User-Manual.md` | User guide for admin, employee, public |
+| `RGV-Database-Schema.md` | Database tables, including mobile tokens and return evidence |
+| `RGV-Technical-Documentation.md` | Architecture, security, web and mobile APIs, middleware |
+| `RGV-System-API.md` | Web and mobile API reference |
+| `RGV-Mobile-API.md` | Mobile endpoints, authentication, and Drive configuration |
+| `mobile/README.md` | Flutter setup, run, and verification steps |
+| `RGV-User-Manual.md` | User guide for admin, employee web/mobile, and public workflows |
 
 ---
 
-*Last Updated: May 21, 2026*
+*Last Updated: September 30, 2026*

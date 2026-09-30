@@ -19,6 +19,13 @@ the `camel.json` middleware). Errors follow Laravel's shape:
 conflict (e.g. insufficient stock), `422` = validation, `429` = throttled,
 `502` = upload failure.
 
+### Rate Limits
+
+Login is limited to 20 requests per minute. Protected employee resource routes
+are limited to 120 requests per minute. MFA verification uses Sanctum authentication
+outside that employee-route throttle group. These limits are separate from the
+tiered limits used by the public API.
+
 ## Endpoints
 
 | Method | URI | Auth | Purpose |
