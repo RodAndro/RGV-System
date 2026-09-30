@@ -20,7 +20,7 @@ class InventoryController extends Controller
             ->when($request->filled('category_id'), fn ($query) => $query->where('category_id', $request->category_id))
             ->orderBy('id');
 
-        $etag = '"' . sha1(json_encode($request->query()) . ':' . Inventory::max('updated_at')) . '"';
+        $etag = '"'.sha1(json_encode($request->query()).':'.Inventory::max('updated_at')).'"';
 
         if ($request->headers->get('If-None-Match') === $etag) {
             return response('', 304)->header('ETag', $etag);

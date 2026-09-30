@@ -42,4 +42,14 @@ return [
         'timeout' => env('OLLAMA_TIMEOUT', 60),
     ],
 
+    'google_drive' => [
+        // Preferred: path to a service-account JSON key file on the server.
+        'credentials_path' => env('GOOGLE_DRIVE_CREDENTIALS_PATH'),
+        // Alternative: the service-account JSON inlined as a single-line string.
+        'credentials_json' => env('GOOGLE_DRIVE_CREDENTIALS_JSON'),
+        'folder_id' => env('GOOGLE_DRIVE_FOLDER_ID'),
+        // The email of the employee-facing account used for uploads (for auditing).
+        'subject' => env('GOOGLE_DRIVE_SUBJECT'),
+    ],
+
 ];

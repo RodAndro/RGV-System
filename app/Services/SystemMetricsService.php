@@ -51,11 +51,13 @@ class SystemMetricsService
                         return (int) floor((time() - $bootTime) / 86400);
                     }
                 }
+
                 return null;
             }
 
             if (@file_exists('/proc/uptime')) {
                 $uptime = (float) @file_get_contents('/proc/uptime');
+
                 return (int) floor($uptime / 86400);
             }
 
@@ -73,16 +75,18 @@ class SystemMetricsService
 
             if ($driver === 'sqlite') {
                 $path = database_path(config("database.connections.{$connection}.database"));
+
                 return file_exists($path) ? round(filesize($path) / 1024 / 1024, 1) : null;
             }
 
             if ($driver === 'mysql') {
                 $dbName = config("database.connections.{$connection}.database");
                 $result = DB::select(
-                    "SELECT SUM(data_length + index_length) / 1024 / 1024 AS size_mb
+                    'SELECT SUM(data_length + index_length) / 1024 / 1024 AS size_mb
                      FROM information_schema.tables
-                     WHERE table_schema = ?", [$dbName]
+                     WHERE table_schema = ?', [$dbName]
                 );
+
                 return round($result[0]->size_mb ?? 0, 1);
             }
 
@@ -113,13 +117,14 @@ class SystemMetricsService
     private static function countModel(string $modelClass, $date, string $column = 'created_at', string $operator = '>=', mixed $value = null): int
     {
         try {
-            if (!class_exists($modelClass)) {
+            if (! class_exists($modelClass)) {
                 return 0;
             }
             $query = $modelClass::whereDate($column, $date);
             if ($value !== null) {
                 $query->where($column, $operator, $value);
             }
+
             return $query->count();
         } catch (\Throwable) {
             return 0;

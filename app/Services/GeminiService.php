@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 class GeminiService
 {
     protected ?string $apiKey;
+
     protected string $baseUrl;
 
     public function __construct()
@@ -36,9 +37,10 @@ class GeminiService
 
             if ($response->successful()) {
                 $text = $response->json('candidates.0.content.parts.0.text');
-                if (!$text) {
+                if (! $text) {
                     $text = $response->body();
                 }
+
                 return ['success' => true, 'text' => $text, 'raw' => $response->json()];
             }
 
@@ -50,12 +52,8 @@ class GeminiService
 
     /**
      * Send a pre-built conversation payload to Gemini and return parsed result
-     *
-     * @param array $conversation
-     * @param string $model
-     * @return array
      */
-    public function generateFromConversation(array $conversation, string $model = 'gemini-pro') : array
+    public function generateFromConversation(array $conversation, string $model = 'gemini-pro'): array
     {
         $url = "{$this->baseUrl}/{$model}:generateContent?key={$this->apiKey}";
 
@@ -78,6 +76,7 @@ class GeminiService
                 if ($text) {
                     return ['success' => true, 'text' => $text, 'raw' => $data];
                 }
+
                 return ['success' => false, 'error' => 'No text candidate', 'raw' => $data];
             }
 

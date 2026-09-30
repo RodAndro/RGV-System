@@ -9,9 +9,7 @@ use Illuminate\Http\Request;
 
 class BookController extends Controller
 {
-    public function __construct(private readonly BookRepository $books)
-    {
-    }
+    public function __construct(private readonly BookRepository $books) {}
 
     public function index(Request $request)
     {

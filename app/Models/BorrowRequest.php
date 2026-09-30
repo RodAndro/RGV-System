@@ -5,12 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class BorrowRequest extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity;
+    use HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'request_number',
@@ -25,6 +25,7 @@ class BorrowRequest extends Model
         'admin_remarks',
         'approved_at',
         'rejected_at',
+        'cancelled_at',
         'borrowed_at',
         'returned_at',
     ];
@@ -35,6 +36,7 @@ class BorrowRequest extends Model
         'return_date' => 'date',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
+        'cancelled_at' => 'datetime',
         'borrowed_at' => 'datetime',
         'returned_at' => 'datetime',
     ];
@@ -52,6 +54,11 @@ class BorrowRequest extends Model
     public function borrowItems()
     {
         return $this->hasMany(BorrowItem::class, 'borrow_request_id');
+    }
+
+    public function returnEvidences()
+    {
+        return $this->hasMany(BorrowReturnEvidence::class, 'borrow_request_id');
     }
 
     public function scopePending($query)
@@ -81,7 +88,7 @@ class BorrowRequest extends Model
 
         static::creating(function ($request) {
             if (empty($request->request_number)) {
-                $request->request_number = 'BR-' . strtoupper(uniqid());
+                $request->request_number = 'BR-'.strtoupper(uniqid());
             }
         });
     }

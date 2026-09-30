@@ -63,7 +63,7 @@
             x-text="unreadCount"></span>
     </button>
 
-    <div x-show="open" @click.away="open = false" x-transition
+    <div x-show="open" x-cloak @click.away="open = false" x-transition
         class="absolute right-0 mt-3 w-96 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 max-h-96 overflow-hidden">
         <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
             <h3 class="font-semibold text-gray-800 dark:text-gray-100">Notifications</h3>

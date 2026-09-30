@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\Log;
 class OllamaService
 {
     protected string $baseUrl;
+
     protected string $model;
+
     protected int $timeout;
 
     public function __construct()
@@ -35,7 +37,7 @@ class OllamaService
     {
         try {
             $modelToUse = $model ?: $this->model;
-            
+
             $response = Http::timeout($this->timeout)->post("{$this->baseUrl}/api/chat", [
                 'model' => $modelToUse,
                 'messages' => $messages,
@@ -56,18 +58,21 @@ class OllamaService
                 }
 
                 Log::warning('Ollama returned no message content', ['response' => $response->json()]);
+
                 return ['success' => false, 'error' => 'Ollama returned no message content', 'raw' => $response->json()];
             }
 
             Log::warning('Ollama API error', ['status' => $response->status(), 'body' => $response->body()]);
+
             return [
                 'success' => false,
                 'status' => $response->status(),
                 'body' => $response->body(),
-                'error' => "Ollama API returned status {$response->status()}"
+                'error' => "Ollama API returned status {$response->status()}",
             ];
         } catch (\Throwable $e) {
-            Log::error('Ollama service error: ' . $e->getMessage(), ['exception' => get_class($e)]);
+            Log::error('Ollama service error: '.$e->getMessage(), ['exception' => get_class($e)]);
+
             return ['success' => false, 'error' => "Ollama service unavailable: {$e->getMessage()}"];
         }
     }
@@ -76,9 +81,11 @@ class OllamaService
     {
         try {
             $response = Http::timeout(5)->get("{$this->baseUrl}/api/tags");
+
             return $response->successful();
         } catch (\Throwable $e) {
-            Log::debug('Ollama availability check failed: ' . $e->getMessage());
+            Log::debug('Ollama availability check failed: '.$e->getMessage());
+
             return false;
         }
     }

@@ -2,19 +2,19 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Spatie\Permission\Traits\HasRoles;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Laravel\Sanctum\HasApiTokens;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasRoles, LogsActivity;
+    use HasApiTokens, HasFactory, HasRoles, LogsActivity, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -103,6 +103,13 @@ class User extends Authenticatable
         return $query->where('is_active', true);
     }
 
+    public function getSurnameAttribute(): string
+    {
+        $parts = preg_split('/\s+/', trim((string) $this->name)) ?: [];
+
+        return $parts ? end($parts) : 'User';
+    }
+
     public function isAdmin()
     {
         return $this->hasRole('admin');
@@ -135,13 +142,16 @@ class User extends Authenticatable
 
     public function verifyTotp(string $code): bool
     {
-        if (!$this->mfa_secret) return false;
+        if (! $this->mfa_secret) {
+            return false;
+        }
         $timeSlice = floor(time() / 30);
         for ($i = -1; $i <= 1; $i++) {
             if (hash_equals($this->generateTotpCode($this->mfa_secret, $timeSlice + $i), $code)) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -152,20 +162,22 @@ class User extends Authenticatable
         for ($i = 0; $i < 16; $i++) {
             $secret .= $chars[random_int(0, 31)];
         }
+
         return $secret;
     }
 
     private function generateTotpCode(string $secret, int $timeSlice): string
     {
         $secret = $this->base32Decode($secret);
-        $time = pack('N*', 0) . pack('N*', $timeSlice);
+        $time = pack('N*', 0).pack('N*', $timeSlice);
         $hash = hash_hmac('sha1', $time, $secret, true);
         $offset = ord($hash[strlen($hash) - 1]) & 0x0F;
         $binary = (ord($hash[$offset]) & 0x7F) << 24
             | (ord($hash[$offset + 1]) & 0xFF) << 16
             | (ord($hash[$offset + 2]) & 0xFF) << 8
             | (ord($hash[$offset + 3]) & 0xFF);
-        return str_pad((string)($binary % 1000000), 6, '0', STR_PAD_LEFT);
+
+        return str_pad((string) ($binary % 1000000), 6, '0', STR_PAD_LEFT);
     }
 
     private function base32Decode(string $secret): string
@@ -175,21 +187,29 @@ class User extends Authenticatable
         $binary = '';
         foreach (str_split($secret) as $char) {
             $pos = strpos($alphabet, $char);
-            if ($pos === false) continue;
+            if ($pos === false) {
+                continue;
+            }
             $binary .= str_pad(decbin($pos), 5, '0', STR_PAD_LEFT);
         }
         $result = '';
         foreach (str_split($binary, 8) as $byte) {
-            if (strlen($byte) < 8) break;
+            if (strlen($byte) < 8) {
+                break;
+            }
             $result .= chr(bindec($byte));
         }
+
         return $result;
     }
 
     public function getCurrentTotpCode(): ?string
     {
-        if (!$this->mfa_secret) return null;
+        if (! $this->mfa_secret) {
+            return null;
+        }
         $timeSlice = floor(time() / 30);
+
         return $this->generateTotpCode($this->mfa_secret, $timeSlice);
     }
 
@@ -205,6 +225,6 @@ class User extends Authenticatable
 
     public function generateRecoveryCodes(): array
     {
-        return collect(range(1, 8))->map(fn () => bin2hex(random_bytes(4)) . '-' . bin2hex(random_bytes(4)))->toArray();
+        return collect(range(1, 8))->map(fn () => bin2hex(random_bytes(4)).'-'.bin2hex(random_bytes(4)))->toArray();
     }
 }

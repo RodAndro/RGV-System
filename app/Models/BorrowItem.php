@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
 
 class BorrowItem extends Model
 {
@@ -14,6 +14,8 @@ class BorrowItem extends Model
         'borrow_request_id',
         'inventory_id',
         'quantity',
+        'reserved_quantity',
+        'return_evidence_id',
         'condition_borrowed',
         'condition_returned',
         'is_returned',
@@ -23,6 +25,7 @@ class BorrowItem extends Model
 
     protected $casts = [
         'quantity' => 'integer',
+        'reserved_quantity' => 'integer',
         'is_returned' => 'boolean',
         'returned_at' => 'datetime',
     ];
@@ -35,6 +38,11 @@ class BorrowItem extends Model
     public function inventory()
     {
         return $this->belongsTo(Inventory::class, 'inventory_id');
+    }
+
+    public function returnEvidence()
+    {
+        return $this->belongsTo(BorrowReturnEvidence::class, 'return_evidence_id');
     }
 
     public function scopeReturned(Builder $query)

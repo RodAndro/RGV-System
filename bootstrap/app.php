@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'api.rate' => \App\Http\Middleware\TieredRateLimitMiddleware::class,
             'camel.json' => \App\Http\Middleware\CamelCaseJsonResponse::class,
             'mfa' => \App\Http\Middleware\RequireMfa::class,
+            'active.employee' => \App\Http\Middleware\EnsureActiveEmployee::class,
         ]);
 
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
@@ -25,6 +26,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\LogPageVisit::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->renderable(function (\DomainException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+        });
+
         $exceptions->reportable(function (\Throwable $e) {
             try {
                 \App\Models\AuditLog::create([
