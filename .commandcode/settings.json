@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(test:*)",
+      "Shell(php --version 2 >& 1)",
+      "Shell(composer:*)",
+      "powershell",
+      "Shell(del:*)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}
