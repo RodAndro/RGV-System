@@ -129,6 +129,12 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1/mobile
 See [mobile/README.md](mobile/README.md) for Flutter setup and
 [RGV-Mobile-API.md](RGV-Mobile-API.md) for API and deployment configuration.
 
+## Deployment
+
+For a free Render web service with Supabase PostgreSQL, see
+[docs/render-deployment.md](docs/render-deployment.md). Free hosting has sleep,
+storage, and compute limits; it is suitable for testing, not production.
+
 ## Documentation
 
 | Document | Description |
