@@ -89,13 +89,9 @@
                             @forelse($availableInventory as $item)
                                 <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                                     <div class="flex items-center">
-                                        @if($item->image_path)
-                                            <img src="{{ asset('storage/' . $item->image_path) }}" class="w-12 h-12 object-cover rounded-xl mr-3">
-                                        @else
-                                            <div class="w-12 h-12 bg-[#eff6ff] rounded-xl flex items-center justify-center mr-3">
-                                                <i class="fas fa-box text-[#2563eb]"></i>
-                                            </div>
-                                        @endif
+                                        <div class="w-12 h-12 bg-[#eff6ff] rounded-xl flex items-center justify-center mr-3">
+                                            <i class="fas fa-box text-[#2563eb]"></i>
+                                        </div>
                                         <div>
                                             <p class="font-semibold text-gray-800">{{ $item->name }}</p>
                                             <p class="text-sm text-gray-500">{{ $item->category->name }} • {{ $item->quantity }} {{ $item->unit }}</p>

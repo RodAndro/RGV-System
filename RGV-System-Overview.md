@@ -2,29 +2,33 @@
 
 > **RGV Multi-Tech Services** — Business Operations Management System
 >
-> Backend: Laravel 12.0 | PHP 8.2+ | SQLite locally / PostgreSQL or MySQL configurable | Admin/Public: Tailwind CSS + Alpine.js | Mobile: Flutter (Android)
+> Backend: Laravel 12 | PHP 8.2+ | Supabase PostgreSQL | Admin/Public: Tailwind CSS + Alpine.js | Mobile: Flutter Android employee app (Supabase-direct)
+>
+> Updated: October 2, 2026
 
 ---
 
 ## What It Does
 
-A dual-platform system for managing service bookings, inventory, and equipment borrowing for RGV Multi-Tech Services. Three user roles access different platforms:
+A current multi-platform system for managing service bookings, inventory, and equipment borrowing for RGV Multi-Tech Services. The implementation combines a Laravel web application, a role-based admin and employee portal, and a dedicated employee mobile API with a Flutter Android client.
+
+This documentation set is aligned to the live codebase in `routes/web.php`, `routes/api.php`, and the Android app under `mobile/` as of October 2026.
 
 | Role | Platform | Key Functions |
 |------|----------|---------------|
-| **Public** | Web (`/`) | Submit and track service bookings, use AI chatbot |
-| **Employee** | Web portal + Flutter Android app | Manage assigned bookings on web; use the app for inventory lookup, borrow requests, returns, and account settings |
-| **Admin** | Web (`/admin`) | Full control — bookings, inventory, users, reports, backups, settings, manage all operations |
+| **Public** | Web (`/`) | Submit and track service bookings and service requests through the public portal |
+| **Employee** | Web portal + Flutter Android app | Manage assigned bookings on the web; use the app for inventory lookup, borrow requests, returns, and account settings |
+| **Admin** | Web (`/admin`) | Full control — bookings, inventory, users, reports, backups, settings, audit trails, and import/export workflows |
 
 ---
 
 ## Core Modules
 
-**Bookings** — Public submits a service request → Admin approves/rejects → Assigns employee → Completed. Real-time tracking via reference number. File attachments supported.
+**Bookings** — Public submits a service request → Admin approves/rejects → Assigns employee → Completed. Real-time tracking via reference number. Booking file uploads are not supported.
 
-**Inventory** — Track items with categories, suppliers, stock levels, QR codes. Low-stock alerts. Borrow/return workflow with condition tracking.
+**Inventory** — Track items with categories, stock levels, permanent QR codes, and low-stock alerts. Inventory image uploads are not supported. Borrow/return workflow with condition tracking.
 
-**Borrow Requests** — In the Android app, employees scan a QR code or enter an item code, submit a request, and wait for admin approval. Pending requests reserve stock. For returns, employees select borrowed items, report condition, and submit a required proof photo; stock is restored only after the server-side Drive upload succeeds. Web and mobile use the same Laravel data and business rules.
+**Borrow Requests** — In the Android app, employees scan a QR code or enter an item code, submit a request, and wait for admin approval. Pending requests reserve stock. For returns, employees select borrowed items, report condition, and choose a return location; photos are not required. Web and mobile share the same Supabase database and business rules; the native app enforces them through the same restricted RPCs the website's data lives behind.
 
 **Users & Roles** — Spatie RBAC (Admin/Employee). MFA support (TOTP + email). Impersonation for admins. Login history and force-logout.
 
@@ -48,9 +52,9 @@ A dual-platform system for managing service bookings, inventory, and equipment b
 
 | Metric | Count |
 |--------|:----:|
-| Application tables | 38 |
-| Eloquent models | 22 |
-| Migration files | 28 |
+| Application tables | 33 |
+| Eloquent models | 18 |
+| Migration files | 27 |
 | Controllers | 42 |
 | Notification classes | 14 |
 | JSON API endpoints | 34+ |
@@ -63,16 +67,17 @@ A dual-platform system for managing service bookings, inventory, and equipment b
 
 | Category | Endpoints | Auth |
 |----------|:---:|:---:|
-| Public REST | `/api/inventories`, `/api/books`, `/api/books/search`, `/api/books/{isbn}` | None |
-| AI | `/api/chatbot/query`, `/ask-gemini` | None |
+| Public REST | `/api/inventories` | None |
+| AI | `/api/chatbot/query` | Admin session |
 | Admin | Dashboard stats, notifications, AI insights, import/export status | Admin |
 | Employee | Notification count | Employee+MFA |
-| Mobile Employee | `/api/v1/mobile/*` (15 routes) | Sanctum bearer token + active `employee` role |
+| Mobile Employee | Supabase Auth + restricted PostgreSQL RPCs | Supabase JWT (AAL2 when MFA is required) |
 | Auth | Login, register, logout, MFA, password reset | Varies |
 
 The public API uses tiered limits (30/60/300/1000 requests per minute,
-configurable in Site Settings). Mobile login is limited to 20/minute and
-protected employee mobile routes to 120/minute.
+configurable in Site Settings). The legacy Laravel mobile API limits
+login to 20/minute and protected employee routes to 120/minute; the
+native app's Supabase RPCs are governed by Supabase's own rate limits.
 
 ---
 
@@ -81,8 +86,8 @@ protected employee mobile routes to 120/minute.
 | Layer | Technology |
 |-------|-----------|
 | Backend | Laravel 12, PHP 8.2+ |
-| Database | SQLite (configurable to MySQL/PostgreSQL) |
-| Auth | Laravel Breeze, Spatie Permission (RBAC), MFA (TOTP + email), Sanctum bearer tokens for mobile |
+| Database | Supabase PostgreSQL (Laravel `pgsql` + native RPCs) |
+| Auth | Laravel Breeze, Spatie Permission (RBAC), MFA (TOTP + email) for web; Supabase Auth + TOTP MFA for mobile |
 | Admin/Public Web | Tailwind CSS 3, Alpine.js 3, Blade templates |
 | Employee Mobile | Flutter (Android native) with QR code scanning |
 | QR Codes | simplesoftwareio/simple-qrcode (generation), Flutter camera (scanning) |
@@ -91,7 +96,7 @@ protected employee mobile routes to 120/minute.
 | Backups | spatie/laravel-backup |
 | Activity Log | spatie/laravel-activitylog + custom tamper-evident audit |
 | AI | openai-php/client, Google Gemini, Ollama (local) |
-| Testing | PHPUnit 11 |
+| Testing | PHPUnit 11 (hermetic SQLite in-memory, forced via phpunit.xml) |
 
 ---
 
@@ -109,4 +114,4 @@ protected employee mobile routes to 120/minute.
 
 ---
 
-*Last Updated: September 30, 2026*
+*Last Updated: October 2, 2026*

@@ -6,30 +6,33 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class AuditLogController extends Controller
 {
     public function index(Request $request)
     {
-        $bruteForceIps = AuditLog::where('event', 'failed login')
-            ->where('created_at', '>=', now()->subHour())
-            ->groupBy('ip_address')
-            ->havingRaw('COUNT(*) >= 3')
-            ->pluck('ip_address')
-            ->toArray();
-
-        $rapidFireIps = AuditLog::where('created_at', '>=', now()->subMinute())
-            ->groupBy('ip_address')
-            ->havingRaw('COUNT(*) >= 10')
-            ->pluck('ip_address')
-            ->toArray();
-
-        $rapidFireUsers = AuditLog::where('created_at', '>=', now()->subMinute())
-            ->whereNotNull('user_id')
-            ->groupBy('user_id')
-            ->havingRaw('COUNT(*) >= 10')
-            ->pluck('user_id')
-            ->toArray();
+        [$bruteForceIps, $rapidFireIps, $rapidFireUsers] = Cache::remember('admin.audit.alert-summary', now()->addSeconds(20), function () {
+            return [
+                AuditLog::where('event', 'failed login')
+                    ->where('created_at', '>=', now()->subHour())
+                    ->groupBy('ip_address')
+                    ->havingRaw('COUNT(*) >= 3')
+                    ->pluck('ip_address')
+                    ->toArray(),
+                AuditLog::where('created_at', '>=', now()->subMinute())
+                    ->groupBy('ip_address')
+                    ->havingRaw('COUNT(*) >= 10')
+                    ->pluck('ip_address')
+                    ->toArray(),
+                AuditLog::where('created_at', '>=', now()->subMinute())
+                    ->whereNotNull('user_id')
+                    ->groupBy('user_id')
+                    ->havingRaw('COUNT(*) >= 10')
+                    ->pluck('user_id')
+                    ->toArray(),
+            ];
+        });
 
         $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $logs = $this->query($request)

@@ -103,7 +103,7 @@ class InventoryImport implements ToCollection, WithHeadingRow, WithChunkReading
     private function normalizeRow(array $row): array
     {
         return [
-            'item_code' => $row['item_code'] ?? $row['isbn'] ?? null,
+            'item_code' => $row['item_code'] ?? null,
             'name' => $row['name'] ?? $row['title'] ?? null,
             'description' => $row['description'] ?? null,
             'category' => $row['category'] ?? null,

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\AuditLog;
-use App\Models\QueryPerformanceLog;
 use DB;
 
 class SystemMetricsService
@@ -35,8 +34,6 @@ class SystemMetricsService
             'requests_today' => AuditLog::where('event', 'page_visit')->whereDate('created_at', today())->count(),
             'requests_last_minute' => AuditLog::where('event', 'page_visit')->where('created_at', '>=', now()->subMinute())->count(),
             'avg_response_time_ms' => self::getAvgResponseTime(),
-            'slow_queries_today' => self::countModel(QueryPerformanceLog::class, today(), 'duration_ms', '>', 1000),
-            'total_queries_today' => self::countModel(QueryPerformanceLog::class, today()),
         ];
     }
 

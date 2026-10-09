@@ -2,7 +2,7 @@
 
 > **RGV Multi-Tech Services** — Complete API Reference
 >
-> Version: 1.6 | Framework: Laravel 12.0 | Last Updated: September 30, 2026
+> Version: 1.6 | Framework: Laravel 12 | Last Updated: October 2, 2026
 
 ---
 
@@ -13,13 +13,9 @@
 3. [Rate Limiting](#rate-limiting)
 4. [Public API Endpoints](#public-api-endpoints)
    - [GET /api/inventories](#get-apiinventories)
-   - [GET /api/books](#get-apibooks)
-   - [GET /api/books/search](#get-apibookssearch)
-   - [GET /api/books/{isbn}](#get-apibooksisbn)
 5. [Mobile Employee API](#mobile-employee-api)
 6. [AI & Chatbot Endpoints](#ai--chatbot-endpoints)
-   - [POST /api/chatbot/query](#post-apichatbotquery)
-   - [POST /ask-gemini](#post-ask-gemini)
+  - [POST /api/chatbot/query](#post-apichatbotquery)
 7. [Admin JSON Endpoints](#admin-json-endpoints)
    - [GET /admin/dashboard/stats](#get-admindashboardstats)
    - [GET /admin/notifications/unread-count](#get-adminnotificationsunread-count)
@@ -42,12 +38,12 @@
 
 ## Overview
 
-The RGV System exposes public, administrative, employee, and mobile JSON APIs:
+The RGV System exposes public, administrative, employee, and mobile JSON APIs. The current Flutter app uses Supabase Auth and restricted PostgreSQL RPCs; the Laravel mobile endpoints documented here remain for compatibility and are not required for native login or employee workflows.
 
 | Category | Count | Base Path | Auth Required |
 |----------|-------|-----------|:---:|
 | **Public REST API** | 4 | `/api/` | No |
-| **AI & Chatbot** | 2 | `/api/chatbot`, `/ask-gemini` | No |
+| **AI & Chatbot** | 1 | `/api/chatbot/query` | Admin session |
 | **Admin JSON** | 7 | `/admin/` | Admin |
 | **Employee JSON** | 1 | `/employee/` | Employee + MFA |
 | **Mobile Employee API** | 15 | `/api/v1/mobile/` | Sanctum bearer token + active employee |
@@ -58,8 +54,9 @@ The RGV System exposes public, administrative, employee, and mobile JSON APIs:
 
 - **Public API routes** (`/api/*`) use `camel.json` middleware — all response keys are automatically converted from `snake_case` to `camelCase`.
 - **Web routes** returning JSON (`/admin/*`, `/employee/*`) use `snake_case` keys.
+- **Chatbot endpoint** is defined in the web route layer as `POST /api/chatbot/query`, protected by `auth`, `admin`, and `throttle:30,1` rather than the public API tier middleware.
 - **Cursor pagination** is used for list endpoints (no offset-based pages).
-- **ETag caching** is supported on inventory and book list endpoints.
+- **ETag caching** is supported on inventory list endpoints.
 - **Public API rate limiting** uses the tiered rate limiter. Mobile login is limited to 20/minute and protected employee resource routes to 120/minute.
 
 ---
@@ -78,13 +75,18 @@ X-CSRF-TOKEN: {token}
 
 Or include it in the request body as `_token`.
 
-### Mobile Employee API
+### Legacy Mobile Employee API
+
+The `/api/v1/mobile` Sanctum endpoints remain available to external clients.
+The current Flutter app does not depend on them; it authenticates through
+Supabase Auth and calls the restricted RPCs described in
+[`mobile/README.md`](mobile/README.md).
 
 `/api/v1/mobile/auth/login` issues a Sanctum token to an active user with the
 `employee` role, or a short-lived MFA token when MFA is enabled. Protected mobile
 routes require `Authorization: Bearer <token>`. The mobile API uses `snake_case`
 responses and has its own rate limits. See [RGV-Mobile-API.md](RGV-Mobile-API.md)
-for the complete route, payload, and return-photo upload reference.
+for the complete route and payload reference.
 
 The route prefix is `/api/v1/mobile`:
 
@@ -101,7 +103,7 @@ The route prefix is `/api/v1/mobile`:
 | GET | `/borrow-requests/{id}` | Request details |
 | POST | `/borrow-requests/{id}/cancel` | Cancel a pending request |
 | GET | `/borrow-requests/returnable` | Items eligible for return |
-| POST | `/borrow-requests/{id}/return` | Return items with proof photo |
+| POST | `/borrow-requests/{id}/return` | Return items with return location |
 | PATCH | `/profile` | Update employee name |
 | PUT | `/password` | Change password |
 
@@ -214,122 +216,15 @@ Supports `If-None-Match` → returns **304 Not Modified** if data hasn't changed
 
 ---
 
-### `GET /api/books`
-
-List books with filtering and cursor pagination. Returns `BookResource` collection.
-
-**Auth:** None  
-**Rate Limit:** 30 req/min (public tier)
-
-#### Query Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `category_id` | int | — | Filter by category ID |
-| `min_price` | numeric | — | Minimum price |
-| `max_price` | numeric | — | Maximum price |
-| `format` | string | — | Filter by format: `paperback`, `hardcover`, `ebook` |
-| `per_page` | int | 50 | Items per page |
-
-#### Response (200 OK)
-
-```json
-{
-  "data": [
-    {
-      "id": 1,
-      "isbn13": "9780123456789",
-      "title": "The Great Adventure",
-      "author": "Jane Smith",
-      "format": "hardcover",
-      "price": "29.99",
-      "stock": 42,
-      "rating": 4.5,
-      "category": {
-        "id": 3,
-        "name": "Fiction",
-        "slug": "fiction"
-      }
-    }
-  ],
-  "nextCursor": "...",
-  "prevCursor": null,
-  "perPage": 50
-}
-```
-
----
-
-### `GET /api/books/search`
-
-Full-text search across books by title, author, and description.
-
-**Auth:** None  
-**Rate Limit:** 30 req/min (public tier)
-
-#### Query Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|:---:|-------------|
-| `q` | string | ✅ | Search term (minimum 2 characters) |
-| `per_page` | int | — | Items per page (default 25) |
-
-**MySQL:** Uses `MATCH ... AGAINST` fulltext index.  
-**SQLite:** Falls back to `LIKE` queries.
-
-#### Response (200 OK)
-
-Same `BookResource` shape as `/api/books` (without `format` and `is_active` fields).
-
-#### Validation Error (422)
-
-```json
-{
-  "message": "The q field is required.",
-  "errors": {
-    "q": ["The q field is required."]
-  }
-}
-```
-
----
-
-### `GET /api/books/{isbn}`
-
-Lookup a single book by ISBN-10 or ISBN-13.
-
-**Auth:** None  
-**Rate Limit:** 30 req/min (public tier)  
-**Cache:** 900 seconds (15 minutes)
-
-#### Route Parameter
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `isbn` | string | ISBN-10 (e.g., `0-123456-78-9`) or ISBN-13 (e.g., `9780123456789`) |
-
-#### Response (200 OK)
-
-Single `BookResource` object (same shape as list item).
-
-#### Response (404)
-
-```json
-{
-  "message": "Not Found"
-}
-```
-
----
-
 ## AI & Chatbot Endpoints
 
 ### `POST /api/chatbot/query`
 
-AI-powered chatbot for customer inquiries. Tries Ollama → Gemini → rule-based fallback.
+Reports chatbot. It loads the selected report's aggregates server-side and tries
+Ollama, Gemini, then a deterministic fallback using the same database context.
 
-**Auth:** None  
-**Rate Limit:** None
+**Auth:** Admin session  
+**Rate Limit:** 30 requests per minute
 
 #### Request Body (JSON)
 
@@ -337,18 +232,13 @@ AI-powered chatbot for customer inquiries. Tries Ollama → Gemini → rule-base
 |-----------|------|:---:|-------------|
 | `message` | string | ✅ | User's question or message |
 | `pageType` | string | No | Context: `bookings`, `inventory`, `borrow_requests`, `users`, `reports` |
-| `history` | array | No | Chat history (max 5 messages): `[{"type": "user"|"bot", "content": "..."}]` |
 
 #### Example Request
 
 ```json
 {
   "message": "How many bookings are pending?",
-  "pageType": "bookings",
-  "history": [
-    {"type": "user", "content": "Hello"},
-    {"type": "bot", "content": "Welcome to RGV! How can I help?"}
-  ]
+  "pageType": "bookings"
 }
 ```
 
@@ -363,56 +253,9 @@ AI-powered chatbot for customer inquiries. Tries Ollama → Gemini → rule-base
 
 #### Behavior Notes
 
-- Greetings (`"hi"`, `"hello"`, `"help"`) return a canned welcome response.
-- Report-related keywords trigger deterministic responses with live database counts.
-- All other queries route through the AI pipeline (Ollama → Gemini → rule-based).
-
----
-
-### `POST /ask-gemini`
-
-Direct query to Google Gemini AI.
-
-**Auth:** None  
-**Rate Limit:** None
-
-#### Request Body (JSON)
-
-| Parameter | Type | Required | Description |
-|-----------|------|:---:|-------------|
-| `prompt` | string | ✅ | Prompt to send to Gemini |
-| `data` | object | No | Optional context data |
-
-#### Example Request
-
-```json
-{
-  "prompt": "Analyze the booking trends for this month",
-  "data": {
-    "bookings_this_month": 45,
-    "bookings_last_month": 38
-  }
-}
-```
-
-#### Response (200 OK)
-
-```json
-{
-  "text": "Based on the data provided, bookings have increased by 18.4% compared to last month..."
-}
-```
-
-#### Error Response (500)
-
-```json
-{
-  "error": "AI request failed",
-  "details": {
-    "message": "API key invalid"
-  }
-}
-```
+- Server-fetched report aggregates are the only application data sent to AI providers.
+- Browser conversation history is session-only and is not sent to the server.
+- Provider access is restricted to this protected endpoint.
 
 ---
 
@@ -843,7 +686,7 @@ X-RateLimit-Remaining: 25
 Content-Type: application/json
 ```
 
-### Inventory & Book List Endpoints
+### Inventory List Endpoints
 
 ```http
 ETag: "abc123def456..."
@@ -867,24 +710,20 @@ Content-Type: application/json
 | # | Method | URI | Auth | Rate Limit | ETag |
 |---|--------|-----|:---:|:---:|:---:|
 | 1 | GET | `/api/inventories` | — | 30/min | ✅ |
-| 2 | GET | `/api/books` | — | 30/min | — |
-| 3 | GET | `/api/books/search` | — | 30/min | — |
-| 4 | GET | `/api/books/{isbn}` | — | 30/min | — |
-| 5 | POST | `/api/chatbot/query` | — | — | — |
-| 6 | POST | `/ask-gemini` | — | — | — |
-| 7 | GET | `/admin/dashboard/stats` | Admin | — | — |
-| 8 | GET | `/admin/notifications/unread-count` | Admin | — | — |
-| 9 | GET | `/admin/ai/insights` | Admin | — | — |
-| 10 | GET | `/admin/ai/forecast` | Admin | — | — |
-| 11 | GET | `/admin/ai/inventory-recommendations` | Admin | — | — |
-| 12 | GET | `/admin/import-export/imports/{log}` | Admin | — | — |
-| 13 | GET | `/admin/import-export/{type}/export` | Admin | — | — |
-| 14 | GET | `/employee/notifications/unread-count` | Employee+MFA | — | — |
-| 15 | GET | `/profile/export-personal-data` | Auth | — | — |
-| 16 | POST | `/session/extend` | Auth | — | — |
-| 17 | POST | `/login` | — | MAX_LOGIN_ATTEMPTS | — |
-| 18 | POST | `/register` | — | — | — |
-| 19 | POST | `/logout` | Auth | — | — |
+| 2 | POST | `/api/chatbot/query` | Admin | 30/min | — |
+| 3 | GET | `/admin/dashboard/stats` | Admin | — | — |
+| 4 | GET | `/admin/notifications/unread-count` | Admin | — | — |
+| 5 | GET | `/admin/ai/insights` | Admin | — | — |
+| 6 | GET | `/admin/ai/forecast` | Admin | — | — |
+| 7 | GET | `/admin/ai/inventory-recommendations` | Admin | — | — |
+| 8 | GET | `/admin/import-export/imports/{log}` | Admin | — | — |
+| 9 | GET | `/admin/import-export/{type}/export` | Admin | — | — |
+| 10 | GET | `/employee/notifications/unread-count` | Employee+MFA | — | — |
+| 11 | GET | `/profile/export-personal-data` | Auth | — | — |
+| 12 | POST | `/session/extend` | Auth | — | — |
+| 13 | POST | `/login` | — | MAX_LOGIN_ATTEMPTS | — |
+| 14 | POST | `/register` | — | — | — |
+| 15 | POST | `/logout` | Auth | — | — |
 
 ### Environment Variables Reference
 

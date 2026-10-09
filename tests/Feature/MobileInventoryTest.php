@@ -48,6 +48,22 @@ class MobileInventoryTest extends TestCase
             ->assertJsonPath('item.name', 'Handheld Jackhammer');
     }
 
+    public function test_lookup_resolves_generated_qr_url(): void
+    {
+        $employee = $this->createEmployee();
+        $inventory = $this->createInventory([
+            'item_code' => 'RGV-010',
+            'name' => 'Cordless Drill',
+        ]);
+
+        Sanctum::actingAs($employee, ['employee']);
+
+        $this->getJson('/api/v1/mobile/inventory/lookup?code='.urlencode($inventory->qrUrl()))
+            ->assertOk()
+            ->assertJsonPath('item.id', $inventory->id)
+            ->assertJsonPath('item.item_code', 'RGV-010');
+    }
+
     public function test_lookup_unknown_code_fails(): void
     {
         $employee = $this->createEmployee();

@@ -2,8 +2,12 @@
 
 namespace Tests\Unit;
 
+use App\Notifications\BorrowRequestReturned;
+use App\Notifications\LowStockAlert;
+use App\Notifications\NewBorrowRequestReceived;
 use App\Services\BorrowService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Tests\Concerns\WithRoles;
 use Tests\TestCase;
@@ -77,6 +81,50 @@ class BorrowServiceTest extends TestCase
         $this->assertSame(2, $inventory->fresh()->quantity);
     }
 
+    public function test_new_request_notification_is_not_sent_when_an_outer_transaction_rolls_back(): void
+    {
+        $admin = $this->createAdmin();
+        $employee = $this->createEmployee();
+        $inventory = $this->createInventory([
+            'quantity' => 2,
+            'low_stock_threshold' => 1,
+        ]);
+
+        try {
+            DB::transaction(function () use ($employee, $inventory): void {
+                $this->service->createPending($employee, 'Need it', '2026-10-01', '2026-10-10', [
+                    ['inventory_id' => $inventory->id, 'quantity' => 1],
+                ]);
+
+                throw new \RuntimeException('Roll back the outer transaction.');
+            });
+        } catch (\RuntimeException) {
+        }
+
+        Notification::assertNotSentTo($admin, NewBorrowRequestReceived::class);
+    }
+
+    public function test_reserving_stock_only_alerts_admins_when_quantity_crosses_low_stock_threshold(): void
+    {
+        Notification::fake();
+        $admin = $this->createAdmin();
+        $employee = $this->createEmployee();
+        $inventory = $this->createInventory([
+            'quantity' => 5,
+            'low_stock_threshold' => 3,
+        ]);
+
+        $this->service->createPending($employee, 'Need it', '2026-10-01', '2026-10-10', [
+            ['inventory_id' => $inventory->id, 'quantity' => 2],
+        ]);
+        Notification::assertSentToTimes($admin, LowStockAlert::class, 1);
+
+        $this->service->createPending($employee, 'Need more', '2026-10-01', '2026-10-10', [
+            ['inventory_id' => $inventory->id, 'quantity' => 1],
+        ]);
+        Notification::assertSentToTimes($admin, LowStockAlert::class, 1);
+    }
+
     public function test_competing_reservations_are_rejected(): void
     {
         $employeeA = $this->createEmployee();
@@ -115,6 +163,7 @@ class BorrowServiceTest extends TestCase
         $this->assertSame(3, $inventory->fresh()->quantity);
         $this->assertTrue((bool) $item->fresh()->is_returned);
         $this->assertSame('returned', $request->fresh()->status);
+        Notification::assertSentToTimes($employee, BorrowRequestReturned::class, 1);
 
         // Simulate a retry: calling return again must not restore stock twice.
         $this->service->returnItems($request, [
@@ -122,6 +171,7 @@ class BorrowServiceTest extends TestCase
         ]);
 
         $this->assertSame(3, $inventory->fresh()->quantity);
+        Notification::assertSentToTimes($employee, BorrowRequestReturned::class, 1);
     }
 
     public function test_quantity_above_availability_throws(): void

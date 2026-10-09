@@ -42,7 +42,7 @@ class RgvApp extends StatelessWidget {
         Provider<ReturnRepository>.value(value: returnRepository),
       ],
       child: MaterialApp(
-        title: 'RGV Employee',
+        title: 'RGV Multi-Tech Services',
         debugShowCheckedModeBanner: false,
         theme: buildAppTheme(),
         home: const AuthGate(),

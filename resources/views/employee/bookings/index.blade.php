@@ -23,7 +23,7 @@
                         <td class="px-6 py-4 whitespace-nowrap font-medium text-[#2563eb]">{{ $booking->reference_number }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-gray-800">{{ $booking->full_name }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-gray-600">
-                            {{ $booking->preferred_date->format('M d, Y') }} at {{ $booking->preferred_time }}
+                            {{ $booking->preferred_date->format('M d, Y') }} at {{ $booking->preferred_time_formatted }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @if($booking->status == 'pending')

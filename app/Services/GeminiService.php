@@ -12,12 +12,16 @@ class GeminiService
 
     public function __construct()
     {
-        $this->apiKey = env('GEMINI_API_KEY');
+        $this->apiKey = config('services.gemini.api_key');
         $this->baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
     }
 
-    public function generateText(string $prompt, string $model = 'gemini-2.0-flash'): array
+    public function generateText(string $prompt, string $model = 'gemini-2.0-flash', ?string $systemPrompt = null): array
     {
+        if (! $this->apiKey) {
+            return ['success' => false, 'error' => 'Gemini is not configured.'];
+        }
+
         $url = "{$this->baseUrl}/{$model}:generateContent?key={$this->apiKey}";
 
         $payload = [
@@ -31,9 +35,12 @@ class GeminiService
                 ],
             ],
         ];
+        if ($systemPrompt) {
+            $payload['systemInstruction'] = ['parts' => [['text' => $systemPrompt]]];
+        }
 
         try {
-            $response = Http::post($url, $payload);
+            $response = Http::timeout((int) config('services.gemini.timeout', 30))->post($url, $payload);
 
             if ($response->successful()) {
                 $text = $response->json('candidates.0.content.parts.0.text');
@@ -50,39 +57,4 @@ class GeminiService
         }
     }
 
-    /**
-     * Send a pre-built conversation payload to Gemini and return parsed result
-     */
-    public function generateFromConversation(array $conversation, string $model = 'gemini-pro'): array
-    {
-        $url = "{$this->baseUrl}/{$model}:generateContent?key={$this->apiKey}";
-
-        $payload = [
-            'contents' => $conversation,
-            'generationConfig' => [
-                'temperature' => 0.7,
-                'topK' => 40,
-                'topP' => 0.95,
-                'maxOutputTokens' => 1024,
-            ],
-        ];
-
-        try {
-            $response = Http::post($url, $payload);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
-                if ($text) {
-                    return ['success' => true, 'text' => $text, 'raw' => $data];
-                }
-
-                return ['success' => false, 'error' => 'No text candidate', 'raw' => $data];
-            }
-
-            return ['success' => false, 'status' => $response->status(), 'body' => $response->body()];
-        } catch (\Throwable $e) {
-            return ['success' => false, 'error' => $e->getMessage()];
-        }
-    }
 }

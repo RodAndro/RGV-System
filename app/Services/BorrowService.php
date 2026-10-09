@@ -77,7 +77,7 @@ class BorrowService
                 $inventory->decrement('quantity', $item['quantity']);
             }
 
-            $this->notifyAdmins(new NewBorrowRequestReceived($borrowRequest));
+            DB::afterCommit(fn () => $this->notifyAdmins(new NewBorrowRequestReceived($borrowRequest)));
 
             return $borrowRequest;
         });
@@ -168,9 +168,11 @@ class BorrowService
      *
      * @param  array<int, array{borrow_item_id: int, condition_returned: string, damage_notes: ?string}>  $items
      */
-    public function returnItems(BorrowRequest $borrowRequest, array $items, ?BorrowReturnEvidence $evidence = null): void
+    public function returnItems(BorrowRequest $borrowRequest, array $items, ?BorrowReturnEvidence $evidence = null, ?string $returnLocation = null): void
     {
-        DB::transaction(function () use ($borrowRequest, $items, $evidence) {
+        $completedReturn = false;
+
+        DB::transaction(function () use ($borrowRequest, $items, $evidence, $returnLocation, &$completedReturn) {
             $request = $this->lockRequest($borrowRequest->id);
 
             if (! in_array($request->status, ['borrowed', 'returned'], true)) {
@@ -216,16 +218,23 @@ class BorrowService
                 }
             }
 
+            $request->update([
+                'return_location' => $returnLocation,
+            ]);
+
             if ($request->borrowItems()->where('is_returned', false)->count() === 0) {
                 $request->update([
                     'status' => 'returned',
                     'return_date' => now()->toDateString(),
                     'returned_at' => now(),
                 ]);
+                $completedReturn = true;
             }
         });
 
-        if ($borrowRequest->borrowItems()->where('is_returned', false)->count() === 0) {
+        $borrowRequest->refresh();
+
+        if ($completedReturn) {
             $borrowRequest->employee?->notify(new BorrowRequestReturned($borrowRequest));
         }
     }

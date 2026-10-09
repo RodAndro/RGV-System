@@ -22,7 +22,7 @@ class BookingRejected extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return $this->channelsViaPreferences($notifiable, 'booking');
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -33,7 +33,7 @@ class BookingRejected extends Notification
             ->line('We regret to inform you that your booking has been rejected.')
             ->line('Reference Number: ' . $this->booking->reference_number)
             ->line('Date: ' . $this->booking->preferred_date->format('F d, Y'))
-            ->line('Time: ' . $this->booking->preferred_time)
+            ->line('Time: ' . $this->booking->preferred_time_formatted)
             ->line('Reason: ' . $this->booking->remarks)
             ->line('Please contact us if you have any questions or would like to reschedule.')
             ->action('Track Booking', route('booking.track', $this->booking->reference_number))
@@ -49,6 +49,4 @@ class BookingRejected extends Notification
             'link' => route('booking.track', $this->booking->reference_number),
         ];
     }
-}
-}
 }

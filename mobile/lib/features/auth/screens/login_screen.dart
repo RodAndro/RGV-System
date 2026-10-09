@@ -65,7 +65,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(Icons.home_repair_service, size: 64, color: RgvColors.blue),
+                    Image.asset(
+                      'assets/images/RGV-Logo.png',
+                      width: 144,
+                      height: 144,
+                      fit: BoxFit.contain,
+                    ),
                     const SizedBox(height: 16),
                     const Text(
                       'RGV Multi-Tech Services',

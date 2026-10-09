@@ -8,6 +8,8 @@ use App\Models\Inventory;
 use App\Models\BorrowRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
@@ -40,14 +42,12 @@ class ReportController extends Controller
             });
         }
 
-        $stats = [
-            'total' => \App\Models\Booking::count(),
-            'pending' => \App\Models\Booking::where('status', 'pending')->count(),
-            'approved' => \App\Models\Booking::where('status', 'approved')->count(),
-            'completed' => \App\Models\Booking::where('status', 'completed')->count(),
-            'rejected' => \App\Models\Booking::where('status', 'rejected')->count(),
-            'cancelled' => \App\Models\Booking::where('status', 'cancelled')->count(),
-        ];
+        $stats = Cache::remember('admin.stats.bookings', now()->addSeconds(20), function () {
+            $row = Booking::query()->selectRaw("COUNT(*) as total, COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending, COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved, COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed, COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected, COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled")
+                ->first();
+
+            return array_map('intval', $row->getAttributes());
+        });
 
         $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $bookings = $query->latest()->paginate($perPage)->appends($request->except('page'));
@@ -56,19 +56,18 @@ class ReportController extends Controller
 
     public function inventory(Request $request)
     {
-        $query = Inventory::with(['category', 'supplier']);
+        $query = Inventory::with(['category']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        $stats = [
-            'total' => Inventory::count(),
-            'available' => Inventory::where('status', 'available')->count(),
-            'borrowed' => Inventory::where('status', 'borrowed')->count(),
-            'maintenance' => Inventory::where('status', 'maintenance')->count(),
-            'damaged' => Inventory::where('status', 'damaged')->count(),
-        ];
+        $stats = Cache::remember('admin.stats.inventory', now()->addSeconds(20), function () {
+            $row = Inventory::query()->selectRaw("COUNT(*) as total, COUNT(CASE WHEN status = 'available' THEN 1 END) as available, COUNT(CASE WHEN status = 'borrowed' THEN 1 END) as borrowed, COUNT(CASE WHEN status = 'maintenance' THEN 1 END) as maintenance, COUNT(CASE WHEN status = 'damaged' THEN 1 END) as damaged")
+                ->first();
+
+            return array_map('intval', $row->getAttributes());
+        });
 
         $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $inventory = $query->latest()->paginate($perPage)->appends($request->except('page'));
@@ -83,14 +82,12 @@ class ReportController extends Controller
             $query->where('status', $request->status);
         }
 
-        $stats = [
-            'total' => BorrowRequest::count(),
-            'pending' => BorrowRequest::where('status', 'pending')->count(),
-            'approved' => BorrowRequest::where('status', 'approved')->count(),
-            'borrowed' => BorrowRequest::where('status', 'borrowed')->count(),
-            'returned' => BorrowRequest::where('status', 'returned')->count(),
-            'rejected' => BorrowRequest::where('status', 'rejected')->count(),
-        ];
+        $stats = Cache::remember('admin.stats.borrow-requests', now()->addSeconds(20), function () {
+            $row = BorrowRequest::query()->selectRaw("COUNT(*) as total, COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending, COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved, COUNT(CASE WHEN status = 'borrowed' THEN 1 END) as borrowed, COUNT(CASE WHEN status = 'returned' THEN 1 END) as returned, COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected")
+                ->first();
+
+            return array_map('intval', $row->getAttributes());
+        });
 
         $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $borrowRequests = $query->latest()->paginate($perPage)->appends($request->except('page'));
@@ -110,12 +107,16 @@ class ReportController extends Controller
             $query->where('is_active', $isActive);
         }
 
-        $stats = [
-            'total' => User::count(),
-            'admins' => User::role('admin')->count(),
-            'employees' => User::role('employee')->count(),
-            'active' => User::where('is_active', true)->count(),
-        ];
+        $stats = Cache::remember('admin.stats.users', now()->addSeconds(20), function () {
+            $row = DB::query()
+                ->selectSub(User::query()->selectRaw('COUNT(*)'), 'total')
+                ->selectSub(User::role('admin')->selectRaw('COUNT(*)'), 'admins')
+                ->selectSub(User::role('employee')->selectRaw('COUNT(*)'), 'employees')
+                ->selectSub(User::query()->where('is_active', true)->selectRaw('COUNT(*)'), 'active')
+                ->first();
+
+            return array_map('intval', (array) $row);
+        });
 
         $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $users = $query->latest()->paginate($perPage)->appends($request->except('page'));

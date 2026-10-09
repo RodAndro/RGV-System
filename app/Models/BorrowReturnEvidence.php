@@ -10,10 +10,13 @@ class BorrowReturnEvidence extends Model
 {
     protected $table = 'borrow_return_evidences';
 
+    /**
+     * Legacy return-evidence metadata retained only for backward compatibility.
+     * The current mobile return flow does not upload files to Google Drive.
+     */
     protected $fillable = [
         'borrow_request_id',
         'idempotency_key',
-        'drive_file_id',
         'file_name',
         'mime_type',
         'uploaded_by',

@@ -6,37 +6,34 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Employee Dashboard - RGV Multi-Tech Services')</title>
     <script>if (localStorage.getItem('dark') === 'true') document.documentElement.classList.add('dark');</script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { darkMode: 'class' };</script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="/css/print.css" media="print">
     <style>
         :root { --primary: #2563eb; --primary-dark: #1d4ed8; }
         [x-cloak] { display: none !important; }
-        .sidebar-link-mantis { display: flex; align-items: center; padding: 11px 14px; border-radius: 10px; color: #64748b; font-weight: 500; font-size: 14.5px; transition: all 0.3s ease; cursor: pointer; }
-        .sidebar-link-mantis:hover { background: rgba(37, 99, 235, 0.1); color: #2563eb; transform: translateX(4px); }
-        .dark .sidebar-link-mantis { color: #94a3b8; }
-        .dark .sidebar-link-mantis:hover { background: rgba(37, 99, 235, 0.15); color: #60a5fa; }
-        .sidebar-link-active-mantis { padding: 11px 14px; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; border-radius: 10px; font-weight: 600; font-size: 14.5px; box-shadow: 0 4px 15px rgba(37,99,235,0.3); }
+        .sidebar-link-mantis { display: flex; align-items: center; padding: 11px 14px; border-radius: 10px; color: rgba(255, 255, 255, 0.82); font-weight: 500; font-size: 14.5px; transition: all 0.3s ease; cursor: pointer; }
+        .sidebar-link-mantis:hover { background: rgba(255, 255, 255, 0.12); color: white; transform: translateX(4px); }
+        .dark .sidebar-link-mantis { color: rgba(255, 255, 255, 0.82); }
+        .dark .sidebar-link-mantis:hover { background: rgba(255, 255, 255, 0.12); color: white; }
+        .sidebar-link-active-mantis { padding: 11px 14px; background: #0a5c83; color: white; border-radius: 10px; font-weight: 600; font-size: 14.5px; box-shadow: 0 4px 15px rgba(10,92,131,0.35); }
         .nav-section { margin-bottom: 8px; }
-        .nav-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; padding: 6px 14px; margin-top: 10px; }
-        .dark .nav-section-title { color: #64748b; }
+        .nav-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #ffffff !important; padding: 6px 14px; margin-top: 10px; }
+        .dark .nav-section-title { color: #ffffff !important; }
         .card-mantis { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; transition: all 0.3s ease; }
         .card-mantis:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); transform: translateY(-2px); }
         .dark .card-mantis { background: #1e293b; border-color: #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.3); }
         .dark .card-mantis:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.4), 0 2px 4px -1px rgba(0,0,0,0.3); }
         .section-divider { height: 1px; background: linear-gradient(to right, transparent, #e5e7eb, transparent); margin: 24px 0; }
-        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #eff6ff; }
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #d8e6f3; }
         .dark .section-header { border-bottom-color: #1e3a5f; }
         .section-title { font-size: 18px; font-weight: 700; color: #1f2937; display: flex; align-items: center; }
         .dark .section-title { color: #e2e8f0; }
-        .section-title i { margin-right: 10px; color: #2563eb; }
+        .section-title i { margin-right: 10px; color: #0f6f9d; }
         .badge-mantis-success { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); color: #2563eb; }
         .badge-mantis-warning { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #d97706; }
         .badge-mantis-danger { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); color: #dc2626; }
-        .btn-mantis { display: inline-flex; align-items: center; padding: 10px 20px; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; border-radius: 10px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(37,99,235,0.3); border: none; cursor: pointer; }
-        .btn-mantis:hover { background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37,99,235,0.4); }
+        .btn-mantis { display: inline-flex; align-items: center; padding: 10px 20px; background: #0f6f9d; color: white; border-radius: 10px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(15,111,157,0.3); border: none; cursor: pointer; }
+        .btn-mantis:hover { background: #0a5c83; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(10,92,131,0.35); }
     </style>
 </head>
 <body class="bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
@@ -52,13 +49,13 @@
         <div class="w-72 flex-shrink-0 hidden lg:block"></div>
 
         <main class="flex-1 min-w-0 overflow-y-auto h-screen">
-            <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 transition-colors duration-300">
+            <header class="bg-[#0f6f9d] border-b border-[#0a5c83] sticky top-0 z-40 transition-colors duration-300">
                 <div class="flex justify-between items-center px-4 md:px-8 py-4">
                     <div class="flex items-center min-w-0">
-                        <button class="lg:hidden text-gray-600 dark:text-gray-400 mr-3 flex-shrink-0" @click="sidebarOpen = !sidebarOpen">
+                        <button class="lg:hidden text-white/90 mr-3 flex-shrink-0" @click="sidebarOpen = !sidebarOpen">
                             <i class="fas fa-bars text-xl"></i>
                         </button>
-                        <h1 class="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 truncate transition-colors">@yield('header', 'Dashboard')</h1>
+                        <h1 class="text-xl md:text-2xl font-bold text-white truncate transition-colors">@yield('header', 'Dashboard')</h1>
                     </div>
                     <div class="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
                         <button @click="dark = !dark" class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-yellow-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Toggle dark mode">
@@ -71,8 +68,8 @@
                                 {{ auth()->user()->name[0] }}
                             </div>
                             <div class="ml-2 md:ml-3 hidden md:block">
-                                <p class="font-semibold text-gray-800 dark:text-gray-100 text-sm leading-tight transition-colors">{{ auth()->user()->name }}</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 transition-colors">Employee</p>
+                                <p class="font-semibold text-white text-sm leading-tight transition-colors">{{ auth()->user()->name }}</p>
+                                <p class="text-xs text-white/70 transition-colors">Employee</p>
                             </div>
                         </a>
                     </div>

@@ -23,7 +23,7 @@ class AuditLogger
         $request ??= request();
 
         AuditLog::create([
-            'user_id' => Auth::id(),
+            'user_id' => Auth::user()?->getAuthIdentifier(),
             'event' => $event,
             'auditable_type' => $auditable ? $auditable::class : null,
             'auditable_id' => $auditable?->getKey(),

@@ -1,14 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Network access for the Laravel API. -->
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- Camera is used for QR scanning and capturing return-proof photos. -->
+    <!-- Camera is used for QR scanning. -->
     <uses-permission android:name="android.permission.CAMERA"/>
 
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
 
     <application
-        android:label="RGV Employee"
+        android:label="RGV Multi-Tech Services"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

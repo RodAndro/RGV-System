@@ -125,9 +125,6 @@
                                         </td>
                                         <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
                                             <p class="font-semibold text-sm text-gray-800 dark:text-gray-200">{{ $inventory->name }}</p>
-                                            @if($inventory->image_path)
-                                                <img src="{{ asset('storage/' . $inventory->image_path) }}" class="w-8 h-8 object-cover rounded mt-1">
-                                            @endif
                                         </td>
                                         <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400">{{ $inventory->category->name }}</td>
                                         <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
@@ -137,8 +134,8 @@
                                             @endif
                                         </td>
                                         <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
-                                            <span class="badge-mantis-{{ $inventory->status == 'available' ? 'success' : ($inventory->status == 'borrowed' ? 'warning' : ($inventory->status == 'maintenance' ? 'warning' : 'danger')) }}">
-                                                {{ ucfirst($inventory->status) }}
+                                            <span class="badge-mantis-{{ $inventory->status == 'available' && $inventory->quantity > 0 ? 'success' : ($inventory->status == 'borrowed' || $inventory->status == 'maintenance' ? 'warning' : 'danger') }}">
+                                                {{ $inventory->status === 'available' && $inventory->quantity <= 0 ? 'Out of Stock' : ucfirst($inventory->status) }}
                                             </span>
                                         </td>
                                         <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
@@ -148,6 +145,9 @@
                                         </td>
                                         <td class="px-6 py-4">
                                             <div class="flex space-x-2">
+                                                <a href="{{ route('admin.inventories.qrcode', ['token' => $inventory->qr_token]) }}" class="w-9 h-9 bg-green-100 text-green-600 rounded-lg flex items-center justify-center hover:bg-green-200 transition-colors" title="Download QR Code">
+                                                    <i class="fas fa-qrcode"></i>
+                                                </a>
                                                 <a href="{{ route('admin.inventories.show', $inventory) }}" class="w-9 h-9 bg-[#eff6ff] text-[#2563eb] rounded-lg flex items-center justify-center hover:bg-[#dbeafe] transition-colors" title="View">
                                                     <i class="fas fa-eye"></i>
                                                 </a>

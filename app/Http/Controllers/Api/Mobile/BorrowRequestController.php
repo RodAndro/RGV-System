@@ -4,18 +4,12 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Models\BorrowRequest;
-use App\Models\BorrowReturnEvidence;
 use App\Services\BorrowService;
-use App\Services\GoogleDriveService;
 use Illuminate\Http\Request;
-use Throwable;
 
 class BorrowRequestController extends Controller
 {
-    public function __construct(
-        private readonly BorrowService $borrowService,
-        private readonly GoogleDriveService $driveService,
-    ) {}
+    public function __construct(private readonly BorrowService $borrowService) {}
 
     public function index(Request $request)
     {
@@ -87,7 +81,7 @@ class BorrowRequestController extends Controller
     {
         $items = $request->user()->borrowRequests()
             ->where('status', 'borrowed')
-            ->with(['borrowItems' => fn ($q) => $q->where('is_returned', false)->with('inventory:id,item_code,name,brand,unit,image_path,condition')])
+                ->with(['borrowItems' => fn ($q) => $q->where('is_returned', false)->with('inventory:id,item_code,name,brand,unit,condition,location')])
             ->get()
             ->flatMap(fn ($borrowRequest) => $borrowRequest->borrowItems->map(fn ($item) => [
                 'borrow_item_id' => $item->id,
@@ -103,7 +97,7 @@ class BorrowRequestController extends Controller
                     'name' => $item->inventory?->name,
                     'brand' => $item->inventory?->brand,
                     'unit' => $item->inventory?->unit,
-                    'image_path' => $item->inventory?->image_path,
+                    'location' => $item->inventory?->location,
                 ],
             ]))
             ->values();
@@ -117,45 +111,15 @@ class BorrowRequestController extends Controller
 
         $data = $request->validate([
             'idempotency_key' => ['required', 'string', 'max:64'],
-            'photo' => ['required', 'image', 'max:15360'],
+            'return_location' => ['required', 'string', 'max:255'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.borrow_item_id' => ['required', 'integer', 'distinct'],
             'items.*.condition_returned' => ['required', 'string', 'in:new,good,fair,poor,damaged'],
             'items.*.damage_notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $evidence = BorrowReturnEvidence::query()
-            ->where('idempotency_key', $data['idempotency_key'])
-            ->where('borrow_request_id', $borrowRequest->id)
-            ->first();
-
-        if (! $evidence) {
-            try {
-                $upload = $this->driveService->uploadEvidence(
-                    $request->file('photo'),
-                    $request->user()->surname,
-                );
-
-                $evidence = BorrowReturnEvidence::create([
-                    'borrow_request_id' => $borrowRequest->id,
-                    'idempotency_key' => $data['idempotency_key'],
-                    'drive_file_id' => $upload['drive_file_id'],
-                    'file_name' => $upload['file_name'],
-                    'mime_type' => $upload['mime_type'],
-                    'uploaded_by' => $request->user()->id,
-                    'uploaded_at' => now(),
-                ]);
-            } catch (Throwable $e) {
-                report($e);
-
-                return response()->json([
-                    'message' => 'We could not upload your return photo. Please try again.',
-                ], 502);
-            }
-        }
-
         try {
-            $this->borrowService->returnItems($borrowRequest, $data['items'], $evidence);
+            $this->borrowService->returnItems($borrowRequest, $data['items'], null, $data['return_location']);
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 409);
         }
@@ -185,6 +149,7 @@ class BorrowRequestController extends Controller
             'borrow_date' => optional($borrowRequest->borrow_date)->format('Y-m-d'),
             'due_date' => optional($borrowRequest->due_date)->format('Y-m-d'),
             'return_date' => optional($borrowRequest->return_date)->format('Y-m-d'),
+            'return_location' => $borrowRequest->return_location,
             'admin_remarks' => $borrowRequest->admin_remarks,
             'approved_at' => optional($borrowRequest->approved_at)->toIso8601String(),
             'rejected_at' => optional($borrowRequest->rejected_at)->toIso8601String(),

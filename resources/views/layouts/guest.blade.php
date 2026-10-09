@@ -12,8 +12,7 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
-        <script src="https://cdn.tailwindcss.com"></script>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
         <style>
             :root {
                 --primary: #2563eb;
@@ -23,11 +22,9 @@
     </head>
     <body class="font-sans text-gray-900 antialiased bg-gradient-to-br from-gray-50 to-[#eff6ff]">
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
-            <div class="mb-6">
+            <div class="mb-6 -mt-6">
                 <a href="/">
-                    <div class="w-20 h-20 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-2xl flex items-center justify-center shadow-lg shadow-[#2563eb]/30">
-                        <i class="fas fa-cogs text-white text-3xl"></i>
-                    </div>
+                    <img src="{{ asset('images/RGV-Logo.png') }}" alt="RGV Multi-Tech Services logo" class="w-40 h-40 rounded-2xl object-cover shadow-lg shadow-[#2563eb]/20">
                 </a>
             </div>
 

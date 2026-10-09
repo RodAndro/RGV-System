@@ -21,13 +21,27 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+  with WidgetsBindingObserver {
   late Future<DashboardData> _future;
+  final Set<int> _dismissedRecentRequestIds = {};
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _future = context.read<DashboardRepository>().fetch();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _reload();
   }
 
   void _reload() {
@@ -39,7 +53,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final user = context.watch<AuthProvider>().user;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/images/RGV-Logo.png',
+              width: 36,
+              height: 36,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(width: 10),
+            const Text('Dashboard'),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: 'Sign out',
@@ -79,6 +104,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             return _DashboardBody(
               data: snapshot.data!,
               employeeName: user?.name ?? '',
+              dismissedRequestIds: _dismissedRecentRequestIds,
+              onRemoveRequest: (request) {
+                setState(() => _dismissedRecentRequestIds.add(request.id));
+              },
             );
           },
         ),
@@ -112,13 +141,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 class _DashboardBody extends StatelessWidget {
-  const _DashboardBody({required this.data, required this.employeeName});
+  const _DashboardBody({
+    required this.data,
+    required this.employeeName,
+    required this.dismissedRequestIds,
+    required this.onRemoveRequest,
+  });
 
   final DashboardData data;
   final String employeeName;
+  final Set<int> dismissedRequestIds;
+  final ValueChanged<RecentRequest> onRemoveRequest;
 
   @override
   Widget build(BuildContext context) {
+    final recentRequests = data.recentRequests
+        .where((request) => !dismissedRequestIds.contains(request.id))
+        .toList();
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -151,11 +191,17 @@ class _DashboardBody extends StatelessWidget {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
-        if (data.recentRequests.isEmpty)
-          const EmptyState(message: 'No borrow requests yet. Start by borrowing an item.')
+        if (recentRequests.isEmpty)
+          const EmptyState(message: 'No recent requests to show.')
         else
-          ...data.recentRequests.map(
-            (r) => _RecentRequestTile(request: r),
+          ...recentRequests.map(
+            (request) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _RecentRequestTile(
+                request: request,
+                onRemove: () => onRemoveRequest(request),
+              ),
+            ),
           ),
       ],
     );
@@ -165,41 +211,48 @@ class _DashboardBody extends StatelessWidget {
 class _ActionTiles extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return GridView.count(
+      crossAxisCount: 2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 1.5,
       children: [
-        Expanded(
-          child: _ActionTile(
-            icon: Icons.qr_code_scanner,
-            label: 'Borrow',
-            color: RgvColors.blue,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const BorrowStartScreen()),
-            ),
+        _ActionTile(
+          icon: Icons.qr_code_scanner,
+          label: 'Borrow',
+          color: RgvColors.primary,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BorrowStartScreen()),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ActionTile(
-            icon: Icons.assignment_return,
-            label: 'Return',
-            color: RgvColors.blueDark,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ReturnScreen()),
-            ),
+        _ActionTile(
+          icon: Icons.assignment_return,
+          label: 'Return',
+          color: RgvColors.primaryDark,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ReturnScreen()),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ActionTile(
-            icon: Icons.manage_accounts,
-            label: 'Account',
-            color: RgvColors.amber,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AccountSettingsScreen()),
-            ),
+        _ActionTile(
+          icon: Icons.receipt_long,
+          label: 'History',
+          color: RgvColors.primary,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BorrowHistoryScreen()),
+          ),
+        ),
+        _ActionTile(
+          icon: Icons.manage_accounts,
+          label: 'Account',
+          color: RgvColors.amber,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AccountSettingsScreen()),
           ),
         ),
       ],
@@ -230,20 +283,24 @@ class _ActionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: color, size: 30),
+                child: Icon(icon, color: color, size: 24),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Text(
                 label,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ],
@@ -264,88 +321,140 @@ class _SummaryGrid extends StatelessWidget {
     final items = [
       ('Total', summary.total, RgvColors.slate),
       ('Pending', summary.pending, RgvColors.amber),
-      ('Borrowed', summary.borrowed, RgvColors.blueDark),
+      ('Borrowed', summary.borrowed, RgvColors.primaryDark),
       ('Overdue', summary.overdue, RgvColors.danger),
     ];
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 2.2,
-      children: items.map((e) {
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 4,
-                height: double.infinity,
+    const spacing = 12.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tileWidth = (constraints.maxWidth - spacing) / 2;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: items.map((e) {
+            return SizedBox(
+              width: tileWidth,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  color: e.$3,
-                  borderRadius: BorderRadius.circular(4),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: e.$3,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${e.$2}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                          ),
+                          Text(
+                            e.$1,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: RgvColors.slateLight, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '${e.$2}',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                  ),
-                  Text(
-                    e.$1,
-                    style: const TextStyle(color: RgvColors.slateLight, fontSize: 13),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            );
+          }).toList(),
         );
-      }).toList(),
+      },
     );
   }
 }
 
 class _RecentRequestTile extends StatelessWidget {
-  const _RecentRequestTile({required this.request});
+  const _RecentRequestTile({required this.request, required this.onRemove});
 
   final RecentRequest request;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: const CircleAvatar(
-          backgroundColor: RgvColors.blueLight,
-          child: Icon(Icons.receipt_long, color: RgvColors.blue),
+    return Dismissible(
+      key: ValueKey(request.id),
+      direction: DismissDirection.endToStart,
+      background: const _RemoveRequestBackground(alignment: Alignment.centerLeft),
+      secondaryBackground: const _RemoveRequestBackground(
+        alignment: Alignment.centerRight,
+      ),
+      onDismissed: (_) => onRemove(),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          leading: const CircleAvatar(
+            backgroundColor: RgvColors.primaryLight,
+            child: Icon(Icons.receipt_long, color: RgvColors.primary),
+          ),
+          title: Text(
+            request.requestNumber,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(
+            [
+              if (request.items.isNotEmpty) request.items.join(', '),
+
+              if (request.dueDate != null) 'Due ${formatDate(request.dueDate)}',
+            ].join(' · '),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: StatusChip(status: request.status),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BorrowHistoryScreen()),
+          ),
         ),
-        title: Text(
-          request.requestNumber,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          [
-            if (request.items.isNotEmpty) request.items.join(', '),
-            if (request.dueDate != null) 'Due ${formatDate(request.dueDate)}',
-          ].join(' · '),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: StatusChip(status: request.status),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const BorrowHistoryScreen()),
-        ),
+      ),
+    );
+  }
+}
+
+class _RemoveRequestBackground extends StatelessWidget {
+  const _RemoveRequestBackground({required this.alignment});
+
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: RgvColors.danger,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.delete_outline, color: Colors.white),
+          SizedBox(width: 8),
+          Text(
+            'Remove',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
     );
   }

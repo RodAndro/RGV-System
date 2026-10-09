@@ -14,7 +14,6 @@ class ChangePasswordScreen extends StatefulWidget {
 
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _currentController = TextEditingController();
   final _newController = TextEditingController();
   final _confirmController = TextEditingController();
 
@@ -24,7 +23,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   void dispose() {
-    _currentController.dispose();
     _newController.dispose();
     _confirmController.dispose();
     super.dispose();
@@ -40,10 +38,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     try {
       await context.read<AuthRepository>().changePassword(
-            currentPassword: _currentController.text,
-            newPassword: _newController.text,
-            confirmation: _confirmController.text,
-          );
+        newPassword: _newController.text,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -78,35 +74,38 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       color: const Color(0xFFFEE2E2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(_error!, style: const TextStyle(color: Color(0xFF991B1B))),
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: Color(0xFF991B1B)),
+                    ),
                   ),
                   const SizedBox(height: 16),
                 ],
-                TextFormField(
-                  controller: _currentController,
-                  obscureText: _obscure,
-                  decoration: const InputDecoration(
-                    labelText: 'Current password',
-                    prefixIcon: Icon(Icons.lock_outline),
-                  ),
-                  validator: (value) =>
-                      (value == null || value.isEmpty) ? 'Enter your current password.' : null,
-                ),
-                const SizedBox(height: 16),
                 TextFormField(
                   controller: _newController,
                   obscureText: _obscure,
                   decoration: const InputDecoration(
                     labelText: 'New password',
-                    helperText: 'At least 8 characters with uppercase, lowercase, and a number.',
+                    helperText:
+                        'At least 8 characters with uppercase, lowercase, and a number.',
                     prefixIcon: Icon(Icons.lock_reset),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Enter a new password.';
-                    if (value.length < 8) return 'Password must be at least 8 characters.';
-                    if (!value.contains(RegExp(r'[A-Z]'))) return 'Include at least one uppercase letter.';
-                    if (!value.contains(RegExp(r'[a-z]'))) return 'Include at least one lowercase letter.';
-                    if (!value.contains(RegExp(r'[0-9]'))) return 'Include at least one number.';
+                    if (value == null || value.isEmpty) {
+                      return 'Enter a new password.';
+                    }
+                    if (value.length < 8) {
+                      return 'Password must be at least 8 characters.';
+                    }
+                    if (!value.contains(RegExp(r'[A-Z]'))) {
+                      return 'Include at least one uppercase letter.';
+                    }
+                    if (!value.contains(RegExp(r'[a-z]'))) {
+                      return 'Include at least one lowercase letter.';
+                    }
+                    if (!value.contains(RegExp(r'[0-9]'))) {
+                      return 'Include at least one number.';
+                    }
                     return null;
                   },
                 ),
@@ -119,8 +118,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     prefixIcon: Icon(Icons.lock_reset),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Confirm your new password.';
-                    if (value != _newController.text) return 'Passwords do not match.';
+                    if (value == null || value.isEmpty) {
+                      return 'Confirm your new password.';
+                    }
+                    if (value != _newController.text) {
+                      return 'Passwords do not match.';
+                    }
                     return null;
                   },
                 ),
@@ -131,7 +134,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       ? const SizedBox(
                           height: 22,
                           width: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
                         )
                       : const Text('Update Password'),
                 ),

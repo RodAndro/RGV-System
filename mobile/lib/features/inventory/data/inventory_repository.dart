@@ -1,19 +1,37 @@
 import 'dart:convert';
 
-import '../../../core/network/api_client.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../core/errors/supabase_call.dart';
 import '../models/inventory_item.dart';
 
 class InventoryRepository {
-  InventoryRepository(this._api);
+  InventoryRepository(this._supabase);
 
-  final ApiClient _api;
+  final SupabaseClient _supabase;
 
   /// Resolves a raw QR payload or item code to current item details. The
   /// backend treats any scanned JSON as a hint and returns live availability.
-  Future<InventoryItem> lookup(String code) async {
-    final json = await _api.get('/inventory/lookup', query: {'code': code});
-    return InventoryItem.fromJson(json['item'] as Map<String, dynamic>);
-  }
+  Future<InventoryItem> lookup(String code) => supabaseCall(() async {
+    final json = await _supabase.rpc(
+      'mobile_inventory_lookup',
+      params: {'p_code': code},
+    );
+    return InventoryItem.fromJson(Map<String, dynamic>.from(json as Map));
+  });
+
+  Future<List<InventoryItem>> search(String query) => supabaseCall(() async {
+    final json = await _supabase.rpc(
+      'mobile_inventory_search',
+      params: {'p_query': query.trim(), 'p_limit': 50},
+    );
+    return (json as List? ?? const [])
+        .map(
+          (item) =>
+              InventoryItem.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
+        .toList();
+  });
 
   /// Decodes a raw QR string into the best item-code hint (JSON or plain).
   String normalizeCode(String raw) {
@@ -30,6 +48,13 @@ class InventoryRepository {
     } on FormatException {
       // Not JSON — treat as a plain item code.
     }
+
+    final uri = Uri.tryParse(trimmed);
+    if (uri != null && uri.hasScheme && uri.pathSegments.isNotEmpty) {
+      final token = uri.pathSegments.last.toUpperCase();
+      if (RegExp(r'^QR-[A-Z0-9]{32}$').hasMatch(token)) return token;
+    }
+
     return trimmed;
   }
 }

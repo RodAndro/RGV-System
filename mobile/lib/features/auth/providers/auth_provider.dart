@@ -1,21 +1,15 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/errors/app_exception.dart';
-import '../../../core/storage/token_storage.dart';
 import '../data/auth_repository.dart';
 import '../models/user.dart';
 
 enum AuthStatus { initializing, unauthenticated, mfaPending, authenticated }
 
-/// Owns the signed-in employee session: token lifecycle, restored sessions,
-/// MFA handoff, and logout.
+/// Owns the signed-in employee profile, MFA handoff, and logout.
 class AuthProvider extends ChangeNotifier {
-  AuthProvider({
-    required this.storage,
-    required this.repository,
-  });
+  AuthProvider({required this.repository});
 
-  final TokenStorage storage;
   final AuthRepository repository;
 
   AuthStatus _status = AuthStatus.initializing;
@@ -24,41 +18,29 @@ class AuthProvider extends ChangeNotifier {
   User? _user;
   User? get user => _user;
 
-  String? _accessToken;
-  String? _mfaToken;
+  String? _pendingMfaFactorId;
+  String? _mfaSetupSecret;
+  String? get mfaSetupSecret => _mfaSetupSecret;
 
-  /// The bearer token to attach to API requests. While MFA is pending this
-  /// returns the short-lived MFA token instead of a (not-yet-issued) access
-  /// token, so `/auth/mfa/verify` is authenticated correctly.
-  String? get _activeToken => _mfaToken ?? _accessToken;
+  bool get isAuthenticated =>
+      _status == AuthStatus.authenticated && _user != null;
 
-  String? Function() get tokenProvider => () => _activeToken;
-
-  bool get isAuthenticated => _status == AuthStatus.authenticated && _user != null;
-
-  /// Attempts to restore a previous session from secure storage and validates
-  /// it against the server. Falls back to the login screen on any failure.
+  /// Restores the Supabase Auth session persisted by supabase_flutter.
   Future<void> restoreSession() async {
-    final token = await storage.readAccessToken();
-    if (token == null) {
+    if (!repository.hasSession) {
       _status = AuthStatus.unauthenticated;
       notifyListeners();
       return;
     }
 
-    _accessToken = token;
     try {
-      _user = await repository.me();
-      _status = AuthStatus.authenticated;
+      _acceptLoginResult(await repository.restore());
     } on AppException catch (e) {
-      // Expired/revoked tokens (401/403) clear the stale session; network
-      // errors keep the token so the user can retry without re-entering
-      // credentials.
       if (e.isUnauthenticated || e.statusCode == 403) {
-        await _clearSession();
+        await repository.logout();
+        _clearSession();
       } else {
         _status = AuthStatus.unauthenticated;
-        _accessToken = null;
       }
     }
     notifyListeners();
@@ -67,28 +49,40 @@ class AuthProvider extends ChangeNotifier {
   Future<void> login(String email, String password) async {
     final result = await repository.login(email, password);
 
-    switch (result) {
-      case LoginSuccess(:final token, :final user):
-        _accessToken = token;
-        _user = user;
-        _status = AuthStatus.authenticated;
-        await storage.writeAccessToken(token);
-      case LoginMfaRequired(:final mfaToken):
-        _mfaToken = mfaToken;
-        _status = AuthStatus.mfaPending;
-        await storage.writeMfaToken(mfaToken);
-    }
+    _acceptLoginResult(result);
     notifyListeners();
   }
 
+  void _acceptLoginResult(LoginResult result) {
+    switch (result) {
+      case LoginSuccess(:final user):
+        _user = user;
+        _pendingMfaFactorId = null;
+        _mfaSetupSecret = null;
+        _status = AuthStatus.authenticated;
+      case LoginMfaRequired(:final factorId):
+        _pendingMfaFactorId = factorId;
+        _mfaSetupSecret = null;
+        _status = AuthStatus.mfaPending;
+      case LoginMfaSetupRequired(:final factorId, :final secret):
+        _pendingMfaFactorId = factorId;
+        _mfaSetupSecret = secret;
+        _status = AuthStatus.mfaPending;
+    }
+  }
+
   Future<void> verifyMfa(String code) async {
-    final result = await repository.verifyMfa(code);
-    _accessToken = result.token;
+    final factorId = _pendingMfaFactorId;
+    if (factorId == null) {
+      throw const AppException(
+        'The authentication challenge has expired. Sign in again.',
+      );
+    }
+    final result = await repository.verifyMfa(factorId, code);
     _user = result.user;
-    _mfaToken = null;
+    _pendingMfaFactorId = null;
+    _mfaSetupSecret = null;
     _status = AuthStatus.authenticated;
-    await storage.writeAccessToken(result.token);
-    await storage.clearMfaToken();
     notifyListeners();
   }
 
@@ -98,13 +92,13 @@ class AuthProvider extends ChangeNotifier {
     } on AppException {
       // Best-effort: revoke locally even if the server is unreachable.
     } finally {
-      await _clearSession();
+      _clearSession();
       notifyListeners();
     }
   }
 
   Future<void> refreshUser() async {
-    if (_accessToken == null) return;
+    if (!repository.hasSession) return;
     _user = await repository.me();
     notifyListeners();
   }
@@ -114,11 +108,10 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _clearSession() async {
-    _accessToken = null;
-    _mfaToken = null;
+  void _clearSession() {
+    _pendingMfaFactorId = null;
+    _mfaSetupSecret = null;
     _user = null;
     _status = AuthStatus.unauthenticated;
-    await storage.clearAll();
   }
 }

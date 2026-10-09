@@ -6,12 +6,6 @@
 
 @section('content')
 <div class="p-4 md:p-8">
-    @if(session('success'))
-        <div class="bg-gradient-to-r from-[#eff6ff] to-[#dbeafe] dark:from-blue-900/20 dark:to-blue-800/10 border border-[#2563eb] dark:border-blue-700 text-[#1e40af] dark:text-blue-300 px-4 py-3 rounded-xl mb-6">
-            {{ session('success') }}
-        </div>
-    @endif
-
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2">
             <div class="card-mantis p-6 mb-6">
@@ -30,18 +24,10 @@
                     <div><p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Contact Number</p><p class="font-semibold text-gray-800 dark:text-gray-100">{{ $booking->contact_number }}</p></div>
                     <div><p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Purpose Category</p><p class="font-semibold text-gray-800 dark:text-gray-100">{{ ucfirst(str_replace('-', ' ', $booking->purpose_category)) }}</p></div>
                     <div><p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Preferred Date</p><p class="font-semibold text-gray-800 dark:text-gray-100">{{ $booking->preferred_date->format('F d, Y') }}</p></div>
-                    <div><p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Preferred Time</p><p class="font-semibold text-gray-800 dark:text-gray-100">{{ $booking->preferred_time }}</p></div>
+                    <div><p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Preferred Time</p><p class="font-semibold text-gray-800 dark:text-gray-100">{{ $booking->preferred_time_formatted }}</p></div>
                     <div class="md:col-span-2"><p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Address</p><p class="font-semibold text-gray-800 dark:text-gray-100">{{ $booking->address }}</p></div>
                     <div class="md:col-span-2"><p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Reason</p><p class="font-semibold text-gray-800 dark:text-gray-100">{{ $booking->reason }}</p></div>
                 </div>
-                @if($booking->attachment_path)
-                    <div class="mt-6">
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Attachment</p>
-                        <a href="{{ asset('storage/' . $booking->attachment_path) }}" target="_blank" class="inline-flex items-center text-[#2563eb] hover:text-[#1d4ed8] font-medium">
-                            <i class="fas fa-file-alt mr-2"></i>View Attachment
-                        </a>
-                    </div>
-                @endif
                 @if($booking->remarks)
                     <div class="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                         <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Remarks</p>
@@ -98,7 +84,7 @@
                 @if($booking->status == 'pending')
                     <form action="{{ route('admin.bookings.approve', $booking) }}" method="POST" class="mb-4" onsubmit="return confirm('Approve this work request?');">
                         @csrf
-                        <button type="submit" class="w-full btn-mantis"><i class="fas fa-check mr-2"></i>Approve Work Request</button>
+                        <button type="submit" class="w-full btn-mantis justify-center"><i class="fas fa-check mr-2"></i>Approve Work Request</button>
                     </form>
                     <button onclick="showRejectModal()" class="w-full px-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all font-medium mb-4">
                         <i class="fas fa-times mr-2"></i>Reject Work Request
@@ -107,7 +93,7 @@
                 @if($booking->status == 'approved')
                     <form action="{{ route('admin.bookings.complete', $booking) }}" method="POST" class="mb-4" onsubmit="return confirm('Mark this work request as completed?');">
                         @csrf
-                        <button type="submit" class="w-full btn-mantis"><i class="fas fa-check-circle mr-2"></i>Mark as Completed</button>
+                        <button type="submit" class="w-full btn-mantis inline-flex items-center justify-center"><i class="fas fa-check-circle mr-2"></i>Mark as Completed</button>
                     </form>
                 @endif
                 @if(in_array($booking->status, ['pending', 'approved']))
@@ -115,6 +101,15 @@
                         @csrf
                         <button type="submit" class="w-full px-6 py-3 bg-gray-700 dark:bg-gray-700 text-white rounded-xl hover:bg-gray-800 dark:hover:bg-gray-600 transition-all font-medium">
                             <i class="fas fa-ban mr-2"></i>Cancel Booking
+                        </button>
+                    </form>
+                @endif
+                @if(in_array($booking->status, ['completed', 'rejected'], true))
+                    <form action="{{ route('admin.bookings.destroy', $booking) }}" method="POST" onsubmit="return confirm('Move this work request to trash?');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="w-full px-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all font-medium inline-flex items-center justify-center">
+                            <i class="fas fa-trash-alt mr-2"></i>Move to Trash
                         </button>
                     </form>
                 @endif
@@ -133,7 +128,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <button type="submit" class="w-full btn-mantis"><i class="fas fa-user-plus mr-2"></i>Assign Employee</button>
+                    <button type="submit" class="w-full btn-mantis inline-flex items-center justify-center"><i class="fas fa-user-plus mr-2"></i>Assign Employee</button>
                 </form>
             </div>
         </div>

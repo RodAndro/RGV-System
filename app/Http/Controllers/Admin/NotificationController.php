@@ -12,14 +12,25 @@ class NotificationController extends Controller
     public function unreadCount()
     {
         $user = Auth::user();
+        $summary = $user->unreadNotifications()
+            ->selectRaw(
+                'COUNT(*) as count, COUNT(CASE WHEN type = ? THEN 1 END) as booking_count, COUNT(CASE WHEN type = ? THEN 1 END) as borrow_request_count',
+                ['booking', 'borrow_request']
+            )
+            ->first();
 
         return response()->json([
-            'count' => $user->unreadNotifications()->count(),
+            'count' => (int) $summary->count,
+            'request_updates' => [
+                'work_request' => $user->isAdmin() && (int) $summary->booking_count > 0,
+                'borrow_request' => $user->isAdmin() && (int) $summary->borrow_request_count > 0,
+            ],
             'notifications' => $user->unreadNotifications()->latest()->take(5)->get()->map(fn ($n) => [
                 'id' => $n->id,
                 'title' => $n->title,
                 'message' => Str::limit($n->message, 80),
                 'link' => $n->link ?: route('admin.notifications.index'),
+                'open_url' => route('admin.notifications.open', $n->id),
                 'created_at' => $n->created_at->diffForHumans(),
             ]),
         ]);
@@ -55,7 +66,7 @@ class NotificationController extends Controller
     public function markAllAsRead()
     {
         $user = Auth::user();
-        $user->unreadNotifications->markAsRead();
+        $user->unreadNotifications()->update(['is_read' => true, 'read_at' => now()]);
         
         return back()->with('success', 'All notifications marked as read.');
     }

@@ -6,9 +6,6 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Admin Dashboard - RGV Multi-Tech Services')</title>
     <script>if (localStorage.getItem('dark') === 'true') document.documentElement.classList.add('dark');</script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { darkMode: 'class' };</script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="/css/print.css" media="print">
     <style>
@@ -22,32 +19,32 @@
             align-items: center;
             padding: 11px 14px;
             border-radius: 10px;
-            color: #64748b;
+            color: rgba(255, 255, 255, 0.82);
             font-weight: 500;
             font-size: 14.5px;
             transition: all 0.3s ease;
             cursor: pointer;
         }
         .sidebar-link-mantis:hover {
-            background: rgba(37, 99, 235, 0.1);
-            color: #2563eb;
+            background: rgba(255, 255, 255, 0.12);
+            color: white;
             transform: translateX(4px);
         }
-        .dark .sidebar-link-mantis { color: #94a3b8; }
+        .dark .sidebar-link-mantis { color: rgba(255, 255, 255, 0.82); }
         .dark .sidebar-link-mantis:hover {
-            background: rgba(37, 99, 235, 0.15);
-            color: #60a5fa;
+            background: rgba(255, 255, 255, 0.12);
+            color: white;
         }
         .sidebar-link-active-mantis {
             display: flex;
             align-items: center;
             padding: 11px 14px;
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            background: #0a5c83;
             color: white;
             border-radius: 10px;
             font-weight: 600;
             font-size: 14.5px;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+            box-shadow: 0 4px 15px rgba(10, 92, 131, 0.35);
         }
         .dropdown-menu {
             max-height: 0;
@@ -61,7 +58,7 @@
         }
         .dropdown-item {
             padding: 7px 14px;
-            color: #64748b;
+            color: #ffffff !important;
             font-weight: 500;
             font-size: 13px;
             border-radius: 8px;
@@ -96,7 +93,7 @@
             padding: 6px 14px;
             margin-top: 10px;
         }
-        .dark .nav-section-title { color: #64748b; }
+        .dark .nav-section-title { color: #ffffff !important; }
         .card-mantis {
             background: white;
             border-radius: 16px;
@@ -127,7 +124,7 @@
             justify-content: space-between;
             margin-bottom: 12px;
             padding-bottom: 8px;
-            border-bottom: 2px solid #eff6ff;
+            border-bottom: 2px solid #d8e6f3;
         }
         .dark .section-header { border-bottom-color: #1e3a5f; }
         .section-title {
@@ -140,7 +137,7 @@
         .dark .section-title { color: #e2e8f0; }
         .section-title i {
             margin-right: 10px;
-            color: #2563eb;
+            color: #0f6f9d;
         }
         .badge-mantis-success {
             display: inline-block;
@@ -182,17 +179,17 @@
             display: inline-flex;
             align-items: center;
             padding: 10px 20px;
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            background: #0f6f9d;
             color: white;
             border-radius: 10px;
             font-weight: 600;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+            box-shadow: 0 4px 15px rgba(15, 111, 157, 0.3);
         }
         .btn-mantis:hover {
-            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+            background: #0a5c83;
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+            box-shadow: 0 6px 20px rgba(10, 92, 131, 0.35);
         }
         .btn-mantis-outline {
             display: inline-flex;
@@ -236,30 +233,24 @@
         <!-- Main Content -->
         <main class="flex-1 min-w-0 overflow-y-auto h-screen">
             <!-- Top Navigation -->
-            <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 transition-colors duration-300">
+            <header class="bg-[#0f6f9d] border-b border-[#0a5c83] sticky top-0 z-40 transition-colors duration-300">
                 <div class="flex justify-between items-center px-4 md:px-8 py-4">
                     <div class="flex items-center min-w-0">
-                        <button class="lg:hidden text-gray-600 dark:text-gray-400 mr-3 flex-shrink-0" @click="sidebarOpen = !sidebarOpen">
+                        <button class="lg:hidden text-white/90 mr-3 flex-shrink-0" @click="sidebarOpen = !sidebarOpen">
                             <i class="fas fa-bars text-xl"></i>
                         </button>
-                        <h1 class="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 truncate transition-colors">@yield('header', 'Dashboard')</h1>
+                        <h1 class="text-xl md:text-2xl font-bold text-white truncate transition-colors">@yield('header', 'Dashboard')</h1>
                     </div>
                     <div class="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
-                        <button @click="dark = !dark" class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-yellow-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Toggle dark mode">
-                            <svg class="w-5 h-5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-                            <svg class="w-5 h-5 hidden dark:inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path stroke-linecap="round" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-                        </button>
-                        <a href="{{ route('home') }}" target="_blank" class="hidden sm:inline text-gray-600 dark:text-gray-400 hover:text-[#2563eb] dark:hover:text-[#60a5fa] transition-colors text-sm">
+                        <a href="{{ route('home') }}" target="_blank" class="hidden sm:inline text-white/90 hover:text-white transition-colors text-sm">
                             <i class="fas fa-external-link-alt mr-1"></i>View Site
                         </a>
                         <x-notification-bell />
                         <a href="{{ route('profile.edit') }}" class="flex items-center hover:opacity-80 transition-opacity" title="Edit Profile">
-                            <div class="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/30 flex-shrink-0">
-                                {{ auth()->user()->name[0] }}
-                            </div>
+                            <img src="{{ asset('images/RGV-Logo.png') }}" alt="RGV Multi-Tech Services logo" class="w-9 h-9 md:w-10 md:h-10 rounded-xl object-cover shadow-lg shadow-blue-500/30 flex-shrink-0">
                             <div class="ml-2 md:ml-3 hidden md:block">
-                                <p class="font-semibold text-gray-800 dark:text-gray-100 text-sm leading-tight transition-colors">{{ auth()->user()->name }}</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 transition-colors">{{ auth()->user()->isAdmin() ? 'Administrator' : 'Employee' }}</p>
+                                <p class="font-semibold text-white text-sm leading-tight transition-colors">{{ auth()->user()->name }}</p>
+                                <p class="text-xs text-white/70 transition-colors">{{ auth()->user()->isAdmin() ? 'Administrator' : 'Employee' }}</p>
                             </div>
                         </a>
                     </div>

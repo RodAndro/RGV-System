@@ -71,13 +71,9 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @forelse($inventories as $inventory)
             <div class="card-mantis overflow-hidden">
-                @if($inventory->image_path)
-                    <img src="{{ asset('storage/' . $inventory->image_path) }}" alt="{{ $inventory->name }}" class="w-full h-48 object-cover">
-                @else
-                    <div class="w-full h-48 bg-gray-100 flex items-center justify-center">
-                        <i class="fas fa-box text-gray-300 text-5xl"></i>
-                    </div>
-                @endif
+                <div class="w-full h-48 bg-gray-100 flex items-center justify-center">
+                    <i class="fas fa-box text-gray-300 text-5xl"></i>
+                </div>
                 <div class="p-4">
                     @if($inventory->isLowStock())
                         <div class="mb-2"><span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Low Stock Alert</span></div>

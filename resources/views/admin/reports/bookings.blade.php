@@ -142,6 +142,7 @@
 </div>
 @endsection
 
-@push('scripts')
 <x-chatbot pageType="bookings" />
+
+@push('scripts')
 @endpush

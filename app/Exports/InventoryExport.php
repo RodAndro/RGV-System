@@ -33,7 +33,6 @@ class InventoryExport implements FromQuery, WithHeadings, WithMapping, WithChunk
         return collect($this->selectedColumns())->map(function ($column) use ($inventory) {
             return match ($column) {
                 'category' => $inventory->category?->name,
-                'supplier' => $inventory->supplier?->name,
                 default => $inventory->{$column},
             };
         })->all();
@@ -42,7 +41,7 @@ class InventoryExport implements FromQuery, WithHeadings, WithMapping, WithChunk
     public static function buildQuery(array $filters = []): Builder
     {
         return Inventory::query()
-            ->with(['category', 'supplier'])
+            ->with(['category'])
             ->when($filters['category_id'] ?? null, fn ($query, $value) => $query->where('category_id', $value))
             ->when($filters['status'] ?? null, fn ($query, $value) => $query->where('status', $value))
             ->when($filters['stock_status'] ?? null, function ($query, $value) {
@@ -63,7 +62,7 @@ class InventoryExport implements FromQuery, WithHeadings, WithMapping, WithChunk
 
     public function selectedColumns(): array
     {
-        $allowed = ['item_code', 'name', 'description', 'category', 'quantity', 'unit', 'unit_cost', 'status', 'condition', 'supplier', 'date_added'];
+        $allowed = ['item_code', 'name', 'description', 'category', 'quantity', 'unit', 'unit_cost', 'status', 'condition', 'date_added'];
         $selected = array_values(array_intersect($this->columns, $allowed));
 
         return $selected ?: ['item_code', 'name', 'category', 'quantity', 'unit_cost', 'status', 'condition'];

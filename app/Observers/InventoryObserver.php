@@ -4,6 +4,9 @@ namespace App\Observers;
 
 use App\Mail\EntityUpdateNotification;
 use App\Models\Inventory;
+use App\Models\User;
+use App\Notifications\LowStockAlert;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
 class InventoryObserver
@@ -14,11 +17,15 @@ class InventoryObserver
             return null;
         }
 
-        return env('ADMIN_NOTIFICATION_EMAIL') ?: env('BACKUP_NOTIFICATION_EMAIL');
+        return env('ADMIN_NOTIFICATION_EMAIL') ?: env('BACKUP_NOTIFICATION_EMAIL') ?: env('SYSTEM_NOTIFICATION_EMAIL');
     }
 
     public function created(Inventory $inventory): void
     {
+        if ($inventory->isLowStock()) {
+            $this->notifyAdminsOfLowStock($inventory);
+        }
+
         $email = $this->adminEmail();
         if (!$email) {
             return;
@@ -35,13 +42,20 @@ class InventoryObserver
 
     public function updated(Inventory $inventory): void
     {
+        if ($inventory->wasChanged(['quantity', 'low_stock_threshold'])) {
+            $wasLowStock = (int) $inventory->getOriginal('quantity') <= (int) $inventory->getOriginal('low_stock_threshold');
+            if (! $wasLowStock && $inventory->isLowStock()) {
+                $this->notifyAdminsOfLowStock($inventory);
+            }
+        }
+
         $email = $this->adminEmail();
         if (!$email) {
             return;
         }
 
         $changes = $inventory->getChanges();
-        unset($changes['updated_at']);
+        unset($changes['updated_at'], $changes['quantity']);
 
         if (empty($changes)) {
             return;
@@ -72,5 +86,19 @@ class InventoryObserver
             action: 'Item Deleted',
             details: "Inventory item \"{$inventory->name}\" (Code: {$inventory->item_code}) has been deleted.",
         ));
+    }
+
+    private function notifyAdminsOfLowStock(Inventory $inventory): void
+    {
+        DB::afterCommit(function () use ($inventory): void {
+            $inventory = $inventory->fresh();
+            if (! $inventory || ! $inventory->isLowStock()) {
+                return;
+            }
+
+            User::role('admin')->get()->each(
+                fn (User $admin) => $admin->notify(new LowStockAlert($inventory)),
+            );
+        });
     }
 }

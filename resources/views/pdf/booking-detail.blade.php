@@ -41,7 +41,7 @@
         </div>
         <div class="info-item">
             <div class="info-label">Preferred Time</div>
-            <div class="info-value">{{ $booking->preferred_time }}</div>
+            <div class="info-value">{{ $booking->preferred_time_formatted }}</div>
         </div>
     </div>
 

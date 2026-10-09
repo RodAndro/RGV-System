@@ -15,7 +15,7 @@ class LogPageVisit
         $startTime = defined('LARAVEL_START') ? LARAVEL_START : $request->server('REQUEST_TIME_FLOAT');
         $response = $next($request);
 
-        if ($request->method() === 'GET' && !$request->ajax() && !$request->expectsJson()) {
+        if (config('app.log_page_visits') && $request->method() === 'GET' && !$request->ajax() && !$request->expectsJson()) {
             $path = $request->path();
             foreach ($this->excludePaths as $exclude) {
                 if (str_starts_with($path, ltrim($exclude, '/'))) {

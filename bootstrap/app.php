@@ -38,6 +38,13 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->reportable(function (\Throwable $e) {
+            $source = str_replace('\\', '/', $e->getFile());
+            if ($e instanceof \Illuminate\Database\QueryException
+                || $e instanceof \PDOException
+                || str_contains($source, '/Illuminate/Database/Connectors/')) {
+                return;
+            }
+
             try {
                 \App\Models\AuditLog::create([
                     'user_id' => auth()->id(),

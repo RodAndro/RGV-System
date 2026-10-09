@@ -27,33 +27,98 @@
             background: linear-gradient(to right, transparent, #e5e7eb, transparent);
             margin: 32px 0;
         }
+        .booking-review-panel {
+            width: min(100%, 42rem);
+            max-height: calc(100dvh - 2rem);
+            overflow: hidden;
+            border: 1px solid #dbe4ea;
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 24px 70px rgba(15, 45, 65, 0.28);
+        }
+        .booking-review-field {
+            min-width: 0;
+            padding: 12px 14px;
+            border-left: 3px solid #0f6f9d;
+            border-radius: 8px;
+            background: #f6fafc;
+        }
+        .booking-review-field dt {
+            margin-bottom: 4px;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .booking-review-field dd {
+            color: #172b3a;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .booking-review-cancel {
+            min-height: 44px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 0 18px;
+            color: #334155;
+            font-weight: 600;
+            transition: background-color 150ms ease, border-color 150ms ease;
+        }
+        .booking-review-cancel:hover {
+            border-color: #94a3b8;
+            background: #f1f5f9;
+        }
+        .booking-review-submit {
+            min-height: 44px;
+            border: 1px solid #0a5c83;
+            border-radius: 8px;
+            background: #0f6f9d;
+            padding: 0 20px;
+            color: #fff;
+            font-weight: 600;
+            transition: background-color 150ms ease, transform 150ms ease;
+        }
+        .booking-review-submit:hover {
+            background: #0a5c83;
+        }
+        .booking-review-submit:active {
+            transform: translateY(1px);
+        }
+        .booking-review-cancel:focus-visible,
+        .booking-review-submit:focus-visible,
+        .booking-review-close:focus-visible {
+            outline: 3px solid #93c5fd;
+            outline-offset: 2px;
+        }
+        @media (max-width: 640px) {
+            .booking-review-panel {
+                max-height: calc(100dvh - 1.5rem);
+            }
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-[#eff6ff]">
     <!-- Navigation -->
-    <nav class="bg-white/80 backdrop-blur-xl shadow-lg sticky top-0 z-50 border-b border-gray-200">
+    <nav class="bg-[#0f6f9d] shadow-lg sticky top-0 z-50 border-b border-[#0a5c83]">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 flex items-center">
                         <a href="{{ route('home') }}" class="flex items-center">
-                            <div class="w-10 h-10 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-xl flex items-center justify-center shadow-lg shadow-[#2563eb]/30">
-                                <i class="fas fa-cogs text-white text-xl"></i>
-                            </div>
-                            <span class="font-bold text-xl text-gray-800 ml-3">RGV Multi-Tech Services</span>
+                            <img src="{{ asset('images/RGV-Logo.png') }}" alt="RGV Multi-Tech Services logo" class="w-10 h-10 rounded-xl object-cover shadow-lg shadow-[#2563eb]/20">
+                            <span class="font-bold text-xl text-white ml-3">RGV Multi-Tech Services</span>
                         </a>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="{{ route('home') }}" class="text-gray-700 hover:text-[#2563eb] font-medium transition-colors">
+                    <a href="{{ route('home') }}" class="text-white hover:text-[#d6f4ff] font-medium transition-colors">
                         <i class="fas fa-home mr-2"></i>Home
                     </a>
                     @guest
-                        <a href="{{ route('login') }}" class="text-gray-700 hover:text-[#2563eb] font-medium transition-colors">
+                        <a href="{{ route('login') }}" class="text-white hover:text-[#d6f4ff] font-medium transition-colors">
                             <i class="fas fa-sign-in-alt mr-2"></i>Login
                         </a>
                     @else
-                        <a href="{{ route('dashboard') }}" class="text-gray-700 hover:text-[#2563eb] font-medium transition-colors">
+                        <a href="{{ route('dashboard') }}" class="text-white hover:text-[#d6f4ff] font-medium transition-colors">
                             <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
                         </a>
                     @endguest
@@ -93,7 +158,7 @@
                     </div>
                 @endif
 
-                <form action="{{ route('booking.store') }}" method="POST" enctype="multipart/form-data">
+                <form id="booking-form" action="{{ route('booking.store') }}" method="POST" onsubmit="return openBookingReview(event)">
                     @csrf
                     <div class="grid md:grid-cols-2 gap-6">
                         <!-- Full Name -->
@@ -165,15 +230,6 @@
                                 placeholder="Please describe your request in detail">{{ old('reason') }}</textarea>
                         </div>
 
-                        <!-- Attachment -->
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Attachment (Optional)</label>
-                            <div class="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-[#2563eb] transition bg-gray-50">
-                                <input type="file" name="attachment" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                    class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#eff6ff] file:text-[#2563eb] hover:file:bg-[#dbeafe]">
-                                <p class="text-xs text-gray-500 mt-2">Accepted formats: PDF, DOC, DOCX, JPG, PNG (Max 5MB)</p>
-                            </div>
-                        </div>
                     </div>
 
                     <div class="mt-8">
@@ -204,11 +260,103 @@
         </div>
     </section>
 
+    <div id="booking-review-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-5" role="dialog" aria-modal="true" aria-labelledby="booking-review-title" aria-describedby="booking-review-description" onclick="if (event.target === this) closeBookingReview()">
+        <div class="booking-review-panel flex flex-col">
+            <div class="flex items-start gap-4 bg-[#0f6f9d] px-5 py-5 text-white sm:px-7">
+                <span class="flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-white/15 text-lg" aria-hidden="true">
+                    <i class="fas fa-clipboard-check"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <h2 id="booking-review-title" class="text-xl font-bold">Review Booking Request</h2>
+                    <p id="booking-review-description" class="mt-1 text-sm text-sky-100">Please verify the information before submitting.</p>
+                </div>
+                <button type="button" class="booking-review-close flex h-9 w-9 flex-none items-center justify-center rounded-lg text-white/80 transition hover:bg-white/15 hover:text-white" aria-label="Close review" onclick="closeBookingReview()">
+                    <i class="fas fa-times" aria-hidden="true"></i>
+                </button>
+            </div>
+            <dl class="grid flex-1 grid-cols-1 gap-3 overflow-y-auto px-5 py-5 sm:grid-cols-2 sm:px-7">
+                <div class="booking-review-field"><dt>Full Name</dt><dd id="review-full-name" class="break-words"></dd></div>
+                <div class="booking-review-field"><dt>Email Address</dt><dd id="review-email" class="break-words"></dd></div>
+                <div class="booking-review-field"><dt>Contact Number</dt><dd id="review-contact-number" class="break-words"></dd></div>
+                <div class="booking-review-field"><dt>Purpose Category</dt><dd id="review-purpose-category" class="break-words"></dd></div>
+                <div class="booking-review-field sm:col-span-2"><dt>Address</dt><dd id="review-address" class="whitespace-pre-wrap break-words"></dd></div>
+                <div class="booking-review-field"><dt>Preferred Date</dt><dd id="review-preferred-date" class="break-words"></dd></div>
+                <div class="booking-review-field"><dt>Preferred Time</dt><dd id="review-preferred-time" class="break-words"></dd></div>
+                <div class="booking-review-field sm:col-span-2"><dt>Reason / Description</dt><dd id="review-reason" class="whitespace-pre-wrap break-words"></dd></div>
+            </dl>
+            <div class="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:gap-3 sm:px-7">
+                <button id="booking-review-cancel" type="button" onclick="closeBookingReview()" class="booking-review-cancel">Cancel</button>
+                <button type="button" onclick="confirmBookingSubmission()" class="booking-review-submit">Submit Booking Request</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
-    <footer class="bg-gradient-to-r from-[#1e40af] to-[#2563eb] text-white py-8">
+    <footer class="bg-[#0f6f9d] border-t border-[#0a5c83] text-white py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p>&copy; 2026 RGV Multi-Tech Services. All rights reserved.</p>
         </div>
     </footer>
+    <script>
+        let bookingReviewConfirmed = false;
+
+        function formatPreferredTime(value) {
+            const match = /^(\d{1,2}):(\d{2})$/.exec(value);
+            if (!match) return value;
+
+            const hours = Number(match[1]);
+            const meridiem = hours >= 12 ? 'PM' : 'AM';
+            return `${hours % 12 || 12}:${match[2]} ${meridiem}`;
+        }
+
+        function openBookingReview(event) {
+            if (bookingReviewConfirmed) {
+                bookingReviewConfirmed = false;
+                return true;
+            }
+
+            event.preventDefault();
+
+            const form = event.currentTarget;
+            const values = {
+                'review-full-name': form.elements.full_name.value,
+                'review-email': form.elements.email.value,
+                'review-contact-number': form.elements.contact_number.value,
+                'review-purpose-category': form.elements.purpose_category.selectedOptions[0].textContent,
+                'review-address': form.elements.address.value,
+                'review-preferred-date': form.elements.preferred_date.value,
+                'review-preferred-time': formatPreferredTime(form.elements.preferred_time.value),
+                'review-reason': form.elements.reason.value,
+            };
+
+            Object.entries(values).forEach(([id, value]) => {
+                document.getElementById(id).textContent = value.trim() || '—';
+            });
+
+            const modal = document.getElementById('booking-review-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('booking-review-cancel').focus();
+            return false;
+        }
+
+        function closeBookingReview() {
+            const modal = document.getElementById('booking-review-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.querySelector('#booking-form button[type="submit"]').focus();
+        }
+
+        function confirmBookingSubmission() {
+            bookingReviewConfirmed = true;
+            document.getElementById('booking-form').requestSubmit();
+        }
+
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && !document.getElementById('booking-review-modal').classList.contains('hidden')) {
+                closeBookingReview();
+            }
+        });
+    </script>
 </body>
 </html>

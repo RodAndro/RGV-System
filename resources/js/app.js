@@ -1,5 +1,4 @@
 import './bootstrap';
-import './firebase';
 
 import Alpine from 'alpinejs';
 import Chart from 'chart.js/auto';

@@ -2,7 +2,7 @@
 
 > **RGV Multi-Tech Services** — Business Operations Management System
 >
-> > Version: 1.6 | Framework: Laravel 12.0 | PHP: ^8.2 | **Last Updated: September 30, 2026**
+> > Version: 1.6 | Framework: Laravel 12 | PHP: ^8.2 | **Last Updated: October 2, 2026**
 
 ---
 
@@ -26,7 +26,7 @@
 
 ## Architecture Overview
 
-The RGV System follows the **Laravel MVC** pattern with additional service and repository layers:
+The RGV System follows the **Laravel MVC** pattern with additional service and repository layers. The current implementation includes a public booking layer, a web admin and employee experience, and a dedicated employee mobile API consumed by the Android app under `mobile/`.
 
 ```
 ┌──────────────────────────────────────────────────┐
@@ -52,15 +52,16 @@ The RGV System follows the **Laravel MVC** pattern with additional service and r
 │  Layer      │  │  Layer        │  │  (Eloquent)   │
 └─────────────┘  └───────────────┘  └──────┬────────┘
                                            ▼
-                                  ┌────────────────┐
-                                  │   SQLite / DB   │
-                                  └────────────────┘
+                                   ┌────────────────┐
+                                   │  Supabase      │
+                                   │  PostgreSQL    │
+                                   └────────────────┘
 ```
 
 **Role Hierarchy:**
-- **Admin** — Full system access, user management, reports, configurations
+- **Admin** — Full system access, user management, reports, configurations, and AI tooling
 - **Employee** — Assigned bookings through web; borrow requests and inventory lookup through web and Android app
-- **Public/Unauthenticated** — Booking form submission, booking tracking, chatbot
+- **Public/Unauthenticated** — Booking form submission and booking tracking; the AI chatbot is restricted to authenticated admin sessions
 
 ---
 
@@ -72,9 +73,9 @@ The RGV System follows the **Laravel MVC** pattern with additional service and r
 |-----------|-----------|---------|
 | Framework | Laravel | 12.0 |
 | Language | PHP | ^8.2 |
-| Database | SQLite locally; MySQL/PostgreSQL supported | — |
+| Database | Supabase PostgreSQL (session pooler or direct host) | — |
 | Auth Scaffolding | Laravel Breeze | ^2.4 |
-| Mobile API Authentication | Laravel Sanctum bearer tokens | ^4.3 |
+| Mobile Auth | Supabase Auth (JWT + TOTP MFA) | — |
 | RBAC | Spatie Laravel-Permission | * |
 | Activity Logging | Spatie Laravel-Activitylog | ^4.12 |
 | Backups | Spatie Laravel-Backup | * |
@@ -107,8 +108,8 @@ The RGV System follows the **Laravel MVC** pattern with additional service and r
 | Service | Model | Usage |
 |---------|-------|-------|
 | OpenAI | GPT (via openai-php) | Chatbot, AI reports |
-| Google Gemini | gemini-pro | Conversational AI (`/ask-gemini`) |
-| Ollama (Local) | llama3.1 | Local AI inference |
+| Ollama (Local) | llama3.1 | Primary reports chatbot provider |
+| Google Gemini | gemini-2.0-flash | Reports chatbot fallback provider |
 
 ---
 
@@ -177,10 +178,13 @@ rgv-system/
 4. Optional MFA (TOTP or email-based) after password confirmation
 5. Role-based redirect: Admin → `/admin/dashboard`, Employee → `/employee/dashboard`
 
-The Android app authenticates through `/api/v1/mobile/auth/login` and uses
-Sanctum bearer tokens instead of browser sessions. Access requires an active
-account with the `employee` role; mobile MFA is completed before a normal
-employee token is issued.
+The Android app authenticates directly against Supabase Auth with
+email/password (plus TOTP MFA at AAL2 where required) and calls the
+restricted PostgreSQL RPCs provisioned by
+`database/supabase/mobile_backend.sql`. It does not use Laravel
+sessions or Sanctum tokens, and it keeps working while the Laravel
+process is unavailable. Access requires an active employee account
+linked to a confirmed Supabase identity.
 
 ### Roles & Permissions (Spatie)
 
@@ -213,13 +217,13 @@ Admins can impersonate other users via `POST /admin/users/{user}/impersonate` an
 
 ### Mobile Employee API
 
-The Flutter client uses `/api/v1/mobile` and Sanctum bearer authentication.
-The API provides login/MFA, dashboard and profile data, inventory lookup and
-search, borrow requests, cancellation, and returns with photo evidence. Mobile
-responses use `snake_case` and bypass the public API's `camel.json` middleware.
-See [RGV-Mobile-API.md](RGV-Mobile-API.md) for the endpoint and payload contract.
+The Flutter client connects directly to Supabase Auth and restricted PostgreSQL
+RPCs; it does not depend on the Laravel process. The native return workflow
+records condition and location but does not upload photos. The legacy Laravel
+mobile API remains available to external clients. See [RGV-Mobile-API.md](RGV-Mobile-API.md)
+for its endpoint and payload contract.
 
-### Public Books API
+### Public API
 
 **Base URL:** `/api`
 
@@ -235,79 +239,6 @@ Rate limits are configurable via Site Settings (API tab) and stored as environme
 | standard | 60 | `API_STANDARD_RATE_LIMIT` |
 | premium | 300 | `API_PREMIUM_RATE_LIMIT` |
 | admin | 1000 | `API_ADMIN_RATE_LIMIT` |
-
----
-
-#### `GET /api/books`
-
-List all books with optional search and filtering.
-
-**Query Parameters:**
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `search` | string | — | Full-text search across title, author, description |
-| `category` | integer | — | Filter by category ID |
-| `sort` | string | `created_at` | Sort field |
-| `order` | string | `desc` | Sort direction (`asc`/`desc`) |
-| `per_page` | integer | 15 | Items per page |
-| `page` | integer | 1 | Page number |
-
-**Response (200):**
-```json
-{
-  "data": [
-    {
-      "id": 1,
-      "isbn": "978-0-123456-78-9",
-      "isbn13": "9780123456789",
-      "title": "Book Title",
-      "slug": "book-title",
-      "author": "Author Name",
-      "publisher": "Publisher",
-      "format": "paperback",
-      "price": 29.99,
-      "stock": 50,
-      "salesCount": 120,
-      "rating": 4.5,
-      "description": "Book description...",
-      "category": {
-        "id": 1,
-        "name": "Fiction",
-        "slug": "fiction"
-      }
-    }
-  ],
-  "meta": {
-    "currentPage": 1,
-    "lastPage": 5,
-    "perPage": 15,
-    "total": 72
-  }
-}
-```
-
----
-
-#### `GET /api/books/{book}`
-
-Get a single book by ID.
-
-**Response (200):** Single book resource (same structure as list item).
-
----
-
-#### `GET /api/books/isbn/{isbn}`
-
-Lookup a book by ISBN (10 or 13 digit).
-
-**Parameters:**
-
-| Parameter | Location | Type | Description |
-|-----------|----------|------|-------------|
-| `isbn` | path | string | ISBN-10 (17 chars with hyphens) or ISBN-13 (13 chars) |
-
-**Response (200):** Single book resource or 404.
 
 ---
 
@@ -345,8 +276,7 @@ Get a single inventory item.
     "status": "available",
     "condition": "good",
     "location": "Storage Room A",
-    "category": { "id": 1, "name": "Electronics" },
-    "supplier": { "id": 2, "name": "Tech Supplier Inc." }
+    "category": { "id": 1, "name": "Electronics" }
   }
 }
 ```
@@ -376,27 +306,6 @@ Send a message to the AI chatbot.
 
 ---
 
-#### `POST /ask-gemini`
-
-Send a query to Google Gemini AI.
-
-**Request Body:**
-```json
-{
-  "prompt": "Analyze monthly sales trends",
-  "data": {}
-}
-```
-
-**Response (200):**
-```json
-{
-  "response": "Based on the data, sales have increased 15% month-over-month..."
-}
-```
-
----
-
 ## Web Routes Reference
 
 ### Public Routes (No Auth Required)
@@ -409,7 +318,6 @@ Send a query to Google Gemini AI.
 | GET | `/booking/track/{reference}` | Track booking by reference number |
 | POST | `/booking/search` | Search booking by reference |
 | POST | `/api/chatbot/query` | AI chatbot |
-| POST | `/ask-gemini` | Gemini AI query |
 
 ### Auth Routes
 
@@ -469,12 +377,10 @@ Dashboard, assigned bookings, borrow requests, inventory viewing, notifications.
 | Service | Purpose |
 |---------|---------|
 | `AuditLogger` | Centralized audit trail logging with tamper-evident HMAC-SHA256 checksums |
-| `CacheService` | Application-level caching abstraction |
 | `GeminiService` | Google Gemini AI API integration |
 | `OllamaService` | Local Ollama LLM integration (llama3.1) |
 | `SystemMetricsService` | System performance and usage metrics |
 | `BorrowService` | Borrow reservations and stock transitions for approval, cancellation, and return |
-| `GoogleDriveService` | Server-side upload of return-photo evidence |
 
 ---
 
@@ -490,7 +396,7 @@ The notification bell component (`resources/views/components/notification-bell.b
 
 ### Notification Classes
 
-14 notification classes handle both email and in-app notifications via the `RespectsPreferences` trait:
+13 notification classes handle email and in-app notifications via the `RespectsPreferences` trait:
 
 | Notification | Trigger |
 |-------------|---------|
@@ -505,41 +411,40 @@ The notification bell component (`resources/views/components/notification-bell.b
 | BorrowRequestBorrowed | Items marked as borrowed |
 | BorrowRequestReturned | All items returned |
 | NewBorrowRequestReceived | New borrow request submitted (→ all admins) |
-| LowStockAlert | Inventory below threshold |
+| LowStockAlert | Inventory first enters low-stock state, including after a stock reservation |
 | UserStatusChanged | User activated/deactivated |
+
+Borrow-request creation alerts are sent to admins only after the creating transaction commits. Employees are notified after approval, rejection, marking items borrowed, and the first completion of a full return. Low-stock alerts are sent once when quantity crosses from above the configured threshold to at or below it; later edits while stock remains low do not repeat the alert.
 
 ### Entity Update Email Notifications
 
-Model observers automatically send email notifications to the configured admin email (`ADMIN_NOTIFICATION_EMAIL` or `BACKUP_NOTIFICATION_EMAIL`) when entities are modified:
+Model observers automatically send email notifications to the configured admin email (`ADMIN_NOTIFICATION_EMAIL`, `BACKUP_NOTIFICATION_EMAIL`, or `SYSTEM_NOTIFICATION_EMAIL`) when entities are modified:
 
 | Observer | Events |
 |----------|--------|
 | `BookingObserver` | Status changes, employee assignment |
-| `InventoryObserver` | Created, updated, deleted |
+| `InventoryObserver` | Created, meaningful updates, deleted; quantity-only stock movements are excluded |
 | `BorrowRequestObserver` | Status changes |
 
-Email sending is gated by `NOTIFICATION_EMAIL_ENABLED` env var (configurable in Site Settings → Notifications tab).
+Queued entity-update emails are released after the database transaction commits. Email notifications are gated by `NOTIFICATION_EMAIL_ENABLED` (configurable in Site Settings → Notifications tab); this does not disable in-app notifications.
 
 ### RespectsPreferences Trait
 
-The `App\Notifications\RespectsPreferences` trait determines delivery channels based on user notification preferences. If no preference exists, both `mail` and `database` channels are enabled by default. Users can toggle per-type preferences at `/profile/notification-preferences`.
+The `App\Notifications\RespectsPreferences` trait determines delivery channels based on user notification preferences. If no preference exists, both `mail` and `database` channels are enabled by default. Guest booking updates use email only. Users can toggle per-type preferences at `/profile/notification-preferences`; opening a bell notification marks it read before redirecting, and mark-all-read updates the inbox for both roles.
 
 ---
 
 ## AI Integration
 
-The system integrates with three AI backends:
-
-1. **OpenAI** (via `openai-php/client`) — Primary chatbot engine, AI-powered report generation
-2. **Google Gemini** (via `GeminiService`) — Alternative conversational AI at `/ask-gemini`
-3. **Ollama** (local, llama3.1) — Local inference at `http://127.0.0.1:11434`
+The admin reports chatbot retrieves database aggregates server-side and uses
+Ollama as its primary provider, Gemini as fallback, then a deterministic
+database-backed response.
 
 ### AI Features
 
 | Endpoint | Description |
 |----------|-------------|
-| `POST /api/chatbot/query` | Public AI chatbot for customer inquiries |
-| `POST /ask-gemini` | Gemini-powered Q&A |
+| `POST /api/chatbot/query` | Admin reports assistant (database-grounded) |
 | `GET /admin/ai/insights` | AI-generated business insights |
 | `GET /admin/ai/forecast` | AI booking forecast |
 | `GET /admin/ai/inventory-recommendations` | AI inventory recommendations |
@@ -584,17 +489,14 @@ APP_URL=http://rgv-system.test
 
 DB_CONNECTION=sqlite
 
-OPENAI_API_KEY=
 GEMINI_API_KEY=
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 OLLAMA_MODEL=llama3.1
-GOOGLE_DRIVE_CREDENTIALS_PATH=/secure/path/service-account.json
-GOOGLE_DRIVE_FOLDER_ID=<shared-folder-id>
 ```
 
 For mobile production deployments, see [RGV-Mobile-API.md](RGV-Mobile-API.md)
-for database, Sanctum, and Google Drive settings. Keep service-account keys on
-the Laravel server and out of source control.
+for database and Sanctum settings. Keep AI provider keys on the Laravel server
+and out of source control.
 
 ### Config Files
 
@@ -603,10 +505,8 @@ the Laravel server and out of source control.
 | `app.php` | Application settings, timezone, locale |
 | `auth.php` | Auth guards, password reset settings |
 | `backup.php` | Spatie backup configuration |
-| `books.php` | Book catalog performance settings (sharding, caching) |
 | `cache.php` | Cache driver configuration |
-| `database.php` | Database connections, shard configuration |
+| `database.php` | Database connections |
 | `mail.php` | Email driver settings |
 | `permission.php` | Spatie permission models and settings |
-| `scout.php` | Search indexing configuration |
-| `services.php` | Third-party service settings (OpenAI, Gemini, Ollama, Google Drive) |
+| `services.php` | Third-party service settings for OpenAI, Gemini, and Ollama |

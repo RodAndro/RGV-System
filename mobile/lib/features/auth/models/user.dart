@@ -1,4 +1,4 @@
-/// The signed-in employee account returned by the Laravel mobile API.
+/// The signed-in employee account returned by Supabase's employee profile RPC.
 class User {
   const User({
     required this.id,

@@ -12,55 +12,63 @@ use App\Models\BackupMonitoring;
 use App\Models\ExportLog;
 use App\Models\ImportLog;
 use App\Models\ApiRateLimit;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        $stats = [
-            'total_bookings' => Booking::count(),
-            'pending_bookings' => Booking::where('status', 'pending')->count(),
-            'approved_bookings' => Booking::where('status', 'approved')->count(),
-            'completed_bookings' => Booking::where('status', 'completed')->count(),
-            'rejected_bookings' => Booking::where('status', 'rejected')->count(),
-            'total_employees' => User::role('employee')->count(),
-            'inventory_count' => Inventory::count(),
-            'borrowed_items' => BorrowRequest::where('status', 'borrowed')->count(),
-            'low_stock_alerts' => Inventory::lowStock()->count(),
-            'returned_items' => BorrowRequest::where('status', 'returned')->count(),
-            'running_imports' => ImportLog::whereIn('status', ['queued', 'processing'])->count(),
-            'running_exports' => ExportLog::whereIn('status', ['queued', 'processing'])->count(),
-            'latest_backup_status' => BackupMonitoring::latest()->value('status') ?? 'unknown',
-            'audit_events_today' => AuditLog::whereDate('created_at', today())->count(),
-            'api_requests_today' => ApiRateLimit::whereDate('created_at', today())->count(),
-        ];
+        $dashboard = Cache::remember('admin.dashboard.index', now()->addSeconds(20), function () {
+            $statsRow = DB::query()
+                ->selectSub(Booking::query()->selectRaw('COUNT(*)'), 'total_bookings')
+                ->selectSub(Booking::query()->where('status', 'pending')->selectRaw('COUNT(*)'), 'pending_bookings')
+                ->selectSub(Booking::query()->where('status', 'approved')->selectRaw('COUNT(*)'), 'approved_bookings')
+                ->selectSub(Booking::query()->where('status', 'completed')->selectRaw('COUNT(*)'), 'completed_bookings')
+                ->selectSub(Booking::query()->where('status', 'rejected')->selectRaw('COUNT(*)'), 'rejected_bookings')
+                ->selectSub(User::role('employee')->selectRaw('COUNT(*)'), 'total_employees')
+                ->selectSub(Inventory::query()->selectRaw('COUNT(*)'), 'inventory_count')
+                ->selectSub(BorrowRequest::query()->where('status', 'borrowed')->selectRaw('COUNT(*)'), 'borrowed_items')
+                ->selectSub(Inventory::query()->whereColumn('quantity', '<=', 'low_stock_threshold')->selectRaw('COUNT(*)'), 'low_stock_alerts')
+                ->selectSub(BorrowRequest::query()->where('status', 'returned')->selectRaw('COUNT(*)'), 'returned_items')
+                ->selectSub(ImportLog::query()->whereIn('status', ['queued', 'processing'])->selectRaw('COUNT(*)'), 'running_imports')
+                ->selectSub(ExportLog::query()->whereIn('status', ['queued', 'processing'])->selectRaw('COUNT(*)'), 'running_exports')
+                ->selectSub(BackupMonitoring::query()->latest()->limit(1)->select('status'), 'latest_backup_status')
+                ->selectSub(AuditLog::query()->whereDate('created_at', today())->selectRaw('COUNT(*)'), 'audit_events_today')
+                ->selectSub(ApiRateLimit::query()->whereDate('created_at', today())->selectRaw('COUNT(*)'), 'api_requests_today')
+                ->first();
 
-        $recentBookings = Booking::latest()->take(5)->get();
-        $recentBorrowRequests = BorrowRequest::latest()->take(5)->get();
-        $pendingBookings = Booking::pending()->take(5)->get();
+            $stats = (array) $statsRow;
+            foreach ($stats as $key => $value) {
+                $stats[$key] = $key === 'latest_backup_status' ? ($value ?? 'unknown') : (int) $value;
+            }
 
-        // Monthly booking data for charts
-        $monthlyBookingsRaw = Booking::selectRaw("strftime('%m', preferred_date) as month, COUNT(*) as count")
-            ->whereRaw("strftime('%Y', preferred_date) = ?", [now()->year])
-            ->groupBy('month')
-            ->orderBy('month')
-            ->pluck('count', 'month')
-            ->toArray();
+            $recentBookings = Booking::latest()->take(5)->get();
+            $recentBorrowRequests = BorrowRequest::latest()->take(5)->get();
+            $pendingBookings = Booking::pending()->take(5)->get();
 
-        $monthlyBookings = [];
-        for ($m = 1; $m <= 12; $m++) {
-            $key = str_pad((string) $m, 2, '0', STR_PAD_LEFT);
-            $monthlyBookings[] = $monthlyBookingsRaw[$key] ?? 0;
-        }
+            $monthExpression = DB::connection()->getDriverName() === 'pgsql'
+                ? "TO_CHAR(preferred_date, 'MM')"
+                : "strftime('%m', preferred_date)";
 
-        return view('admin.dashboard', compact(
-            'stats',
-            'recentBookings',
-            'recentBorrowRequests',
-            'pendingBookings',
-            'monthlyBookings'
-        ));
+            $monthlyBookingsRaw = Booking::selectRaw("{$monthExpression} as month, COUNT(*) as count")
+                ->whereYear('preferred_date', now()->year)
+                ->groupBy('month')
+                ->orderBy('month')
+                ->pluck('count', 'month')
+                ->toArray();
+
+            $monthlyBookings = [];
+            for ($month = 1; $month <= 12; $month++) {
+                $key = str_pad((string) $month, 2, '0', STR_PAD_LEFT);
+                $monthlyBookings[] = $monthlyBookingsRaw[$key] ?? 0;
+            }
+
+            return compact('stats', 'recentBookings', 'recentBorrowRequests', 'pendingBookings', 'monthlyBookings');
+        });
+
+        return view('admin.dashboard', $dashboard);
     }
 
     public function stats(Request $request)
@@ -83,10 +91,14 @@ class DashboardController extends Controller
             $apiQuery->whereDate('created_at', '<=', $dateTo);
         }
 
-        $monthlyBookingsRaw = Booking::selectRaw("strftime('%m', preferred_date) as month, COUNT(*) as count")
+        $monthExpression = DB::connection()->getDriverName() === 'pgsql'
+            ? "TO_CHAR(preferred_date, 'MM')"
+            : "strftime('%m', preferred_date)";
+
+        $monthlyBookingsRaw = Booking::selectRaw("{$monthExpression} as month, COUNT(*) as count")
             ->when($dateFrom, fn($q) => $q->whereDate('preferred_date', '>=', $dateFrom))
             ->when($dateTo, fn($q) => $q->whereDate('preferred_date', '<=', $dateTo))
-            ->whereRaw("strftime('%Y', preferred_date) = ?", [now()->year])
+            ->whereYear('preferred_date', now()->year)
             ->groupBy('month')
             ->orderBy('month')
             ->pluck('count', 'month')

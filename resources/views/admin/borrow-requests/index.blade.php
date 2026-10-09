@@ -6,13 +6,18 @@
 
 @section('content')
 <div class="p-8">
+                @if(session('success'))
+                    <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-6">
+                        {{ session('success') }}
+                    </div>
+                @endif
                 @if(session('error'))
                     <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6">
                         {{ session('error') }}
                     </div>
                 @endif
 
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-4">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-3 mb-4">
                     <div class="card-mantis px-4 py-3 flex items-center gap-3">
                         <div class="bg-gray-50 dark:bg-gray-800 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
                             <i class="fas fa-hand-holding text-gray-600"></i>
@@ -67,6 +72,15 @@
                             <p class="text-lg font-bold text-red-600">{{ $stats['rejected'] }}</p>
                         </div>
                     </div>
+                    <div class="card-mantis px-4 py-3 flex items-center gap-3">
+                        <div class="bg-gray-50 dark:bg-gray-800 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-ban text-gray-600"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-gray-500 truncate">Cancelled</p>
+                            <p class="text-lg font-bold text-gray-600">{{ $stats['cancelled'] }}</p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Filter Section -->
@@ -82,6 +96,7 @@
                             <option value="borrowed" {{ request('status') == 'borrowed' ? 'selected' : '' }}>Borrowed</option>
                             <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
                             <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
+                            <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                         </select>
                         <input type="text" name="search" placeholder="Search by request number or employee..." value="{{ request('search') }}" class="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400">
                         <button type="submit" class="btn-mantis px-4 py-2 text-sm">
@@ -156,6 +171,14 @@
                                                 @csrf
                                                 <button type="submit" class="w-9 h-9 bg-green-100 text-green-600 rounded-lg inline-flex items-center justify-center hover:bg-green-200 transition-colors mr-2" title="Return Items">
                                                     <i class="fas fa-undo"></i>
+                                                </button>
+                                            </form>
+                                        @elseif($request->status == 'returned')
+                                            <form action="{{ route('admin.borrow-requests.destroy', $request) }}" method="POST" class="inline" onsubmit="return confirm('Move this returned borrow request to trash? It can be restored later.')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="w-9 h-9 bg-red-100 text-red-600 rounded-lg inline-flex items-center justify-center hover:bg-red-200 transition-colors" title="Move to Trash">
+                                                    <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
                                         @endif

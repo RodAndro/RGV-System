@@ -15,13 +15,9 @@
                         <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Item Code</p>
                         <p class="font-mono text-2xl font-bold text-[#2563eb]">{{ $inventory->item_code }}</p>
                     </div>
-                    @if($inventory->image_path)
-                        <img src="{{ asset('storage/' . $inventory->image_path) }}" class="w-32 h-32 object-cover rounded-xl">
-                    @else
-                        <div class="w-32 h-32 bg-[#eff6ff] dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
-                            <i class="fas fa-box text-[#2563eb] dark:text-blue-400 text-4xl"></i>
-                        </div>
-                    @endif
+                    <div class="w-32 h-32 bg-[#eff6ff] dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-box text-[#2563eb] dark:text-blue-400 text-4xl"></i>
+                    </div>
                 </div>
 
                 <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-4">{{ $inventory->name }}</h2>
@@ -44,8 +40,8 @@
                     </div>
                     <div>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Status</p>
-                        <span class="badge-mantis-{{ $inventory->status == 'available' ? 'success' : ($inventory->status == 'borrowed' ? 'warning' : ($inventory->status == 'maintenance' ? 'warning' : 'danger')) }}">
-                            {{ ucfirst($inventory->status) }}
+                        <span class="badge-mantis-{{ $inventory->status == 'available' && $inventory->quantity > 0 ? 'success' : ($inventory->status == 'borrowed' || $inventory->status == 'maintenance' ? 'warning' : 'danger') }}">
+                            {{ $inventory->status === 'available' && $inventory->quantity <= 0 ? 'Out of Stock' : ucfirst($inventory->status) }}
                         </span>
                     </div>
                     <div>
@@ -61,6 +57,9 @@
                 </div>
 
                 <div class="mt-6 flex space-x-4">
+                    <a href="{{ route('admin.inventories.qrcode', ['token' => $inventory->qr_token]) }}" class="btn-mantis" style="background:linear-gradient(135deg,#16a34a,#15803d)">
+                        <i class="fas fa-qrcode mr-2"></i>Download QR Code (JPEG)
+                    </a>
                     <a href="{{ route('admin.inventories.edit', $inventory) }}" class="btn-mantis">
                         <i class="fas fa-edit mr-2"></i>Edit Item
                     </a>
@@ -123,9 +122,12 @@
                 </div>
             </div>
 
-            <div class="card-mantis p-6">
+            <div class="card-mantis p-6 mb-6">
                 <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Quick Actions</h3>
                 <div class="space-y-3">
+                    <a href="{{ route('admin.inventories.qrcode', ['token' => $inventory->qr_token]) }}" class="block text-center px-4 py-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/40 transition-all font-medium">
+                        <i class="fas fa-qrcode mr-2"></i>Download QR Code (JPEG)
+                    </a>
                     <a href="{{ route('admin.inventories.edit', $inventory) }}" class="block text-center btn-mantis">
                         <i class="fas fa-edit mr-2"></i>Edit Item
                     </a>

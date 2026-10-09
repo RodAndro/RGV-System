@@ -30,7 +30,6 @@ class BorrowRequestFactory extends Factory
             'borrow_date' => $borrowDate,
             'due_date' => $dueDate,
             'return_date' => $status === 'returned' ? fake()->dateTimeBetween($borrowDate, $dueDate) : null,
-            'penalty_notes' => $status === 'returned' && fake()->boolean(20) ? fake()->sentence() : null,
             'admin_remarks' => ($status === 'approved' || $status === 'rejected') ? fake()->optional(0.5)->sentence() : null,
             'approved_at' => ($status === 'approved' || $status === 'borrowed' || $status === 'returned') ? fake()->dateTimeBetween($borrowDate, 'now') : null,
             'rejected_at' => $status === 'rejected' ? fake()->dateTimeBetween($borrowDate, 'now') : null,

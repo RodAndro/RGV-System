@@ -34,7 +34,7 @@ class BookingAssigned extends Notification
             ->line('Reference Number: ' . $this->booking->reference_number)
             ->line('Client: ' . $this->booking->full_name)
             ->line('Date: ' . $this->booking->preferred_date->format('F d, Y'))
-            ->line('Time: ' . $this->booking->preferred_time)
+            ->line('Time: ' . $this->booking->preferred_time_formatted)
             ->line('Please review the booking details and prepare accordingly.')
             ->action('View Booking', route('employee.bookings.show', $this->booking))
             ->line('Thank you!');

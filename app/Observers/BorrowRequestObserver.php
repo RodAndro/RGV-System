@@ -14,7 +14,7 @@ class BorrowRequestObserver
             return null;
         }
 
-        return env('ADMIN_NOTIFICATION_EMAIL') ?: env('BACKUP_NOTIFICATION_EMAIL');
+        return env('ADMIN_NOTIFICATION_EMAIL') ?: env('BACKUP_NOTIFICATION_EMAIL') ?: env('SYSTEM_NOTIFICATION_EMAIL');
     }
 
     public function updated(BorrowRequest $borrowRequest): void
@@ -24,7 +24,7 @@ class BorrowRequestObserver
             return;
         }
 
-        if ($borrowRequest->isDirty('status')) {
+        if ($borrowRequest->wasChanged('status')) {
             $borrowerName = $borrowRequest->employee ? $borrowRequest->employee->name : 'Unknown';
             $action = 'Status Changed';
             $details = "Borrow request {$borrowRequest->request_number} status changed from \"{$borrowRequest->getOriginal('status')}\" to \"{$borrowRequest->status}\" for {$borrowerName}.";

@@ -1,4 +1,7 @@
-import '../../../core/network/api_client.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
+
+import '../../../core/errors/app_exception.dart';
+import '../../../core/errors/supabase_call.dart';
 import '../models/user.dart';
 
 /// A successful first-step login that either returns a token immediately or
@@ -8,76 +11,109 @@ sealed class LoginResult {
 }
 
 class LoginSuccess extends LoginResult {
-  const LoginSuccess({required this.token, required this.user});
+  const LoginSuccess({required this.user});
 
-  final String token;
   final User user;
 }
 
 class LoginMfaRequired extends LoginResult {
-  const LoginMfaRequired({required this.mfaToken, required this.mfaType});
+  const LoginMfaRequired({required this.factorId});
 
-  final String mfaToken;
-  final String mfaType;
+  final String factorId;
+}
+
+class LoginMfaSetupRequired extends LoginResult {
+  const LoginMfaSetupRequired({required this.factorId, required this.secret});
+
+  final String factorId;
+  final String secret;
 }
 
 class AuthRepository {
-  AuthRepository(this._api);
+  AuthRepository(this._supabase);
 
-  final ApiClient _api;
+  final SupabaseClient _supabase;
+
+  bool get hasSession => _supabase.auth.currentSession != null;
 
   Future<LoginResult> login(String email, String password) async {
-    final json = await _api.post('/auth/login', body: {
-      'email': email,
-      'password': password,
-      'device_name': 'Android App',
+    return supabaseCall(() async {
+      await _supabase.auth.signInWithPassword(email: email, password: password);
+      try {
+        return await _resultFor(await _employee());
+      } on AppException {
+        await _supabase.auth.signOut();
+        rethrow;
+      }
     });
+  }
 
-    if (json['mfa_required'] == true) {
-      return LoginMfaRequired(
-        mfaToken: json['mfa_token'] as String,
-        mfaType: json['mfa_type'] as String? ?? 'totp',
+  Future<LoginResult> restore() => supabaseCall(() async {
+    return _resultFor(await _employee());
+  });
+
+  Future<LoginSuccess> verifyMfa(String factorId, String code) async {
+    return supabaseCall(() async {
+      final challenge = await _supabase.auth.mfa.challenge(factorId: factorId);
+      await _supabase.auth.mfa.verify(
+        factorId: factorId,
+        challengeId: challenge.id,
+        code: code,
       );
-    }
-
-    return LoginSuccess(
-      token: json['token'] as String,
-      user: User.fromJson(json['user'] as Map<String, dynamic>),
-    );
-  }
-
-  Future<LoginSuccess> verifyMfa(String code) async {
-    final json = await _api.post('/auth/mfa/verify', body: {
-      'code': code,
-      'device_name': 'Android App',
+      return LoginSuccess(user: await _employee());
     });
-    return LoginSuccess(
-      token: json['token'] as String,
-      user: User.fromJson(json['user'] as Map<String, dynamic>),
-    );
   }
 
-  Future<void> logout() => _api.post('/auth/logout');
+  Future<void> logout() => supabaseCall(
+        () => _supabase.auth.signOut(scope: SignOutScope.local),
+      );
 
-  Future<User> me() async {
-    final json = await _api.get('/me');
-    return User.fromJson(json['user'] as Map<String, dynamic>);
-  }
+  Future<User> me() => _employee();
 
   Future<User> updateName(String name) async {
-    final json = await _api.patch('/profile', body: {'name': name});
-    return User.fromJson(json['user'] as Map<String, dynamic>);
+    return supabaseCall(() async {
+      final json = await _supabase.rpc(
+        'mobile_update_employee_name',
+        params: {'p_name': name},
+      );
+      return User.fromJson(Map<String, dynamic>.from(json as Map));
+    });
   }
 
-  Future<void> changePassword({
-    required String currentPassword,
-    required String newPassword,
-    required String confirmation,
-  }) {
-    return _api.put('/password', body: {
-      'current_password': currentPassword,
-      'new_password': newPassword,
-      'new_password_confirmation': confirmation,
-    });
+  Future<void> changePassword({required String newPassword}) =>
+      supabaseCall(() async {
+        await _supabase.auth.updateUser(UserAttributes(password: newPassword));
+      });
+
+  Future<User> _employee() => supabaseCall(() async {
+    final json = await _supabase.rpc('mobile_employee_profile');
+    return User.fromJson(Map<String, dynamic>.from(json as Map));
+  });
+
+  Future<LoginResult> _resultFor(User user) async {
+    final assurance = _supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (user.mfaEnabled ||
+        assurance.nextLevel == AuthenticatorAssuranceLevels.aal2) {
+      final factors = await _supabase.auth.mfa.listFactors();
+      if (factors.totp.isEmpty) {
+        if (!user.mfaEnabled) {
+          throw const AppException(
+            'No verified Supabase authenticator is available.',
+          );
+        }
+        final enrollment = await _supabase.auth.mfa.enroll(
+          factorType: FactorType.totp,
+          friendlyName: 'RGV Employee App',
+        );
+        return LoginMfaSetupRequired(
+          factorId: enrollment.id,
+          secret: enrollment.totp!.secret,
+        );
+      }
+      if (assurance.currentLevel != AuthenticatorAssuranceLevels.aal2) {
+        return LoginMfaRequired(factorId: factors.totp.first.id);
+      }
+    }
+    return LoginSuccess(user: user);
   }
 }

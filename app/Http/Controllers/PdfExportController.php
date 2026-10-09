@@ -19,7 +19,7 @@ class PdfExportController extends Controller
 
     public function exportInventory(Request $request)
     {
-        $inventories = Inventory::with(['category', 'supplier'])->latest()->get();
+        $inventories = Inventory::with(['category'])->latest()->get();
         
         $pdf = Pdf::loadView('pdf.inventory', compact('inventories'));
         return $pdf->download('inventory-report-' . date('Y-m-d') . '.pdf');

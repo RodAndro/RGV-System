@@ -6,19 +6,17 @@ import '../../core/theme/app_theme.dart';
 ({String label, Color color, Color background}) _styleFor(String status) {
   switch (status.toLowerCase()) {
     case 'pending':
-      return (label: 'Pending', color: const Color(0xFF92400E), background: const Color(0xFFFEF3C7));
+      return (label: 'Pending', color: const Color(0xFFD97706), background: const Color(0xFFFEF3C7));
     case 'approved':
-      return (label: 'Approved', color: RgvColors.blueDark, background: RgvColors.blueLight);
+      return (label: 'Approved', color: const Color(0xFF2563EB), background: const Color(0xFFEFF6FF));
     case 'rejected':
-      return (label: 'Rejected', color: const Color(0xFF991B1B), background: const Color(0xFFFEE2E2));
+      return (label: 'Rejected', color: const Color(0xFFDC2626), background: const Color(0xFFFEE2E2));
     case 'borrowed':
-      return (label: 'Borrowed', color: const Color(0xFF1E40AF), background: const Color(0xFFDBEAFE));
+      return (label: 'Borrowed', color: const Color(0xFFD97706), background: const Color(0xFFFEF3C7));
     case 'returned':
-      return (label: 'Returned', color: const Color(0xFF166534), background: const Color(0xFFDCFCE7));
-    case 'overdue':
-      return (label: 'Overdue', color: const Color(0xFF991B1B), background: const Color(0xFFFEE2E2));
+      return (label: 'Returned', color: const Color(0xFF2563EB), background: const Color(0xFFEFF6FF));
     case 'cancelled':
-      return (label: 'Cancelled', color: RgvColors.slateLight, background: const Color(0xFFE2E8F0));
+      return (label: 'Cancelled', color: const Color(0xFFDC2626), background: const Color(0xFFFEE2E2));
     default:
       return (label: status, color: RgvColors.slate, background: const Color(0xFFF1F5F9));
   }

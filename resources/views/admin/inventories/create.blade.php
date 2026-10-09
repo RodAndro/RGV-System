@@ -55,17 +55,6 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Supplier</label>
-                    <select name="supplier_id"
-                        class="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100">
-                        <option value="">Select supplier</option>
-                        @foreach($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}" {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>{{ $supplier->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Quantity *</label>
                     <input type="number" name="quantity" value="{{ old('quantity', 0) }}" required min="0"
                         class="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
@@ -143,17 +132,6 @@
                         class="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
                         placeholder="Enter item description">{{ old('description') }}</textarea>
                 </div>
-            </div>
-
-            <div class="section-divider"></div>
-
-            <div class="section-header">
-                <h2 class="section-title"><i class="fas fa-image"></i>Item Image</h2>
-            </div>
-            <div class="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl p-8 text-center hover:border-[#2563eb] transition bg-gray-50 dark:bg-gray-800 mb-6">
-                <input type="file" name="image" accept=".jpg,.jpeg,.png"
-                    class="w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#eff6ff] dark:file:bg-blue-900/30 file:text-[#2563eb] dark:file:text-blue-400 hover:file:bg-[#dbeafe]">
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Accepted formats: JPG, PNG (Max 5MB)</p>
             </div>
 
             <div class="mt-8 flex justify-end space-x-4">

@@ -17,7 +17,6 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->foreignId('category_id')->constrained('inventory_categories')->onDelete('cascade');
-            $table->foreignId('supplier_id')->nullable()->constrained('suppliers')->onDelete('set null');
             $table->integer('quantity')->default(0);
             $table->string('unit')->default('pcs');
             $table->decimal('unit_cost', 10, 2)->nullable();

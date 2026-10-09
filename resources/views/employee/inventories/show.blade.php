@@ -8,14 +8,10 @@
 <div class="p-8">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2">
-            <div class="card-mantis overflow-hidden mb-6">
-                @if($inventory->image_path)
-                    <img src="{{ asset('storage/' . $inventory->image_path) }}" alt="{{ $inventory->name }}" class="w-full h-80 object-cover">
-                @else
-                    <div class="w-full h-80 bg-gradient-to-br from-[#eff6ff] to-[#dbeafe] flex items-center justify-center">
-                        <i class="fas fa-box text-[#2563eb] text-6xl"></i>
-                    </div>
-                @endif
+            <div class="card-mantis h-40 overflow-hidden mb-6">
+                <div class="h-full bg-gradient-to-br from-[#eff6ff] to-[#dbeafe] flex items-center justify-center">
+                    <i class="fas fa-box text-[#2563eb] text-6xl"></i>
+                </div>
             </div>
             <div class="card-mantis p-6">
                 <div class="flex items-center justify-between mb-6">
@@ -23,8 +19,8 @@
                         <p class="text-sm text-gray-500">Item Code</p>
                         <p class="text-lg font-semibold text-[#2563eb]">{{ $inventory->item_code }}</p>
                     </div>
-                    <span class="badge-mantis-{{ $inventory->status == 'available' ? 'success' : ($inventory->status == 'borrowed' ? 'warning' : ($inventory->status == 'maintenance' ? 'warning' : 'danger')) }}">
-                        {{ ucfirst($inventory->status) }}
+                    <span class="badge-mantis-{{ $inventory->status == 'available' && $inventory->quantity > 0 ? 'success' : ($inventory->status == 'borrowed' || $inventory->status == 'maintenance' ? 'warning' : 'danger') }}">
+                        {{ $inventory->status === 'available' && $inventory->quantity <= 0 ? 'Out of Stock' : ucfirst($inventory->status) }}
                     </span>
                 </div>
                 <h2 class="text-3xl font-bold text-gray-900 mb-4">{{ $inventory->name }}</h2>

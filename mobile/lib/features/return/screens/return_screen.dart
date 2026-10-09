@@ -1,7 +1,4 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -22,7 +19,6 @@ class ReturnScreen extends StatefulWidget {
 class _ReturnScreenState extends State<ReturnScreen> {
   late Future<List<ReturnableItem>> _future;
 
-  final _picker = ImagePicker();
   final _uuid = const Uuid();
 
   final Set<int> _selected = {};
@@ -30,7 +26,8 @@ class _ReturnScreenState extends State<ReturnScreen> {
   final Map<int, String> _notes = {};
   final Map<int, String> _idempotencyKeys = {};
 
-  String? _photoPath;
+  String? _selectedLocation;
+  final TextEditingController _locationController = TextEditingController();
   bool _submitting = false;
   String? _error;
 
@@ -40,33 +37,28 @@ class _ReturnScreenState extends State<ReturnScreen> {
     _future = context.read<ReturnRepository>().returnableItems();
   }
 
+  @override
+  void dispose() {
+    _locationController.dispose();
+    super.dispose();
+  }
+
   void _reload() {
     setState(() {
       _future = context.read<ReturnRepository>().returnableItems();
       _selected.clear();
       _conditions.clear();
       _notes.clear();
-      _photoPath = null;
+      _selectedLocation = null;
+      _locationController.clear();
       _error = null;
     });
   }
 
-  Future<void> _pickPhoto(ImageSource source) async {
-    try {
-      final file = await _picker.pickImage(
-        source: source,
-        maxWidth: 2000,
-        imageQuality: 80,
-      );
-      if (file != null) {
-        setState(() {
-          _photoPath = file.path;
-          _error = null;
-        });
-      }
-    } catch (_) {
-      _showError('Could not open the camera or gallery.');
-    }
+  void _refreshItems() {
+    setState(() {
+      _future = context.read<ReturnRepository>().returnableItems();
+    });
   }
 
   void _showError(String message) {
@@ -78,12 +70,19 @@ class _ReturnScreenState extends State<ReturnScreen> {
       _showError('Select at least one item to return.');
       return;
     }
-    if (_photoPath == null) {
-      _showError('Attach a photo of the returned item(s).');
+
+    final selectedItems = items
+        .where((i) => _selected.contains(i.borrowItemId))
+        .toList();
+    final locations = _locationsFor(items);
+    final returnLocation = locations.isNotEmpty
+        ? _selectedLocation
+        : _locationController.text.trim();
+    if (returnLocation == null || returnLocation.isEmpty) {
+      _showError('Select or enter a return location.');
       return;
     }
 
-    final selectedItems = items.where((i) => _selected.contains(i.borrowItemId)).toList();
     final byRequest = <int, List<ReturnableItem>>{};
     for (final item in selectedItems) {
       byRequest.putIfAbsent(item.requestId, () => []).add(item);
@@ -105,17 +104,19 @@ class _ReturnScreenState extends State<ReturnScreen> {
 
         try {
           await context.read<ReturnRepository>().submitReturn(
-                requestId: requestId,
-                idempotencyKey: key,
-                photoPath: _photoPath!,
-                items: entry.value
-                    .map((i) => (
-                          borrowItemId: i.borrowItemId,
-                          condition: _conditions[i.borrowItemId] ?? 'good',
-                          notes: _notes[i.borrowItemId],
-                        ))
-                    .toList(),
-              );
+            requestId: requestId,
+            idempotencyKey: key,
+            returnLocation: returnLocation,
+            items: entry.value
+                .map(
+                  (i) => (
+                    borrowItemId: i.borrowItemId,
+                    condition: _conditions[i.borrowItemId] ?? 'good',
+                    notes: _notes[i.borrowItemId],
+                  ),
+                )
+                .toList(),
+          );
           anySucceeded = true;
         } on AppException catch (e) {
           anyFailed = true;
@@ -137,10 +138,28 @@ class _ReturnScreenState extends State<ReturnScreen> {
     }
   }
 
+  List<String> _locationsFor(List<ReturnableItem> items) =>
+      items
+          .map((item) => item.inventory?.location?.trim())
+          .whereType<String>()
+          .where((location) => location.isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Return Items')),
+      appBar: AppBar(
+        title: const Text('Return Items'),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh borrowed items',
+            onPressed: _submitting ? null : _refreshItems,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
       body: FutureBuilder<List<ReturnableItem>>(
         future: _future,
         builder: (context, snapshot) {
@@ -149,7 +168,9 @@ class _ReturnScreenState extends State<ReturnScreen> {
           }
           if (snapshot.hasError) {
             final error = snapshot.error;
-            final message = error is AppException ? error.userMessage : 'Could not load items.';
+            final message = error is AppException
+                ? error.userMessage
+                : 'Could not load items.';
             return ErrorView(message: message, onRetry: _reload);
           }
           final items = snapshot.data ?? [];
@@ -166,6 +187,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
   }
 
   Widget _buildForm(List<ReturnableItem> items) {
+    final locations = _locationsFor(items);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -176,7 +198,10 @@ class _ReturnScreenState extends State<ReturnScreen> {
               color: const Color(0xFFFEE2E2),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(_error!, style: const TextStyle(color: Color(0xFF991B1B))),
+            child: Text(
+              _error!,
+              style: const TextStyle(color: Color(0xFF991B1B)),
+            ),
           ),
           const SizedBox(height: 16),
         ],
@@ -185,33 +210,53 @@ class _ReturnScreenState extends State<ReturnScreen> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
-        ...items.map((item) => _ReturnItemCard(
-              item: item,
-              selected: _selected.contains(item.borrowItemId),
-              condition: _conditions[item.borrowItemId],
-              onChanged: (selected) => setState(() {
-                if (selected) {
-                  _selected.add(item.borrowItemId);
-                } else {
-                  _selected.remove(item.borrowItemId);
-                }
-              }),
-              onConditionChanged: (condition) =>
-                  setState(() => _conditions[item.borrowItemId] = condition),
-              onNotesChanged: (notes) =>
-                  setState(() => _notes[item.borrowItemId] = notes),
-            )),
+        ...items.map(
+          (item) => _ReturnItemCard(
+            item: item,
+            selected: _selected.contains(item.borrowItemId),
+            condition: _conditions[item.borrowItemId],
+            onChanged: (selected) => setState(() {
+              if (selected) {
+                _selected.add(item.borrowItemId);
+              } else {
+                _selected.remove(item.borrowItemId);
+              }
+            }),
+            onConditionChanged: (condition) =>
+                setState(() => _conditions[item.borrowItemId] = condition),
+            onNotesChanged: (notes) =>
+                setState(() => _notes[item.borrowItemId] = notes),
+          ),
+        ),
         const SizedBox(height: 24),
         const Text(
-          'Return proof photo (required)',
+          'Return location',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 12),
-        _PhotoPicker(
-          photoPath: _photoPath,
-          onCapture: () => _pickPhoto(ImageSource.camera),
-          onSelect: () => _pickPhoto(ImageSource.gallery),
-        ),
+        if (locations.isNotEmpty)
+          DropdownButtonFormField<String>(
+            initialValue: _selectedLocation,
+            decoration: const InputDecoration(labelText: 'Return location'),
+            items: locations
+                .map(
+                  (location) =>
+                      DropdownMenuItem(value: location, child: Text(location)),
+                )
+                .toList(),
+            onChanged: (location) =>
+                setState(() => _selectedLocation = location),
+          )
+        else
+          TextField(
+            controller: _locationController,
+            decoration: const InputDecoration(
+              labelText: 'Where are the items being returned?',
+              hintText: 'e.g., Main Warehouse',
+              alignLabelWithHint: true,
+            ),
+            maxLength: 255,
+          ),
         const SizedBox(height: 24),
         ElevatedButton.icon(
           onPressed: _submitting ? null : () => _submit(items),
@@ -219,7 +264,10 @@ class _ReturnScreenState extends State<ReturnScreen> {
               ? const SizedBox(
                   height: 20,
                   width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.white,
+                  ),
                 )
               : const Icon(Icons.check),
           label: Text(_submitting ? 'Submitting…' : 'Submit Return'),
@@ -276,7 +324,9 @@ class _ReturnItemCard extends StatelessWidget {
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: condition ?? 'good',
-                decoration: const InputDecoration(labelText: 'Condition on return'),
+                decoration: const InputDecoration(
+                  labelText: 'Condition on return',
+                ),
                 items: returnConditions
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),
@@ -297,58 +347,6 @@ class _ReturnItemCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _PhotoPicker extends StatelessWidget {
-  const _PhotoPicker({
-    required this.photoPath,
-    required this.onCapture,
-    required this.onSelect,
-  });
-
-  final String? photoPath;
-  final VoidCallback onCapture;
-  final VoidCallback onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    if (photoPath != null) {
-      return Column(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.file(File(photoPath!), height: 180, fit: BoxFit.cover),
-          ),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: onSelect,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Choose a different photo'),
-          ),
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: onCapture,
-            icon: const Icon(Icons.photo_camera_outlined),
-            label: const Text('Take photo'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: onSelect,
-            icon: const Icon(Icons.photo_library_outlined),
-            label: const Text('Gallery'),
-          ),
-        ),
-      ],
     );
   }
 }

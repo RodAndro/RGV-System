@@ -18,7 +18,9 @@ class EntityUpdateNotification extends Mailable
         public readonly string $action,
         public readonly string $details,
         public readonly ?string $link = null,
-    ) {}
+    ) {
+        $this->afterCommit();
+    }
 
     public function envelope(): Envelope
     {

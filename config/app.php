@@ -54,6 +54,8 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'log_page_visits' => env('LOG_PAGE_VISITS', false),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

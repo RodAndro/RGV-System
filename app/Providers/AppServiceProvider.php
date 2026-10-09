@@ -2,15 +2,15 @@
 
 namespace App\Providers;
 
+use App\Database\PostgresConnection;
+use App\Database\PostgresConnector;
 use App\Models\Booking;
-use App\Models\Book;
 use App\Models\BorrowRequest;
 use App\Models\Inventory;
 use App\Models\InventoryCategory;
 use App\Models\LoginHistory;
 use App\Models\User;
 use App\Observers\AuditObserver;
-use App\Observers\BookObserver;
 use App\Observers\BookingObserver;
 use App\Observers\BorrowRequestObserver;
 use App\Observers\InventoryObserver;
@@ -18,7 +18,9 @@ use App\Services\AuditLogger;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -26,7 +28,9 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->bind('db.connector.pgsql', PostgresConnector::class);
+
+        Connection::resolverFor('pgsql', fn ($connection, $database, $prefix, $config) => new PostgresConnection($connection, $database, $prefix, $config));
     }
 
     public function boot(): void
@@ -42,12 +46,12 @@ class AppServiceProvider extends ServiceProvider
             $model::observe(AuditObserver::class);
         }
 
-        Book::observe(BookObserver::class);
         Booking::observe(BookingObserver::class);
         Inventory::observe(InventoryObserver::class);
         BorrowRequest::observe(BorrowRequestObserver::class);
 
         Event::listen(Login::class, function (Login $event) {
+            RateLimiter::clear('failed-login-ip:' . request()->ip());
             $event->user->update(['last_login_at' => now()]);
             AuditLogger::log('login', $event->user);
 
@@ -72,6 +76,9 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
-        Event::listen(Failed::class, fn (Failed $event) => AuditLogger::log('failed login', null, [], ['email' => $event->credentials['email'] ?? null]));
+        Event::listen(Failed::class, function (Failed $event) {
+            RateLimiter::hit('failed-login-ip:' . request()->ip(), 3600);
+            AuditLogger::log('failed login', null, [], ['email' => $event->credentials['email'] ?? null]);
+        });
     }
 }

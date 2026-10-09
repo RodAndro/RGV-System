@@ -12,6 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('borrow_request_id')->constrained('borrow_requests')->onDelete('cascade');
             $table->string('idempotency_key')->unique();
+            // Legacy external-file reference retained for historical compatibility.
+            // The current return workflow does not use Google Drive uploads.
             $table->string('drive_file_id')->nullable();
             $table->string('file_name');
             $table->string('mime_type')->nullable();

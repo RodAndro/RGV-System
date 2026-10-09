@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../inventory/data/inventory_repository.dart';
+import '../../inventory/models/inventory_item.dart';
 import '../../inventory/screens/qr_scan_screen.dart';
 import 'borrow_form_screen.dart';
 
@@ -18,13 +19,40 @@ class BorrowStartScreen extends StatefulWidget {
 
 class _BorrowStartScreenState extends State<BorrowStartScreen> {
   final _codeController = TextEditingController();
+  final _searchController = TextEditingController();
+  late Future<List<InventoryItem>> _catalogFuture;
+  final Map<int, InventoryItem> _selectedItems = {};
   bool _lookingUp = false;
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    _catalogFuture = context.read<InventoryRepository>().search('');
+  }
+
+  @override
   void dispose() {
     _codeController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _searchCatalog() {
+    setState(() {
+      _catalogFuture = context.read<InventoryRepository>().search(
+        _searchController.text,
+      );
+    });
+  }
+
+  Future<void> _continueWithSelection() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BorrowFormScreen(items: _selectedItems.values.toList()),
+      ),
+    );
   }
 
   Future<void> _scan() async {
@@ -56,7 +84,7 @@ class _BorrowStartScreenState extends State<BorrowStartScreen> {
       if (!mounted) return;
       await Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => BorrowFormScreen(item: item)),
+        MaterialPageRoute(builder: (_) => BorrowFormScreen(items: [item])),
       );
     } on AppException catch (e) {
       setState(() => _error = e.userMessage);
@@ -90,8 +118,10 @@ class _BorrowStartScreenState extends State<BorrowStartScreen> {
               Expanded(child: Divider()),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text('or enter manually',
-                    style: TextStyle(color: RgvColors.slateLight)),
+                child: Text(
+                  'or enter manually',
+                  style: TextStyle(color: RgvColors.slateLight),
+                ),
               ),
               Expanded(child: Divider()),
             ],
@@ -128,9 +158,104 @@ class _BorrowStartScreenState extends State<BorrowStartScreen> {
                 ? const SizedBox(
                     height: 22,
                     width: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
                   )
                 : const Text('Look Up Item'),
+          ),
+          const SizedBox(height: 24),
+          ExpansionTile(
+            initiallyExpanded: true,
+            title: const Text('Browse inventory'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        textInputAction: TextInputAction.search,
+                        decoration: const InputDecoration(
+                          labelText: 'Search inventory',
+                          prefixIcon: Icon(Icons.search),
+                        ),
+                        onSubmitted: (_) => _searchCatalog(),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Search inventory',
+                      onPressed: _searchCatalog,
+                      icon: const Icon(Icons.search),
+                    ),
+                  ],
+                ),
+              ),
+              FutureBuilder<List<InventoryItem>>(
+                future: _catalogFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return const ListTile(
+                      title: Text('Could not load inventory.'),
+                    );
+                  }
+                  final items = snapshot.data ?? const <InventoryItem>[];
+                  if (items.isEmpty) {
+                    return const ListTile(
+                      title: Text('No inventory items found.'),
+                    );
+                  }
+                  return Column(
+                    children: items
+                        .map(
+                          (item) => CheckboxListTile(
+                            value: _selectedItems.containsKey(item.id),
+                            onChanged:
+                                item.isAvailable ||
+                                    _selectedItems.containsKey(item.id)
+                                ? (selected) => setState(() {
+                                    if (selected == true) {
+                                      _selectedItems[item.id] = item;
+                                    } else {
+                                      _selectedItems.remove(item.id);
+                                    }
+                                  })
+                                : null,
+                            title: Text(item.name),
+                            subtitle: Text(
+                              '${item.itemCode} · ${item.category ?? 'Uncategorized'} · ${item.isAvailable ? '${item.quantity} ${item.unit} available' : item.availabilityLabel}',
+                            ),
+                            controlAffinity: ListTileControlAffinity.leading,
+                          ),
+                        )
+                        .toList(),
+                  );
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _selectedItems.isEmpty
+                        ? null
+                        : _continueWithSelection,
+                    icon: const Icon(Icons.playlist_add_check),
+                    label: Text(
+                      'Continue with ${_selectedItems.length} selected',
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

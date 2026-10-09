@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\Inventory;
 use App\Models\InventoryCategory;
-use App\Models\Supplier;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class InventoryFactory extends Factory
@@ -14,7 +13,6 @@ class InventoryFactory extends Factory
     public function definition(): array
     {
         $categories = InventoryCategory::all()->keyBy('slug');
-        $supplierId = Supplier::query()->inRandomOrder('')->value('id');
         $locations = ['Main Warehouse', 'Tool Room Shelf A', 'Tool Room Shelf B', 'Service Bay', 'Delivery Rack', 'Storage Shelf 3'];
 
         $itemsByCategory = [
@@ -89,7 +87,6 @@ class InventoryFactory extends Factory
             'name' => $item['name'],
             'description' => fake()->sentence(12),
             'category_id' => $category->id,
-            'supplier_id' => $supplierId,
             'quantity' => fake()->numberBetween(8, 120),
             'unit' => $item['unit'],
             'unit_cost' => fake()->randomFloat(2, $item['price_min'], $item['price_max']),

@@ -22,8 +22,14 @@ class InventoryController extends Controller
         $code = $this->extractItemCode($request->input('code'));
 
         $inventory = Inventory::with('category:id,name')
-            ->where('item_code', $code)
-            ->orWhere('id', $code)
+            ->where(function ($query) use ($code) {
+                $query->where('item_code', $code)
+                    ->orWhere('qr_token', $code);
+
+                if (ctype_digit($code)) {
+                    $query->orWhere('id', (int) $code);
+                }
+            })
             ->first();
 
         if (! $inventory) {
@@ -72,6 +78,16 @@ class InventoryController extends Controller
             }
         }
 
+        if (filter_var($raw, FILTER_VALIDATE_URL)) {
+            $path = parse_url($raw, PHP_URL_PATH) ?: '';
+            $segments = explode('/', trim($path, '/'));
+            $qrIndex = array_search('qr', $segments, true);
+
+            if ($qrIndex !== false && isset($segments[$qrIndex + 1])) {
+                return rawurldecode($segments[$qrIndex + 1]);
+            }
+        }
+
         return $raw;
     }
 
@@ -88,7 +104,6 @@ class InventoryController extends Controller
             'unit' => $inventory->unit,
             'status' => $inventory->status,
             'condition' => $inventory->condition,
-            'image_path' => $inventory->image_path,
             'is_active' => (bool) $inventory->is_active,
         ];
     }

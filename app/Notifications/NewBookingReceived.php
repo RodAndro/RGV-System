@@ -34,9 +34,9 @@ class NewBookingReceived extends Notification
             ->line('Reference Number: ' . $this->booking->reference_number)
             ->line('Client: ' . $this->booking->full_name)
             ->line('Email: ' . $this->booking->email)
-            ->line('Phone: ' . $this->booking->phone)
+            ->line('Phone: ' . $this->booking->contact_number)
             ->line('Date: ' . $this->booking->preferred_date->format('F d, Y'))
-            ->line('Time: ' . $this->booking->preferred_time)
+            ->line('Time: ' . $this->booking->preferred_time_formatted)
             ->line('Please review and approve or reject the booking.')
             ->action('View Booking', route('admin.bookings.show', $this->booking))
             ->line('Thank you!');

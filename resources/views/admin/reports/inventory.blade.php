@@ -112,6 +112,7 @@
 </div>
 @endsection
 
-@push('scripts')
 <x-chatbot pageType="inventory" />
+
+@push('scripts')
 @endpush

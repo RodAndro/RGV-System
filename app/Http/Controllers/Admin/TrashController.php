@@ -7,8 +7,9 @@ use App\Models\Booking;
 use App\Models\BorrowRequest;
 use App\Models\Inventory;
 use App\Models\InventoryCategory;
-use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class TrashController extends Controller
@@ -18,18 +19,25 @@ class TrashController extends Controller
         'borrow_request' => BorrowRequest::class,
         'inventory' => Inventory::class,
         'inventory_category' => InventoryCategory::class,
-        'supplier' => Supplier::class,
     ];
 
     public function index(Request $request)
     {
-        $trashable = [
-            'Booking' => Booking::onlyTrashed()->count(),
-            'Borrow Request' => BorrowRequest::onlyTrashed()->count(),
-            'Inventory' => Inventory::onlyTrashed()->count(),
-            'Inventory Category' => InventoryCategory::onlyTrashed()->count(),
-            'Supplier' => Supplier::onlyTrashed()->count(),
-        ];
+        $trashable = Cache::remember('admin.trash.counts', now()->addSeconds(20), function () {
+            $counts = DB::query()
+                ->selectSub(Booking::onlyTrashed()->selectRaw('COUNT(*)'), 'bookings')
+                ->selectSub(BorrowRequest::onlyTrashed()->selectRaw('COUNT(*)'), 'borrow_requests')
+                ->selectSub(Inventory::onlyTrashed()->selectRaw('COUNT(*)'), 'inventories')
+                ->selectSub(InventoryCategory::onlyTrashed()->selectRaw('COUNT(*)'), 'inventory_categories')
+                ->first();
+
+            return [
+                'Booking' => (int) $counts->bookings,
+                'Borrow Request' => (int) $counts->borrow_requests,
+                'Inventory' => (int) $counts->inventories,
+                'Inventory Category' => (int) $counts->inventory_categories,
+            ];
+        });
 
         $type = $request->get('type', 'booking');
 

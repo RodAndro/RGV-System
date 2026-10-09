@@ -101,7 +101,8 @@ class BorrowRequestController extends Controller
     {
         abort_if($borrowRequest->employee_id !== auth()->id(), 403);
         $borrowRequest->load(['borrowItems.inventory', 'approvedBy']);
-        return view('employee.borrow-requests.show', compact('borrowRequest'));
+        $locations = Inventory::whereNotNull('location')->distinct()->pluck('location');
+        return view('employee.borrow-requests.show', compact('borrowRequest', 'locations'));
     }
 
     public function returnItem(Request $request, BorrowRequest $borrowRequest)
@@ -113,10 +114,11 @@ class BorrowRequestController extends Controller
             'items.*.borrow_item_id' => 'required|exists:borrow_items,id',
             'items.*.condition_returned' => 'required|in:new,good,fair,poor,damaged',
             'items.*.damage_notes' => 'nullable|string',
+            'return_location' => ['required', 'string', 'max:255'],
         ]);
 
         try {
-            $this->borrowService->returnItems($borrowRequest, $request->items);
+            $this->borrowService->returnItems($borrowRequest, $request->items, null, $request->return_location);
         } catch (\DomainException $e) {
             return back()->with('error', $e->getMessage());
         }

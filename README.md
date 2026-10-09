@@ -2,26 +2,38 @@
 
 **RGV Multi-Tech Services** — Business Operations Management System
 
-Laravel 12 | PHP 8.2+ | SQLite locally / PostgreSQL or MySQL configurable | Web + Flutter Android
+Laravel 12 | PHP 8.2+ | Supabase PostgreSQL | Web + Flutter Android
 
 ---
 
 ## Overview
 
-A web and Android system for managing service bookings, inventory, and equipment borrowing. Three user roles access separate portals:
+A web and Android system for managing service bookings, inventory, borrowing, and operational reporting. The current implementation is a Laravel 12 backend with the live admin and employee web portals, a public booking workflow, and a Flutter Android employee application.
 
-- **Public** — Submit and track service bookings, use AI chatbot
-- **Employee** — Manage assigned bookings on web; borrow and return inventory through web or Android app
-- **Admin** — Full control over bookings, inventory, users, reports, backups, and settings
+- **Public** — Submit and track service bookings and service requests through the public booking workflow
+- **Employee** — Manage assigned bookings in the web portal and use the Android app for inventory lookup, borrow requests, returns, and account tasks
+- **Admin** — Full control over bookings, inventory, users, reports, backups, settings, audit history, and import/export workflows
+
+> Current documentation refresh: this repository reflects the Laravel website, the Supabase-backed Flutter app in `mobile/`, and current system operations.
+
+### Current system status
+
+The application is organized as a role-based business platform with a shared backend and distinct user experiences:
+
+- **Public web flow**: booking submission, tracking, QR inventory lookup, and service reference lookup
+- **Employee web flow**: dashboard, assigned bookings, borrow requests, inventory checks, and notification management
+- **Admin web flow**: bookings, users, reports, settings, import/export, backups, audit logs, AI insights, and system health
+- **Mobile employee app**: Supabase Auth plus restricted PostgreSQL RPCs for inventory, borrow, return, and profile actions; independent of the Laravel web/API process
+
 
 ## Core Modules
 
 | Module | Description |
 |--------|-------------|
 | **Bookings** | Public submits service request → Admin approves → Assigns employee → Completed. Real-time tracking via reference number. |
-| **Inventory** | Track items with categories, suppliers, stock levels, QR codes. Low-stock alerts. Borrow/return workflow. |
+| **Inventory** | Track items with categories, stock levels, permanent QR codes, and low-stock alerts. Borrow/return workflow. |
 | **Borrow Requests** | Employees request items → Admin approves → Borrowed → Returned with condition report → Stock restored. |
-| **Employee Android App** | Flutter app for employee login, QR/item lookup, borrow requests, and photo-backed returns. |
+| **Employee Android App** | Flutter app for employee login, QR/item lookup, borrow requests, and location-based returns. |
 | **Users & Roles** | Spatie RBAC (Admin/Employee). MFA support (TOTP + email). Impersonation, login history, force-logout. |
 | **Notifications** | 14 notification types across email + in-app channels. Bell icon with real-time polling. Per-user preferences. |
 | **Reports** | Bookings, inventory, borrow requests, users. Export to PDF/Excel/CSV/JSON. AI-powered insights and forecasts. |
@@ -35,9 +47,9 @@ A web and Android system for managing service bookings, inventory, and equipment
 
 | Metric | Count |
 |--------|:----:|
-| Application tables | 38 |
-| Eloquent models | 22 |
-| Migration files | 28 |
+| Application tables | 33 |
+| Eloquent models | 18 |
+| Migration files | 27 |
 | Controllers | 42 |
 | Notification classes | 14 |
 | JSON API endpoints | 34+ |
@@ -48,10 +60,10 @@ A web and Android system for managing service bookings, inventory, and equipment
 | Layer | Technology |
 |-------|-----------|
 | Backend | Laravel 12, PHP 8.2+ |
-| Database | SQLite (configurable to MySQL/PostgreSQL) |
-| Auth | Laravel Breeze, Spatie Permission (RBAC), MFA (TOTP + email), Sanctum bearer tokens for mobile |
+| Database | Supabase PostgreSQL |
+| Auth | Laravel Breeze, Spatie Permission (RBAC), website MFA, Supabase Auth and TOTP MFA for mobile |
 | Frontend | Tailwind CSS 3, Alpine.js 3, Blade templates |
-| Employee Mobile | Flutter Android app using the Laravel mobile API |
+| Employee Mobile | Flutter Android app using Supabase Auth and transactional database RPCs |
 | PDF | barryvdh/laravel-dompdf |
 | Excel | maatwebsite/laravel-excel |
 | QR Codes | simplesoftwareio/simple-qrcode |
@@ -99,40 +111,43 @@ OPENAI_API_KEY=           # Optional — AI features
 # Database
 php artisan migrate:fresh --seed
 
-# Book catalog performance
-php artisan db:seed --class=MassBookSeeder
-php artisan books:benchmark --iterations=10
-php artisan books:load-test --users=50 --requests=10
-php artisan books:warm-cache --sync
-php artisan books:refresh-bestseller-stats
-
 # Testing
 php artisan test
+```
 
+The test suite is hermetic: `phpunit.xml` forces SQLite
+in-memory (both `<env>` and `<server>` entries, so inherited
+shell variables cannot redirect tests to the live Supabase
+project). Keep it that way when editing test configuration.
+
+```bash
 # Code quality
 ./vendor/bin/pint
 ```
 
 ## Mobile App
 
-The Flutter Android app uses Laravel's `/api/v1/mobile` API; it does not connect
-to the database directly. Start Laravel from the project root and run Flutter
-from `mobile/` (the Android emulator reaches the host at `10.0.2.2`):
+The Flutter Android app authenticates directly against Supabase Auth
+and calls restricted PostgreSQL RPCs on the **same Supabase project**
+that Laravel's `pgsql` connection uses. It does not depend on the
+Laravel process: native login, inventory lookup, borrow requests,
+returns, and profile updates keep working while the website or Laravel
+process is unavailable, as long as Supabase is reachable. Both apps
+read and write the same committed rows, so no sync worker exists.
+
+The Supabase URL and publishable (anon) key are injected at build
+time. Never put the server-only `SUPABASE_SECRET_KEY` in a Flutter
+build; Laravel uses it solely to provision employee accounts.
 
 ```powershell
-php artisan serve --host=0.0.0.0 --port=8000
-
-# In another terminal, from mobile/
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1/mobile
+# From mobile/
+flutter run --dart-define=SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_KEY
 ```
 
-See [mobile/README.md](mobile/README.md) for Flutter setup and
-[RGV-Mobile-API.md](RGV-Mobile-API.md) for API and deployment configuration.
-
-## Deployment
-
-For Firebase Hosting with Laravel on Cloud Run and Supabase PostgreSQL, see
-[docs/firebase-cloud-run-deployment.md](docs/firebase-cloud-run-deployment.md).
+Release builds require HTTPS. See [mobile/README.md](mobile/README.md)
+for Flutter setup and verification, and
+[RGV-Mobile-API.md](RGV-Mobile-API.md) for the legacy Laravel mobile
+API that remains available to external clients.
 
 ## Documentation
 
@@ -146,7 +161,6 @@ For Firebase Hosting with Laravel on Cloud Run and Supabase PostgreSQL, see
 | [RGV-Mobile-API.md](RGV-Mobile-API.md) | Mobile endpoint contract and deployment configuration |
 | [mobile/README.md](mobile/README.md) | Flutter app setup and verification |
 | [RGV-User-Manual.md](RGV-User-Manual.md) | User guide for admin, employee web/mobile, and public workflows |
-| [docs/book-performance.md](docs/book-performance.md) | Book catalog scalability and benchmarking |
 
 ## License
 

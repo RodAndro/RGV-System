@@ -330,7 +330,7 @@ class ImportExportController extends Controller
             $normalizedKey = strtolower(trim((string) $key));
             $value = is_string($value) ? trim($value) : $value;
 
-            if (in_array($normalizedKey, ['isbn', 'item_code', 'code'], true)) {
+            if (in_array($normalizedKey, ['item_code', 'code'], true)) {
                 $mapped['item_code'] = $value;
             } elseif (in_array($normalizedKey, ['title', 'name'], true)) {
                 $mapped['name'] = $value;

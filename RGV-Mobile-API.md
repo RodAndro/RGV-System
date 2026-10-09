@@ -1,9 +1,12 @@
 # RGV Mobile API
 
-> Employee mobile API for the Flutter Android app. Laravel remains the trusted
-> API and business-rules layer; the app never connects to the database directly.
+> Legacy Laravel mobile REST API. The current Flutter app uses Supabase Auth and
+> restricted database RPCs instead, so native login and employee workflows do
+> not depend on this Laravel process. These routes remain for external clients.
 >
 > Base path: `/api/v1/mobile` · Auth: Laravel Sanctum bearer tokens.
+>
+> Updated: October 2, 2026
 
 ## Authentication
 
@@ -42,7 +45,7 @@ tiered limits used by the public API.
 | GET | `/borrow-requests/{id}` | bearer | Single request |
 | POST | `/borrow-requests/{id}/cancel` | bearer | Cancel pending (releases stock) |
 | GET | `/borrow-requests/returnable` | bearer | Borrowed items eligible for return |
-| POST | `/borrow-requests/{id}/return` | bearer | Return items with proof photo |
+| POST | `/borrow-requests/{id}/return` | bearer | Return items and record a return location |
 | PATCH | `/profile` | bearer | Update name (email is read-only) |
 | PUT | `/password` | bearer | Change password |
 
@@ -65,11 +68,11 @@ releases the reservation. Concurrent over-reservation returns `409`.
 
 ### `POST /borrow-requests/{id}/return`
 
-Multipart: `idempotency_key`, `photo` (image), and
+JSON: `idempotency_key`, required `return_location`, and
 `items[i][borrow_item_id|condition_returned|damage_notes]`.
 
-The photo is uploaded to Google Drive server-side. Stock is restored only after
-the upload succeeds, and retries are idempotent (stock is never restored twice).
+Photos are not required or accepted by the return workflow. The server records
+the return location and timestamp and restores stock idempotently.
 
 ## Environment variables (placeholders only — never commit real values)
 
@@ -86,9 +89,4 @@ DB_SSLMODE=require
 # Sanctum
 SANCTUM_STATEFUL_DOMAINS=
 
-# Google Drive return-proof uploads (service account)
-GOOGLE_DRIVE_CREDENTIALS_PATH=<absolute-path-to-service-account-json>
-GOOGLE_DRIVE_CREDENTIALS_JSON=
-GOOGLE_DRIVE_FOLDER_ID=1_JL1cnADajKzMcx_HAKlEbiLdbNjyiq4
-GOOGLE_DRIVE_SUBJECT=
 ```

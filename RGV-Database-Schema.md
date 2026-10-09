@@ -2,7 +2,7 @@
 
 > **RGV Multi-Tech Services** — Complete Database Schema Reference
 >
-> Tables: 38 | Migrations: 28 | Models: 22 | ORM: Laravel Eloquent | Last Updated: September 30, 2026
+> Tables: 33 | Migrations: 33 | Models: 17 | ORM: Laravel Eloquent | Last Updated: October 2, 2026
 
 ---
 
@@ -14,10 +14,9 @@
 4. [Auth & User Tables](#auth--user-tables)
 5. [Permissions & Roles (Spatie)](#permissions--roles-spatie)
 6. [Platform & Operational Tables](#platform--operational-tables)
-7. [Books & Performance Tables](#books--performance-tables)
-8. [Laravel Infrastructure Tables](#laravel-infrastructure-tables)
-9. [Index Reference](#index-reference)
-10. [SQL Dump Reference](#sql-dump-reference)
+7. [Laravel Infrastructure Tables](#laravel-infrastructure-tables)
+8. [Index Reference](#index-reference)
+9. [SQL Dump Reference](#sql-dump-reference)
 
 ---
 
@@ -69,24 +68,13 @@
                               └────┬──────────┬──────────┘
                                    │          │
                          ┌─────────▼──┐  ┌────▼──────────┐
-                         │ inventory  │  │  suppliers     │
-                         │_categories │  │  id, name...   │
-                         │ id, name,  │  └───────────────┘
+                         │ inventory  │
+                         │_categories │
+                         │ id, name,  │
                          │ slug       │
                          └────────────┘
 
     ┌──────────────────────────────────────────────────────────────────┐
-    │                           books                                   │
-    │  id, isbn, isbn13, title, slug, category_id, author, stock...    │
-    └────┬──────────┬──────────┬───────────────┬───────────────────────┘
-         │          │          │               │
-    ┌────▼─────┐ ┌──▼───────┐ ┌▼────────────┐ ┌▼───────────────┐
-    │book_shard│ │search    │ │mv_bestseller│ │query_perform-  │
-    │ metadata │ │_indexing │ │_stats       │ │ance_logs       │
-    │          │ │_queue    │ │             │ │                │
-    └──────────┘ └──────────┘ └─────────────┘ └────────────────┘
-
-    ┌──────────────────────────────────────────────────────────────┐
     │                     activity_log (Spatie)                     │
     │  id, log_name, description, subject, causer, properties...   │
     └──────────────────────────────────────────────────────────────┘
@@ -114,12 +102,12 @@
 
 | Group | Tables | Description |
 |-------|--------|-------------|
-| **Auth / User Core** | `users`, `password_reset_tokens`, `sessions`, `login_history`, `personal_access_tokens` | Web sessions, Sanctum mobile tokens, login tracking |
+| **Auth / User Core** | `users`, `password_reset_tokens`, `sessions`, `login_history`, `personal_access_tokens` | Web sessions, legacy Sanctum tokens, login tracking |
 | **Permissions** | `permissions`, `roles`, `model_has_permissions`, `model_has_roles`, `role_has_permissions` | Spatie RBAC |
 | **Activity Logging** | `activity_log`, `audit_logs` | Spatie activitylog + custom tamper-evident audit |
-| **Core Business** | `bookings`, `inventories`, `inventory_categories`, `suppliers`, `borrow_requests`, `borrow_items`, `borrow_return_evidences`, `notifications`, `reports` | Main business domain, including mobile return proof |
+| **Core Business** | `bookings`, `inventories`, `inventory_categories`, `borrow_requests`, `borrow_items`, `borrow_return_evidences`, `notifications`, `reports` | Main business domain; evidence rows are retained for historical returns |
+| **Mobile** | `mobile_return_idempotency` | Deduplicates retryable Supabase-native return RPCs |
 | **Platform Ops** | `import_logs`, `export_logs`, `scheduled_tasks`, `api_rate_limits`, `backup_monitoring`, `settings`, `notification_preferences` | System operations |
-| **Books / Performance** | `books`, `mv_bestseller_stats`, `query_performance_logs`, `search_indexing_queue`, `book_shards` | Book catalog + performance |
 | **Infrastructure** | `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs` | Laravel framework tables |
 
 ---
@@ -145,7 +133,7 @@ Service booking requests submitted by the public.
 | `status` | VARCHAR | NO | `pending` | pending/approved/rejected/completed/cancelled |
 | `employee_id` | FK → users.id | YES | SET NULL | Assigned employee |
 | `remarks` | TEXT | YES | — | Admin/employee remarks |
-| `attachment_path` | VARCHAR | YES | — | Uploaded file path |
+| `attachment_path` | VARCHAR | YES | — | Legacy nullable path; current booking flows do not upload or display attachments |
 | `approved_at` | TIMESTAMP | YES | — | Approval timestamp |
 | `rejected_at` | TIMESTAMP | YES | — | Rejection timestamp |
 | `completed_at` | TIMESTAMP | YES | — | Completion timestamp |
@@ -178,17 +166,17 @@ Inventory/asset items tracked in the system.
 |--------|------|----------|---------|-------------|
 | `id` | BIGINT PK | NO | AUTO_INCREMENT | Primary key |
 | `item_code` | VARCHAR UNIQUE | NO | — | Unique item code |
+| `qr_token` | VARCHAR UNIQUE | YES | — | Server-generated, immutable QR lookup token (backfilled nullable; the app always generates one) |
 | `name` | VARCHAR | NO | — | Item name |
 | `description` | TEXT | YES | — | Item description |
 | `category_id` | FK → inventory_categories.id | NO | CASCADE | Item category |
-| `supplier_id` | FK → suppliers.id | YES | SET NULL | Supplier |
 | `quantity` | INT | NO | 0 | Current stock quantity |
 | `unit` | VARCHAR | NO | `pcs` | Unit of measurement |
 | `unit_cost` | DECIMAL(10,2) | YES | — | Cost per unit |
-| `status` | VARCHAR | NO | `available` | available/borrowed/maintenance/damaged |
+| `status` | VARCHAR | NO | `available` | Manual classification: available/borrowed/maintenance/damaged; independent of quantity |
 | `condition` | VARCHAR | NO | `good` | new/good/fair/poor |
 | `location` | VARCHAR | YES | — | Storage location |
-| `image_path` | VARCHAR | YES | — | Item image |
+| `image_path` | VARCHAR | YES | — | Legacy nullable path; current inventory flows do not upload or display images |
 | `low_stock_threshold` | INT | NO | 5 | Low stock warning threshold |
 | `date_added` | DATE | NO | — | Date added to inventory |
 | `is_active` | BOOLEAN | NO | true | Active status |
@@ -199,9 +187,20 @@ Inventory/asset items tracked in the system.
 
 **Indexes:** `[category_id, status]`, `item_code`
 
+Borrow eligibility is derived from `is_active = true`, `status = 'available'`,
+and `quantity > 0`; `status` is not automatically changed when stock is
+reserved or returned. Mobile inventory search and QR lookup return this
+availability separately from the stored status.
+
+> **Deployment drift (October 2026):** the live Supabase project runs a
+> newer revision of `mobile_inventory_lookup` / `mobile_inventory_search`
+> (applied by the deployed `2026_10_09_000001_remove_mobile_inventory_image_payloads`
+> migration, not present in this snapshot) that omits `image_path` from the
+> RPC payloads. The scripts in this repository still include it; the Flutter
+> models treat `image_path` as nullable and work with either revision.
+
 **Relationships:**
 - `category()` → BelongsTo → `InventoryCategory`
-- `supplier()` → BelongsTo → `Supplier`
 - `borrowItems()` → HasMany → `BorrowItem`
 
 ---
@@ -227,28 +226,6 @@ Categories for inventory items.
 
 ---
 
-### `suppliers`
-
-Inventory suppliers/vendors.
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | BIGINT PK | NO | AUTO_INCREMENT | Primary key |
-| `name` | VARCHAR | NO | — | Supplier name |
-| `contact_person` | VARCHAR | YES | — | Contact person |
-| `email` | VARCHAR | YES | — | Email address |
-| `phone` | VARCHAR | YES | — | Phone number |
-| `address` | TEXT | YES | — | Street address |
-| `city` | VARCHAR | YES | — | City |
-| `country` | VARCHAR | NO | `Philippines` | Country |
-| `is_active` | BOOLEAN | NO | true | Active status |
-| `created_at` | TIMESTAMP | NO | — | — |
-| `updated_at` | TIMESTAMP | NO | — | — |
-| `deleted_at` | TIMESTAMP | YES | — | Soft delete |
-
-**Relationships:**
-- `inventories()` → HasMany → `Inventory`
-
 ---
 
 ### `borrow_requests`
@@ -261,12 +238,12 @@ Employee requests to borrow inventory items.
 | `request_number` | VARCHAR UNIQUE | NO | `BR-{uniqid}` | Auto-generated reference |
 | `employee_id` | FK → users.id | NO | CASCADE | Requesting employee |
 | `approved_by` | FK → users.id | YES | SET NULL | Approving admin |
-| `status` | VARCHAR | NO | `pending` | pending/approved/rejected/borrowed/returned/overdue |
+| `status` | VARCHAR | NO | `pending` | pending/approved/rejected/borrowed/returned |
 | `reason` | TEXT | NO | — | Reason for borrowing |
 | `borrow_date` | DATE | NO | — | Date borrowed |
 | `due_date` | DATE | NO | — | Expected return date |
 | `return_date` | DATE | YES | — | Actual return date |
-| `penalty_notes` | TEXT | YES | — | Late return penalties |
+| `return_location` | VARCHAR | YES | — | Location where items were returned |
 | `admin_remarks` | TEXT | YES | — | Admin notes |
 | `approved_at` | TIMESTAMP | YES | — | Approval timestamp |
 | `rejected_at` | TIMESTAMP | YES | — | Rejection timestamp |
@@ -289,8 +266,11 @@ Employee requests to borrow inventory items.
 ```
 pending → approved → borrowed → returned
 pending → rejected
-borrowed → overdue
+pending → cancelled
 ```
+
+Overdue indicators are computed from a borrowed request's due date; overdue is
+not a persisted status and penalty notes are not stored.
 
 ---
 
@@ -305,7 +285,7 @@ Pivot table linking borrow requests to inventory items, with additional tracking
 | `inventory_id` | FK → inventories.id | NO | CASCADE | Borrowed item |
 | `quantity` | INT | NO | 1 | Quantity borrowed |
 | `reserved_quantity` | UNSIGNED INT | NO | 0 | Quantity reserved while request is pending |
-| `return_evidence_id` | FK → borrow_return_evidences.id | YES | SET NULL | Photo evidence for this return |
+| `return_evidence_id` | FK → borrow_return_evidences.id | YES | SET NULL | Legacy return-evidence record; current native flow does not upload photos |
 | `condition_borrowed` | VARCHAR | NO | `good` | Condition when borrowed |
 | `condition_returned` | VARCHAR | YES | — | Condition when returned |
 | `is_returned` | BOOLEAN | NO | false | Return status |
@@ -323,15 +303,18 @@ Pivot table linking borrow requests to inventory items, with additional tracking
 
 ### `borrow_return_evidences`
 
-Return-photo upload metadata. The image itself is stored in Google Drive; this
-table records its Drive identifier and links the upload to the borrow request.
+Legacy return-evidence metadata retained for backward compatibility. The current
+mobile return workflow does not upload photos to Google Drive and does not rely
+on `drive_file_id` for normal processing. The `mobile_request_payload` RPC
+surfaces `return_evidence` (`file_name`, `uploaded_at`) for returned items,
+so evidence attached through the website is visible to the native app.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | `id` | BIGINT PK | NO | AUTO_INCREMENT | Primary key |
 | `borrow_request_id` | FK → borrow_requests.id | NO | CASCADE | Parent request |
 | `idempotency_key` | VARCHAR UNIQUE | NO | — | Prevent duplicate processing on retry |
-| `drive_file_id` | VARCHAR | YES | — | Google Drive file identifier |
+| `drive_file_id` | VARCHAR | YES | — | Legacy external-file reference retained for historical records; not used by the current workflow |
 | `file_name` | VARCHAR | NO | — | Stored evidence filename |
 | `mime_type` | VARCHAR | YES | — | Uploaded file MIME type |
 | `uploaded_by` | FK → users.id | YES | SET NULL | Employee who uploaded the evidence |
@@ -344,6 +327,24 @@ table records its Drive identifier and links the upload to the borrow request.
 **Relationships:**
 - `borrowRequest()` → BelongsTo → `BorrowRequest`
 - `uploadedBy()` → BelongsTo → `User`
+
+### `mobile_return_idempotency`
+
+Persists successful Supabase-native return RPC requests and responses. The
+composite key is employee + borrow request + idempotency key. A retry with the
+same payload replays its original response; reusing the key with different
+details is rejected.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `employee_id` | FK → users.id | NO | — | Authenticated employee |
+| `borrow_request_id` | FK → borrow_requests.id | NO | — | Returned request |
+| `idempotency_key` | VARCHAR(64) | NO | — | Client-generated retry key |
+| `request_payload` | JSONB | NO | — | Return location and submitted items |
+| `response_payload` | JSONB | NO | — | Original successful RPC response |
+| `created_at` | TIMESTAMP WITH TIME ZONE | NO | current time | Successful submission time |
+
+**Primary key:** `[employee_id, borrow_request_id, idempotency_key]`
 
 ---
 
@@ -412,6 +413,7 @@ Generated reports (PDF, Excel, CSV) with optional AI generation.
 | `name` | VARCHAR | NO | — | Full name |
 | `email` | VARCHAR UNIQUE | NO | — | Email (login) |
 | `email_verified_at` | TIMESTAMP | YES | — | Verification timestamp |
+| `supabase_auth_id` | UUID UNIQUE | YES | — | Confirmed Supabase Auth identity linked to this employee |
 | `password` | VARCHAR | NO | — | Bcrypt hashed |
 | `mfa_enabled` | BOOLEAN | NO | false | MFA toggle |
 | `mfa_secret` | VARCHAR | YES | — | TOTP secret |
@@ -475,8 +477,10 @@ Generated reports (PDF, Excel, CSV) with optional AI generation.
 
 ### `personal_access_tokens` (Laravel Sanctum)
 
-Bearer tokens used by the Android employee app. Tokens are hashed in storage;
-the plaintext token is returned only when issued.
+Bearer tokens for the **legacy Laravel mobile API** used by external
+clients. The current Flutter app authenticates through Supabase Auth
+and does not use these tokens. Tokens are hashed in storage; the
+plaintext token is returned only when issued.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
@@ -722,101 +726,6 @@ the plaintext token is returned only when issued.
 
 ---
 
-## Books & Performance Tables
-
-### `books`
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | BIGINT PK | NO | AUTO_INCREMENT | Primary key |
-| `isbn` | VARCHAR(17) UNIQUE | NO | — | ISBN-10 with hyphens |
-| `isbn13` | VARCHAR(13) UNIQUE | NO | — | ISBN-13 |
-| `title` | VARCHAR | NO | — | Book title |
-| `slug` | VARCHAR UNIQUE | NO | — | URL slug |
-| `category_id` | FK → inventory_categories.id | NO | CASCADE | Category |
-| `author` | VARCHAR | NO | — | Author name |
-| `publisher` | VARCHAR | YES | — | Publisher |
-| `format` | VARCHAR(32) | NO | `paperback` | paperback/hardcover/ebook |
-| `price` | DECIMAL(10,2) | NO | — | Price |
-| `stock` | UNSIGNED INT | NO | 0 | Stock count |
-| `sales_count` | UNSIGNED BIGINT | NO | 0 | Total sales |
-| `rating` | DECIMAL(3,2) | NO | 0 | Average rating (0-5) |
-| `description` | TEXT | NO | — | Book description |
-| `is_active` | BOOLEAN | NO | true | Active listing |
-| `published_at` | DATE | YES | — | Publication date |
-| `created_at` | TIMESTAMP | NO | — | — |
-| `updated_at` | TIMESTAMP | NO | — | — |
-
-**Indexes:**
-- `books_catalog_cover_idx`: `[is_active, category_id, price, id]` (covering index for catalog queries)
-- `books_category_filter_idx`: `[category_id, is_active, stock, price]`
-- `books_active_created_idx`: `[is_active, created_at, id]`
-- `books_sales_rating_idx`: `[sales_count, rating]`
-- `published_at`
-- **FULLTEXT:** `books_fulltext_idx` on `(title, author, description)` (MySQL only)
-
-### `mv_bestseller_stats` (Materialized View Emulation)
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | BIGINT PK | NO | AUTO_INCREMENT | Primary key |
-| `category_id` | FK UNIQUE → inventory_categories.id | NO | CASCADE | Category |
-| `book_count` | UNSIGNED BIGINT | NO | 0 | Books in category |
-| `total_stock` | UNSIGNED BIGINT | NO | 0 | Total stock |
-| `total_sales` | UNSIGNED BIGINT | NO | 0 | Total sales |
-| `avg_price` | DECIMAL(10,2) | NO | 0 | Average price |
-| `avg_rating` | DECIMAL(3,2) | NO | 0 | Average rating |
-| `refreshed_at` | TIMESTAMP | YES | — | Last refresh |
-| `created_at` | TIMESTAMP | NO | — | — |
-| `updated_at` | TIMESTAMP | NO | — | — |
-
-**Indexes:** `[total_sales, avg_rating]`
-
-### `query_performance_logs`
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | BIGINT PK | NO | AUTO_INCREMENT | Primary key |
-| `name` | VARCHAR | NO | — | Query name |
-| `duration_ms` | UNSIGNED INT | NO | — | Execution time (ms) |
-| `rows_returned` | UNSIGNED INT | NO | 0 | Result count |
-| `cache_hit` | BOOLEAN | NO | false | Cache hit flag |
-| `context` | JSON | YES | — | Query context |
-| `created_at` | TIMESTAMP | NO | — | — |
-| `updated_at` | TIMESTAMP | NO | — | — |
-
-**Indexes:** `[name, duration_ms]`
-
-### `search_indexing_queue`
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | BIGINT PK | NO | AUTO_INCREMENT | Primary key |
-| `book_id` | FK → books.id | NO | CASCADE | Book to index |
-| `status` | VARCHAR | NO | `pending` | pending/processing/completed/failed |
-| `attempts` | UNSIGNED TINYINT | NO | 0 | Retry count |
-| `failure_message` | TEXT | YES | — | Error message |
-| `indexed_at` | TIMESTAMP | YES | — | Index timestamp |
-| `created_at` | TIMESTAMP | NO | — | — |
-| `updated_at` | TIMESTAMP | NO | — | — |
-
-**Indexes:** `[status, created_at]`
-
-### `book_shards` (Database Sharding)
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | BIGINT PK | NO | AUTO_INCREMENT | Primary key |
-| `shard_key` | VARCHAR UNIQUE | NO | — | Shard identifier |
-| `connection` | VARCHAR | NO | — | Database connection |
-| `range_start` | UNSIGNED BIGINT | YES | — | ID range start |
-| `range_end` | UNSIGNED BIGINT | YES | — | ID range end |
-| `is_active` | BOOLEAN | NO | true | Shard active |
-| `created_at` | TIMESTAMP | NO | — | — |
-| `updated_at` | TIMESTAMP | NO | — | — |
-
----
-
 ## Laravel Infrastructure Tables
 
 ### `cache`
@@ -887,17 +796,8 @@ the plaintext token is returned only when issued.
 | `borrow_requests` | — | `[employee_id, status]` | Employee borrow listing |
 | `reports` | — | `[type, report_date]` | Report queries |
 | `borrow_items` | — | `[borrow_request_id, inventory_id]` | Borrow item lookup |
-| `borrow_return_evidences` | — | `[borrow_request_id, uploaded_at]` | Evidence lookup per request |
-| `books` | `books_catalog_cover_idx` | `[is_active, category_id, price, id]` | Catalog cover queries |
-| `books` | `books_category_filter_idx` | `[category_id, is_active, stock, price]` | Category filtering |
-| `books` | `books_active_created_idx` | `[is_active, created_at, id]` | Recent books |
-| `books` | `books_sales_rating_idx` | `[sales_count, rating]` | Bestseller/popularity sort |
-
-### Fulltext Indexes
-
-| Table | Index Name | Columns |
-|-------|-----------|---------|
-| `books` | `books_fulltext_idx` | `title, author, description` |
+| `borrow_return_evidences` | — | `[borrow_request_id, uploaded_at]` | Legacy evidence history |
+| `inventories` | — | `qr_token` | Unique immutable QR lookup |
 
 ---
 
@@ -987,30 +887,14 @@ CREATE TABLE inventory_categories (
     deleted_at TIMESTAMP NULL
 );
 
--- Suppliers
-CREATE TABLE suppliers (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    contact_person VARCHAR(255) NULL,
-    email VARCHAR(255) NULL,
-    phone VARCHAR(255) NULL,
-    address TEXT NULL,
-    city VARCHAR(255) NULL,
-    country VARCHAR(255) NOT NULL DEFAULT 'Philippines',
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP NULL,
-    updated_at TIMESTAMP NULL,
-    deleted_at TIMESTAMP NULL
-);
-
 -- Inventories
 CREATE TABLE inventories (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     item_code VARCHAR(255) UNIQUE NOT NULL,
+    qr_token VARCHAR(40) UNIQUE,
     name VARCHAR(255) NOT NULL,
     description TEXT NULL,
     category_id BIGINT NOT NULL,
-    supplier_id BIGINT NULL,
     quantity INT NOT NULL DEFAULT 0,
     unit VARCHAR(255) NOT NULL DEFAULT 'pcs',
     unit_cost DECIMAL(10,2) NULL,
@@ -1027,8 +911,7 @@ CREATE TABLE inventories (
     deleted_at TIMESTAMP NULL,
     INDEX (category_id, status),
     INDEX (item_code),
-    FOREIGN KEY (category_id) REFERENCES inventory_categories(id) ON DELETE CASCADE,
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL
+    FOREIGN KEY (category_id) REFERENCES inventory_categories(id) ON DELETE CASCADE
 );
 
 -- Borrow Requests
@@ -1042,7 +925,7 @@ CREATE TABLE borrow_requests (
     borrow_date DATE NOT NULL,
     due_date DATE NOT NULL,
     return_date DATE NULL,
-    penalty_notes TEXT NULL,
+    return_location VARCHAR(255) NULL,
     admin_remarks TEXT NULL,
     approved_at TIMESTAMP NULL,
     rejected_at TIMESTAMP NULL,
@@ -1059,7 +942,8 @@ CREATE TABLE borrow_requests (
     FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Return-photo metadata; file content is stored in Google Drive
+-- Legacy return-evidence metadata retained for historical compatibility.
+-- The current return workflow does not use Google Drive uploads.
 CREATE TABLE borrow_return_evidences (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     borrow_request_id BIGINT NOT NULL,
@@ -1291,94 +1175,6 @@ CREATE TABLE backup_monitoring (
 );
 ```
 
-### Create Books Tables
-
-```sql
--- Books
-CREATE TABLE books (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    isbn VARCHAR(17) UNIQUE NOT NULL,
-    isbn13 VARCHAR(13) UNIQUE NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    slug VARCHAR(255) UNIQUE NOT NULL,
-    category_id BIGINT NOT NULL,
-    author VARCHAR(255) NOT NULL,
-    publisher VARCHAR(255) NULL,
-    format VARCHAR(32) NOT NULL DEFAULT 'paperback',
-    price DECIMAL(10,2) NOT NULL,
-    stock INT UNSIGNED NOT NULL DEFAULT 0,
-    sales_count BIGINT UNSIGNED NOT NULL DEFAULT 0,
-    rating DECIMAL(3,2) NOT NULL DEFAULT 0,
-    description TEXT NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    published_at DATE NULL,
-    created_at TIMESTAMP NULL,
-    updated_at TIMESTAMP NULL,
-    INDEX books_catalog_cover_idx (is_active, category_id, price, id),
-    INDEX books_category_filter_idx (category_id, is_active, stock, price),
-    INDEX books_active_created_idx (is_active, created_at, id),
-    INDEX books_sales_rating_idx (sales_count, rating),
-    INDEX (published_at),
-    FULLTEXT INDEX books_fulltext_idx (title, author, description),
-    FOREIGN KEY (category_id) REFERENCES inventory_categories(id) ON DELETE CASCADE
-);
-
--- Bestseller Stats (Materialized View)
-CREATE TABLE mv_bestseller_stats (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    category_id BIGINT UNIQUE NOT NULL,
-    book_count BIGINT UNSIGNED NOT NULL DEFAULT 0,
-    total_stock BIGINT UNSIGNED NOT NULL DEFAULT 0,
-    total_sales BIGINT UNSIGNED NOT NULL DEFAULT 0,
-    avg_price DECIMAL(10,2) NOT NULL DEFAULT 0,
-    avg_rating DECIMAL(3,2) NOT NULL DEFAULT 0,
-    refreshed_at TIMESTAMP NULL,
-    created_at TIMESTAMP NULL,
-    updated_at TIMESTAMP NULL,
-    INDEX (total_sales, avg_rating),
-    FOREIGN KEY (category_id) REFERENCES inventory_categories(id) ON DELETE CASCADE
-);
-
--- Query Performance Logs
-CREATE TABLE query_performance_logs (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    duration_ms INT UNSIGNED NOT NULL,
-    rows_returned INT UNSIGNED NOT NULL DEFAULT 0,
-    cache_hit BOOLEAN NOT NULL DEFAULT FALSE,
-    context JSON NULL,
-    created_at TIMESTAMP NULL,
-    updated_at TIMESTAMP NULL,
-    INDEX (name, duration_ms)
-);
-
--- Search Indexing Queue
-CREATE TABLE search_indexing_queue (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    book_id BIGINT NOT NULL,
-    status VARCHAR(255) NOT NULL DEFAULT 'pending',
-    attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
-    failure_message TEXT NULL,
-    indexed_at TIMESTAMP NULL,
-    created_at TIMESTAMP NULL,
-    updated_at TIMESTAMP NULL,
-    INDEX (status, created_at),
-    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
-);
-
--- Book Shards
-CREATE TABLE book_shards (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    shard_key VARCHAR(255) UNIQUE NOT NULL,
-    connection VARCHAR(255) NOT NULL,
-    range_start BIGINT UNSIGNED NULL,
-    range_end BIGINT UNSIGNED NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP NULL,
-    updated_at TIMESTAMP NULL
-);
-```
-
 ---
 
 ## Relationship Summary
@@ -1393,8 +1189,6 @@ CREATE TABLE book_shards (
 | `users` | HasMany | `notification_preferences` | `user_id` |
 | `users` | HasMany | `login_history` | `user_id` |
 | `inventory_categories` | HasMany | `inventories` | `category_id` |
-| `inventory_categories` | HasMany | `books` | `category_id` |
-| `suppliers` | HasMany | `inventories` | `supplier_id` |
 | `borrow_requests` | HasMany | `borrow_items` | `borrow_request_id` |
 | `inventories` | HasMany | `borrow_items` | `inventory_id` |
 

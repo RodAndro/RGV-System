@@ -8,16 +8,14 @@ use App\Models\AuditLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
     public function create(): View
     {
-        $bruteForceDetected = AuditLog::where('event', 'failed login')
-            ->where('ip_address', request()->ip())
-            ->where('created_at', '>=', now()->subHour())
-            ->count() >= 3;
+        $bruteForceDetected = RateLimiter::attempts('failed-login-ip:' . request()->ip()) >= 3;
 
         $captchaA = $captchaB = null;
 

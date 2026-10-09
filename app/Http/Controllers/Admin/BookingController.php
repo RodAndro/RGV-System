@@ -12,12 +12,17 @@ use App\Notifications\BookingCompleted;
 use App\Notifications\BookingRejected;
 use App\Notifications\NewBookingReceived;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 
 class BookingController extends Controller
 {
     public function index(Request $request)
     {
+        $request->user()->unreadNotifications()
+            ->where('type', 'booking')
+            ->update(['is_read' => true, 'read_at' => now()]);
+
         $query = Booking::with('employee');
         
         // Filter by status
@@ -49,14 +54,12 @@ class BookingController extends Controller
         $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $bookings = $query->paginate($perPage)->appends($request->except('page'));
 
-        $stats = [
-            'total' => \App\Models\Booking::count(),
-            'pending' => \App\Models\Booking::where('status', 'pending')->count(),
-            'approved' => \App\Models\Booking::where('status', 'approved')->count(),
-            'completed' => \App\Models\Booking::where('status', 'completed')->count(),
-            'rejected' => \App\Models\Booking::where('status', 'rejected')->count(),
-            'cancelled' => \App\Models\Booking::where('status', 'cancelled')->count(),
-        ];
+        $stats = Cache::remember('admin.stats.bookings', now()->addSeconds(20), function () {
+            $row = Booking::query()->selectRaw("COUNT(*) as total, COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending, COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved, COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed, COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected, COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled")
+                ->first();
+
+            return array_map('intval', $row->getAttributes());
+        });
 
         return view('admin.bookings.index', compact('bookings', 'stats'));
     }
@@ -127,6 +130,18 @@ class BookingController extends Controller
         return back()->with('success', 'Work request marked as completed.');
     }
 
+    public function destroy(Booking $booking)
+    {
+        if (! in_array($booking->status, ['completed', 'rejected'], true)) {
+            return back()->with('error', 'Only completed or rejected work requests can be moved to trash.');
+        }
+
+        $booking->delete();
+
+        return redirect()->route('admin.bookings.index')
+            ->with('success', 'Work request moved to trash.');
+    }
+
     public function cancel(Booking $booking)
     {
         if (!in_array($booking->status, ['pending', 'approved'])) {
@@ -150,13 +165,14 @@ class BookingController extends Controller
             'employee_id' => 'required|exists:users,id',
         ]);
 
+        $assignmentChanged = (int) $booking->employee_id !== (int) $request->employee_id;
         $booking->update([
             'employee_id' => $request->employee_id,
         ]);
 
         // Send notification to assigned employee
         $employee = User::find($request->employee_id);
-        if ($employee) {
+        if ($assignmentChanged && $employee) {
             $employee->notify(new BookingAssigned($booking));
         }
 

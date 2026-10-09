@@ -40,7 +40,7 @@
             <div>
                 <h3 class="font-semibold text-gray-700 mb-2">Schedule</h3>
                 <p class="text-gray-600">{{ $booking->preferred_date->format('F d, Y') }}</p>
-                <p class="text-gray-600">{{ $booking->preferred_time }}</p>
+                <p class="text-gray-600">{{ $booking->preferred_time_formatted }}</p>
             </div>
             <div class="md:col-span-2">
                 <h3 class="font-semibold text-gray-700 mb-2">Work Category</h3>

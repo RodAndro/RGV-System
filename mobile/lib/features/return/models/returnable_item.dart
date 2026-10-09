@@ -1,5 +1,4 @@
-/// An unreturned borrow item eligible for return, plus the photo/condition
-/// input captured on-device for submission.
+/// An unreturned borrow item eligible for return.
 class ReturnableItem {
   const ReturnableItem({
     required this.borrowItemId,
@@ -42,7 +41,7 @@ class ReturnableInventory {
     this.name,
     this.brand,
     this.unit,
-    this.imagePath,
+    this.location,
   });
 
   final int? id;
@@ -50,7 +49,7 @@ class ReturnableInventory {
   final String? name;
   final String? brand;
   final String? unit;
-  final String? imagePath;
+  final String? location;
 
   factory ReturnableInventory.fromJson(Map<String, dynamic> json) =>
       ReturnableInventory(
@@ -59,7 +58,7 @@ class ReturnableInventory {
         name: json['name'] as String?,
         brand: json['brand'] as String?,
         unit: json['unit'] as String?,
-        imagePath: json['image_path'] as String?,
+        location: json['location'] as String?,
       );
 }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Inventory;
 use App\Models\User;
 use App\Notifications\NewBookingReceived;
 use Illuminate\Http\Request;
@@ -31,7 +32,6 @@ class PublicController extends Controller
             'preferred_time' => 'required',
             'purpose_category' => 'required|string',
             'reason' => 'required|string',
-            'attachment' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -73,11 +73,6 @@ class PublicController extends Controller
             'status' => 'pending',
         ]);
 
-        if ($request->hasFile('attachment')) {
-            $path = $request->file('attachment')->store('bookings', 'public');
-            $booking->update(['attachment_path' => $path]);
-        }
-
         // Send notification to all admins about new booking
         $admins = User::role('admin')->get();
         foreach ($admins as $admin) {
@@ -103,5 +98,18 @@ class PublicController extends Controller
         }
 
         return redirect()->route('booking.track', $booking->reference_number);
+    }
+
+    /**
+     * Resolve an inventory item exclusively from its immutable QR token.
+     * The token is the only input used for lookup — never an item ID.
+     */
+    public function qrLookup(string $token)
+    {
+        abort_unless(preg_match('/\AQR-[A-Z0-9]{32}\z/', $token) === 1, 404);
+
+        $inventory = Inventory::where('qr_token', $token)->firstOrFail();
+
+        return view('public.inventory-qr', compact('inventory'));
     }
 }

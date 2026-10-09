@@ -42,14 +42,16 @@ return [
         'timeout' => env('OLLAMA_TIMEOUT', 60),
     ],
 
-    'google_drive' => [
-        // Preferred: path to a service-account JSON key file on the server.
-        'credentials_path' => env('GOOGLE_DRIVE_CREDENTIALS_PATH'),
-        // Alternative: the service-account JSON inlined as a single-line string.
-        'credentials_json' => env('GOOGLE_DRIVE_CREDENTIALS_JSON'),
-        'folder_id' => env('GOOGLE_DRIVE_FOLDER_ID'),
-        // The email of the employee-facing account used for uploads (for auditing).
-        'subject' => env('GOOGLE_DRIVE_SUBJECT'),
+    'gemini' => [
+        'api_key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-2.0-flash'),
+        'timeout' => env('GEMINI_TIMEOUT', 30),
+    ],
+
+    'supabase' => [
+        'url' => env('SUPABASE_URL'),
+        'secret_key' => env('SUPABASE_SECRET_KEY', env('SUPABASE_SERVICE_ROLE_KEY')),
+        'timeout' => env('SUPABASE_TIMEOUT', 15),
     ],
 
 ];

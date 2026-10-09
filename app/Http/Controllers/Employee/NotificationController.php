@@ -25,6 +25,7 @@ class NotificationController extends Controller
                     'title' => $n->title,
                     'message' => Str::limit($n->message, 80),
                     'link' => $link ?: route('employee.notifications.index'),
+                    'open_url' => route('employee.notifications.open', $n->id),
                     'created_at' => $n->created_at->diffForHumans(),
                 ];
             }),
@@ -68,7 +69,7 @@ class NotificationController extends Controller
     public function markAllAsRead()
     {
         $user = Auth::user();
-        $user->unreadNotifications->markAsRead();
+        $user->unreadNotifications()->update(['is_read' => true, 'read_at' => now()]);
         
         return back()->with('success', 'All notifications marked as read.');
     }

@@ -18,15 +18,23 @@
 
 ## Project Overview
 
-**RGV-System** is a comprehensive Laravel-based web application designed to manage bookings, inventory, and borrowing requests. The system provides role-based access control with separate dashboards for administrators and employees, along with public-facing booking functionality.
+**RGV-System** is a current Laravel-based business operations system for managing service bookings, inventory, and borrowing workflows. The application uses role-based access control with dedicated admin and employee interfaces and a public-facing booking flow.
+
+### Current System Snapshot
+- **Public portal**: Booking submission, booking tracking, public inquiry flow, and service request management
+- **Employee portal**: Assigned booking management, inventory review, borrow requests, stock returns, and personal account settings
+- **Admin portal**: Booking approvals, inventory administration, user management, import/export, reports, backups, settings, and audit review
+- **Mobile layer**: Flutter Android employee app backed by authenticated `POST /api/v1/mobile/*` endpoints and Sanctum bearer authentication
+- **AI layer**: Admin-only chatbot and reporting support using the configured LLM stack (Ollama/Gemini/OpenAI fallback path)
+- **Live implementation status**: This document reflects the current Laravel code paths in `routes/web.php`, `routes/api.php`, and the Flutter app under `mobile/`, and is intended to match the project as it exists today rather than an earlier design snapshot
 
 ### Primary Functions:
 - **Booking Management**: Users can create booking requests, track status, and receive notifications
-- **Inventory Management**: Track items, categories, suppliers, and stock levels with QR code support
+- **Inventory Management**: Track items, categories, stock levels, and permanent QR codes
 - **Borrow Request System**: Manage borrowing and returning of items with approval workflows
 - **Reporting & Analytics**: Generate comprehensive reports on bookings, inventory, and user activities
 - **User Management**: Manage users with role-based access control
-- **AI Integration**: Chatbot and AI-powered report generation using OpenAI
+- **AI Integration**: Context-grounded insights and admin chatbot support using the configured LLM providers
 - **Notifications**: Email and system notifications for important events
 - **Activity Logging**: Track all system activities for audit purposes
 
@@ -142,7 +150,6 @@
 **Features**:
 - Create and manage inventory items
 - Categorize items
-- Track supplier information
 - Monitor stock levels
 - Low stock alerts
 - QR code generation for items
@@ -291,7 +298,6 @@ Stores inventory item information
 | name | string | Item name |
 | description | text | Item details |
 | category_id | bigint | Foreign key to categories |
-| supplier_id | bigint | Foreign key to suppliers |
 | quantity | integer | Current stock quantity |
 | min_quantity | integer | Minimum stock level |
 | unit_price | decimal | Price per unit |
@@ -307,19 +313,6 @@ Categorizes inventory items
 | id | bigint | Primary Key |
 | name | string | Category name |
 | description | text | Category details |
-| created_at | timestamp | Creation date |
-
-#### `suppliers` Table
-Stores supplier information
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | bigint | Primary Key |
-| name | string | Supplier name |
-| email | string | Contact email |
-| phone | string | Contact phone |
-| address | text | Physical address |
-| city | string | City |
 | created_at | timestamp | Creation date |
 
 #### `borrow_requests` Table
@@ -434,7 +427,6 @@ Booking
 ```
 Inventory
 ├── belongsTo(InventoryCategory)
-├── belongsTo(Supplier)
 ├── hasMany(BorrowItem)
 └── hasMany(Activity)
 ```
@@ -443,7 +435,6 @@ Inventory
 - `isLowStock()`: Check if stock is below minimum
 - `updateStock($quantity)`: Update stock level
 - `generateQrCode()`: Create QR code for item
-- `getSupplier()`: Get supplier details
 
 ---
 
@@ -454,12 +445,6 @@ InventoryCategory
 ```
 
 ---
-
-#### Supplier Model
-```
-Supplier
-└── hasMany(Inventory)
-```
 
 ---
 
@@ -630,7 +615,7 @@ POST /api/chatbot/query → ChatbotController@query (chatbot interaction)
 The employee Android app uses the authenticated `/api/v1/mobile` route group.
 Login and MFA issue Sanctum tokens; protected routes require an active account
 with the `employee` role. The API supports dashboard/profile, QR and manual
-inventory lookup, borrow requests, cancellations, and photo-backed returns.
+inventory lookup, borrow requests, cancellations, and location-based returns.
 See [RGV-Mobile-API.md](RGV-Mobile-API.md) for the complete route contract.
 
 ---
@@ -770,7 +755,6 @@ rgv-system/
 │   │   ├── BorrowItem.php
 │   │   ├── Inventory.php
 │   │   ├── InventoryCategory.php
-│   │   ├── Supplier.php
 │   │   ├── Report.php
 │   │   └── SystemNotification.php
 │   ├── Notifications/
@@ -814,7 +798,6 @@ rgv-system/
 │   │   ├── BorrowItemFactory.php
 │   │   ├── BorrowRequestFactory.php
 │   │   ├── InventoryFactory.php
-│   │   ├── SupplierFactory.php
 │   │   └── UserFactory.php
 │   ├── migrations/
 │   │   ├── 0001_01_01_000000_create_users_table.php
@@ -823,7 +806,6 @@ rgv-system/
 │   │   ├── 2026_05_09_154841_create_bookings_table.php
 │   │   ├── 2026_05_09_154842_create_inventory_categories_table.php
 │   │   ├── 2026_05_09_154842_create_inventories_table.php
-│   │   ├── 2026_05_09_154842_create_suppliers_table.php
 │   │   ├── 2026_05_09_155549_create_borrow_requests_table.php
 │   │   ├── 2026_05_09_155553_create_borrow_items_table.php
 │   │   ├── 2026_05_09_155558_create_notifications_table.php
@@ -949,17 +931,12 @@ php artisan serve
 # Application will be available at http://localhost:8000
 ```
 
-## Gemini AI Integration
+## Reports Chatbot
 
-Add your Gemini API key to the project `.env` as follows:
-
-GEMINI_API_KEY=your_api_key_here
-
-A simple service and controller are provided at `app/Services/GeminiService.php` and `app/Http/Controllers/GeminiController.php`.
-
-Route: `POST /ask-gemini` expects JSON `{ "prompt": "your question" }` and returns the generated text.
-
-Use Google AI Studio to create an API key and set it in `.env` before making requests.
+The admin reports chatbot retrieves report aggregates on the server, tries
+Ollama first and Gemini second, and uses a deterministic database-backed
+fallback when both providers are unavailable. Configure `OLLAMA_BASE_URL`,
+`OLLAMA_MODEL`, and optionally `GEMINI_API_KEY` in the server environment.
 ### Quick Setup Command
 Run the automated setup script in composer.json:
 ```bash
@@ -1025,7 +1002,6 @@ composer run-script setup
 ### 2. Smart Inventory Management
 - Automatic low stock alerts
 - QR code generation for items
-- Supplier integration
 - Category-based organization
 - Stock movement tracking
 
@@ -1138,6 +1114,12 @@ php artisan test tests/Feature/BookingTest.php
 php artisan test --coverage
 ```
 
+Tests run on SQLite in-memory. `phpunit.xml` forces the test
+environment with both `<env>` and `<server>` entries, so inherited
+shell variables (for example a stray `DB_CONNECTION`) cannot
+redirect the suite to the live Supabase project. Do not remove the
+`force` attributes or the `<server>` mirrors.
+
 ### Code Quality
 ```bash
 # Run code formatting
@@ -1245,5 +1227,5 @@ For questions, issues, or support, please contact the development team or create
 
 ---
 
-*Last Updated: September 30, 2026*
+*Last Updated: October 2, 2026*
 *Documentation Generated for RGV-System Laravel Application*

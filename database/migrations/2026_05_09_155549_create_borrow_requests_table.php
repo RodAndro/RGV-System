@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('request_number')->unique();
             $table->foreignId('employee_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('approved_by')->nullable()->constrained('users')->onDelete('set null');
-            $table->string('status')->default('pending'); // pending, approved, rejected, borrowed, returned, overdue
+            $table->string('status')->default('pending'); // pending, approved, rejected, borrowed, returned
             $table->text('reason');
             $table->date('borrow_date');
             $table->date('due_date');

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'core/config/app_config.dart';
-import 'core/network/api_client.dart';
-import 'core/storage/token_storage.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/borrow/data/borrow_repository.dart';
@@ -11,22 +10,26 @@ import 'features/dashboard/data/dashboard_repository.dart';
 import 'features/inventory/data/inventory_repository.dart';
 import 'features/return/data/return_repository.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  AppConfig.assertHttpsInProduction();
+  AppConfig.validate();
+  await Supabase.initialize(
+    url: AppConfig.supabaseUrl,
+    publishableKey: AppConfig.supabaseAnonKey,
+  );
 
-  final storage = TokenStorage();
-  final api = ApiClient(baseUrl: AppConfig.apiBaseUrl);
-  final authRepository = AuthRepository(api);
-  final authProvider = AuthProvider(storage: storage, repository: authRepository);
-  api.tokenProvider = authProvider.tokenProvider;
+  final supabase = Supabase.instance.client;
+  final authRepository = AuthRepository(supabase);
+  final authProvider = AuthProvider(repository: authRepository);
 
-  runApp(RgvApp(
-    authProvider: authProvider,
-    authRepository: authRepository,
-    dashboardRepository: DashboardRepository(api),
-    inventoryRepository: InventoryRepository(api),
-    borrowRepository: BorrowRepository(api),
-    returnRepository: ReturnRepository(api),
-  ));
+  runApp(
+    RgvApp(
+      authProvider: authProvider,
+      authRepository: authRepository,
+      dashboardRepository: DashboardRepository(supabase),
+      inventoryRepository: InventoryRepository(supabase),
+      borrowRepository: BorrowRepository(supabase),
+      returnRepository: ReturnRepository(supabase),
+    ),
+  );
 }

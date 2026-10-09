@@ -8,9 +8,9 @@ import '../../inventory/models/inventory_item.dart';
 import '../data/borrow_repository.dart';
 
 class BorrowFormScreen extends StatefulWidget {
-  const BorrowFormScreen({super.key, required this.item});
+  const BorrowFormScreen({super.key, required this.items});
 
-  final InventoryItem item;
+  final List<InventoryItem> items;
 
   @override
   State<BorrowFormScreen> createState() => _BorrowFormScreenState();
@@ -22,16 +22,22 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
 
   late DateTime _borrowDate = DateTime.now();
   late DateTime _dueDate = DateTime.now().add(const Duration(days: 7));
-  int _quantity = 1;
+  final Map<int, int> _quantities = {};
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    for (final item in widget.items) {
+      _quantities[item.id] = 1;
+    }
+  }
 
   @override
   void dispose() {
     _reasonController.dispose();
     super.dispose();
   }
-
-  int get _available => widget.item.quantity;
 
   Future<void> _pickBorrowDate() async {
     final picked = await showDatePicker(
@@ -66,14 +72,22 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         title: const Text('Review request'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _reviewRow('Item', '${widget.item.name} (${widget.item.itemCode})'),
-            _reviewRow('Quantity', '$_quantity ${widget.item.unit}'),
-            _reviewRow('Borrow date', DateFormat('MMM d, yyyy').format(_borrowDate)),
+            ...widget.items.map(
+              (item) => _reviewRow(
+                item.name,
+                '${_quantities[item.id]} ${item.unit} (${item.itemCode})',
+              ),
+            ),
+            _reviewRow(
+              'Borrow date',
+              DateFormat('MMM d, yyyy').format(_borrowDate),
+            ),
             _reviewRow('Due date', DateFormat('MMM d, yyyy').format(_dueDate)),
             _reviewRow('Reason', _reasonController.text.trim()),
           ],
@@ -96,19 +110,23 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
     setState(() => _submitting = true);
     try {
       final request = await context.read<BorrowRepository>().createRequest(
-            borrowDate: DateFormat('yyyy-MM-dd').format(_borrowDate),
-            dueDate: DateFormat('yyyy-MM-dd').format(_dueDate),
-            reason: _reasonController.text.trim(),
-            items: [(inventoryId: widget.item.id, quantity: _quantity)],
-          );
+        borrowDate: DateFormat('yyyy-MM-dd').format(_borrowDate),
+        dueDate: DateFormat('yyyy-MM-dd').format(_dueDate),
+        reason: _reasonController.text.trim(),
+        items: widget.items
+            .map(
+              (item) =>
+                  (inventoryId: item.id, quantity: _quantities[item.id] ?? 1),
+            )
+            .toList(),
+      );
 
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => _BorrowSuccessScreen(
-            requestNumber: request.requestNumber,
-          ),
+          builder: (_) =>
+              _BorrowSuccessScreen(requestNumber: request.requestNumber),
         ),
       );
     } on AppException catch (e) {
@@ -122,10 +140,7 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: RgvColors.danger,
-      ),
+      SnackBar(content: Text(message), backgroundColor: RgvColors.danger),
     );
   }
 
@@ -137,10 +152,16 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
         children: [
           SizedBox(
             width: 100,
-            child: Text(label, style: const TextStyle(color: RgvColors.slateLight)),
+            child: Text(
+              label,
+              style: const TextStyle(color: RgvColors.slateLight),
+            ),
           ),
           Expanded(
-            child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -149,16 +170,23 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final available = _available > 0 && widget.item.isAvailable;
+    final availableItems = widget.items
+        .where((item) => item.isAvailable)
+        .toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Request to Borrow')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _ItemHeader(item: widget.item),
+          ...widget.items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _ItemHeader(item: item),
+            ),
+          ),
           const SizedBox(height: 16),
-          if (!available)
+          if (availableItems.length != widget.items.length)
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -172,7 +200,7 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'This item is currently unavailable (${widget.item.status}).',
+                      'Some selected items are currently unavailable and cannot be requested.',
                       style: const TextStyle(color: Color(0xFF92400E)),
                     ),
                   ),
@@ -185,49 +213,69 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Quantity (max $_available ${widget.item.unit})',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      IconButton.outlined(
-                        onPressed: _quantity > 1
-                            ? () => setState(() => _quantity--)
-                            : null,
-                        icon: const Icon(Icons.remove),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          '$_quantity',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                          ),
+                  ...availableItems.map(
+                    (item) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Quantity for ${item.name} (max ${item.quantity} ${item.unit})',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
-                      ),
-                      IconButton.outlined(
-                        onPressed: _quantity < _available
-                            ? () => setState(() => _quantity++)
-                            : null,
-                        icon: const Icon(Icons.add),
-                      ),
-                    ],
+                        Row(
+                          children: [
+                            IconButton.outlined(
+                              onPressed: (_quantities[item.id] ?? 1) > 1
+                                  ? () => setState(
+                                      () => _quantities[item.id] =
+                                          (_quantities[item.id] ?? 1) - 1,
+                                    )
+                                  : null,
+                              icon: const Icon(Icons.remove),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Text(
+                                '${_quantities[item.id] ?? 1}',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            IconButton.outlined(
+                              onPressed:
+                                  (_quantities[item.id] ?? 1) < item.quantity
+                                  ? () => setState(
+                                      () => _quantities[item.id] =
+                                          (_quantities[item.id] ?? 1) + 1,
+                                    )
+                                  : null,
+                              icon: const Icon(Icons.add),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 24),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.event, color: RgvColors.blue),
+                    leading: const Icon(Icons.event, color: RgvColors.primary),
                     title: const Text('Borrow date'),
-                    subtitle: Text(DateFormat('MMM d, yyyy').format(_borrowDate)),
+                    subtitle: Text(
+                      DateFormat('MMM d, yyyy').format(_borrowDate),
+                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _pickBorrowDate,
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.event_available, color: RgvColors.blue),
+                    leading: const Icon(
+                      Icons.event_available,
+                      color: RgvColors.primary,
+                    ),
                     title: const Text('Due date'),
                     subtitle: Text(DateFormat('MMM d, yyyy').format(_dueDate)),
                     trailing: const Icon(Icons.chevron_right),
@@ -244,7 +292,9 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
                     ),
                     validator: (value) {
                       final reason = value?.trim() ?? '';
-                      if (reason.isEmpty) return 'Enter a reason for borrowing.';
+                      if (reason.isEmpty) {
+                        return 'Enter a reason for borrowing.';
+                      }
                       return null;
                     },
                   ),
@@ -287,10 +337,13 @@ class _ItemHeader extends StatelessWidget {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: RgvColors.blueLight,
+                color: RgvColors.primaryLight,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.inventory_2_outlined, color: RgvColors.blue),
+              child: const Icon(
+                Icons.inventory_2_outlined,
+                color: RgvColors.primary,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -299,13 +352,22 @@ class _ItemHeader extends StatelessWidget {
                 children: [
                   Text(
                     item.name,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   if (item.brand != null)
-                    Text('${item.brand}', style: const TextStyle(color: RgvColors.slateLight)),
+                    Text(
+                      '${item.brand}',
+                      style: const TextStyle(color: RgvColors.slateLight),
+                    ),
                   Text(
                     '${item.itemCode} · ${item.category ?? 'Uncategorized'}',
-                    style: const TextStyle(color: RgvColors.slateLight, fontSize: 13),
+                    style: const TextStyle(
+                      color: RgvColors.slateLight,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
@@ -315,9 +377,17 @@ class _ItemHeader extends StatelessWidget {
               children: [
                 Text(
                   '${item.quantity}',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                Text('${item.unit} available', style: const TextStyle(fontSize: 12)),
+                Text(
+                  item.isAvailable
+                      ? '${item.unit} available'
+                      : item.availabilityLabel,
+                  style: const TextStyle(fontSize: 12),
+                ),
               ],
             ),
           ],
@@ -342,7 +412,11 @@ class _BorrowSuccessScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check_circle, color: RgvColors.success, size: 72),
+              const Icon(
+                Icons.check_circle,
+                color: RgvColors.success,
+                size: 72,
+              ),
               const SizedBox(height: 16),
               const Text(
                 'Borrow request submitted',
@@ -356,20 +430,25 @@ class _BorrowSuccessScreen extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 requestNumber,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: RgvColors.blue,
+                  color: RgvColors.primary,
                 ),
               ),
               const SizedBox(height: 8),
               const Text(
                 'Status: Pending approval',
-                style: TextStyle(color: RgvColors.amber, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: RgvColors.amber,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
+                onPressed: () =>
+                    Navigator.of(context).popUntil((r) => r.isFirst),
                 child: const Text('Back to Dashboard'),
               ),
             ],

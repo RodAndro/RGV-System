@@ -16,25 +16,28 @@
 </div>
 @endsection
 
+@php
+    $calendarEvents = $bookings->map(fn ($booking) => [
+        'title' => $booking->full_name,
+        'start' => $booking->preferred_date->format('Y-m-d') . 'T' . $booking->preferred_time_24_hour,
+        'backgroundColor' => $booking->status === 'approved' ? '#2563eb' : ($booking->status === 'pending' ? '#fbbf24' : '#1d4ed8'),
+        'borderColor' => $booking->status === 'approved' ? '#2563eb' : ($booking->status === 'pending' ? '#fbbf24' : '#1d4ed8'),
+        'url' => '/admin/bookings/' . $booking->id,
+        'extendedProps' => ['status' => $booking->status, 'reference' => $booking->reference_number],
+    ])->values();
+@endphp
+
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         var calendarEl = document.getElementById('calendar');
-        var bookings = @json($bookings->map(function($booking) {
-            return [
-                'title' => $booking->full_name,
-                'start' => $booking->preferred_date->format('Y-m-d') + 'T' . $booking->preferred_time,
-                'backgroundColor' => $booking->status === 'approved' ? '#2563eb' : ($booking->status === 'pending' ? '#fbbf24' : '#1d4ed8'),
-                'borderColor' => $booking->status === 'approved' ? '#2563eb' : ($booking->status === 'pending' ? '#fbbf24' : '#1d4ed8'),
-                'url' => '/admin/bookings/' + $booking->id,
-                'extendedProps' => { 'status': $booking->status, 'reference': $booking->reference_number }
-            ];
-        }));
+        var bookings = @json($calendarEvents);
 
         var calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
             events: bookings,
+            eventTimeFormat: { hour: 'numeric', minute: '2-digit', meridiem: 'short' },
             eventClick: function(info) { info.jsEvent.preventDefault(); if (info.event.url) window.open(info.event.url, '_blank'); },
             eventDidMount: function(info) {
                 var tooltip = document.createElement('div');

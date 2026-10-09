@@ -11,6 +11,7 @@ use Illuminate\Notifications\Notification;
 class BookingCompleted extends Notification
 {
     use Queueable;
+    use RespectsPreferences;
 
     public $booking;
 
@@ -32,7 +33,7 @@ class BookingCompleted extends Notification
             ->line('Your booking has been completed successfully!')
             ->line('Reference Number: ' . $this->booking->reference_number)
             ->line('Date: ' . $this->booking->preferred_date->format('F d, Y'))
-            ->line('Time: ' . $this->booking->preferred_time)
+            ->line('Time: ' . $this->booking->preferred_time_formatted)
             ->line('Thank you for choosing RGV Multi-Tech Services!')
             ->action('Track Booking', route('booking.track', $this->booking->reference_number));
     }

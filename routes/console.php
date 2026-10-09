@@ -34,5 +34,3 @@ Schedule::command('report:generate-daily')->dailyAt('23:55')->withoutOverlapping
 Schedule::command('report:generate-monthly')->monthlyOn(1, '00:30')->withoutOverlapping();
 Schedule::command('notification:prune')->weekly()->withoutOverlapping();
 Schedule::command('audit:archive')->monthly()->withoutOverlapping();
-Schedule::command('books:refresh-bestseller-stats')->hourly()->withoutOverlapping();
-Schedule::command('books:warm-cache')->hourly()->withoutOverlapping();

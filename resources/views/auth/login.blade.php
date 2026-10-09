@@ -8,7 +8,7 @@
         <!-- Email Address -->
         <div>
             <x-input-label for="email" :value="__('Email')" class="!text-gray-900 font-semibold" />
-            <x-text-input id="email" class="block mt-1 w-full bg-white dark:bg-white dark:text-gray-900 border-2 border-gray-300 dark:border-gray-500" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
+            <x-text-input id="email" class="block mt-1 w-full px-4 bg-white dark:bg-white dark:text-gray-900 border-2 border-gray-300 dark:border-gray-500" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
@@ -17,13 +17,14 @@
             <x-input-label for="password" :value="__('Password')" class="!text-gray-900 font-semibold" />
 
             <div class="relative">
-                <x-text-input id="password" class="block mt-1 w-full pr-10 bg-white dark:bg-white dark:text-gray-900 border-2 border-gray-300 dark:border-gray-500"
+                <x-text-input id="password" class="block mt-1 w-full px-4 pr-12 bg-white dark:bg-white dark:text-gray-900 border-2 border-gray-300 dark:border-gray-500"
                                 type="password"
                                 name="password"
                                 required autocomplete="current-password" />
 
                 <button type="button" onclick="togglePassword()"
-                        class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 focus:outline-none">
+                        id="password-toggle"
+                        class="absolute inset-y-0 right-0 hidden items-center px-3 text-gray-500 hover:text-gray-700 focus:outline-none">
                     <i id="eye-icon" class="fas fa-eye"></i>
                 </button>
             </div>
@@ -64,17 +65,34 @@
         </div>
     </form>
 
+    <style>
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear {
+            display: none;
+        }
+    </style>
+
     <script>
+        const passwordInput = document.getElementById('password');
+        const passwordToggle = document.getElementById('password-toggle');
+
+        function updatePasswordToggle() {
+            passwordToggle.classList.toggle('hidden', passwordInput.value.length === 0);
+            passwordToggle.classList.toggle('flex', passwordInput.value.length > 0);
+        }
+
         function togglePassword() {
-            const input = document.getElementById('password');
             const icon = document.getElementById('eye-icon');
-            if (input.type === 'password') {
-                input.type = 'text';
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
                 icon.classList.replace('fa-eye', 'fa-eye-slash');
             } else {
-                input.type = 'password';
+                passwordInput.type = 'password';
                 icon.classList.replace('fa-eye-slash', 'fa-eye');
             }
         }
+
+        passwordInput.addEventListener('input', updatePasswordToggle);
+        updatePasswordToggle();
     </script>
 </x-guest-layout>

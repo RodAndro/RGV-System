@@ -7,19 +7,18 @@ use App\Jobs\ProcessInventoryImport;
 use App\Models\ImportLog;
 use App\Models\Inventory;
 use App\Models\InventoryCategory;
-use App\Models\Supplier;
-use App\Models\User;
-use App\Notifications\LowStockAlert;
+use BaconQrCode\Common\ErrorCorrectionLevel;
+use BaconQrCode\Encoder\Encoder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class InventoryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Inventory::with(['category', 'supplier']);
+        $query = Inventory::with(['category']);
 
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
@@ -46,35 +45,31 @@ class InventoryController extends Controller
         $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $inventories = $query->latest()->paginate($perPage)->appends($request->except('page'));
         $categories = InventoryCategory::active()->get();
-        $suppliers = Supplier::active()->get();
         
-        $stats = [
-            'total' => Inventory::count(),
-            'available' => Inventory::where('status', 'available')->count(),
-            'borrowed' => Inventory::where('status', 'borrowed')->count(),
-            'maintenance' => Inventory::where('status', 'maintenance')->count(),
-            'damaged' => Inventory::where('status', 'damaged')->count(),
-        ];
+        $stats = Cache::remember('admin.stats.inventory', now()->addSeconds(20), function () {
+            $row = Inventory::query()->selectRaw("COUNT(*) as total, COUNT(CASE WHEN status = 'available' THEN 1 END) as available, COUNT(CASE WHEN status = 'borrowed' THEN 1 END) as borrowed, COUNT(CASE WHEN status = 'maintenance' THEN 1 END) as maintenance, COUNT(CASE WHEN status = 'damaged' THEN 1 END) as damaged")
+                ->first();
+
+            return array_map('intval', $row->getAttributes());
+        });
         
-        return view('admin.inventories.index', compact('inventories', 'categories', 'suppliers', 'stats'));
+        return view('admin.inventories.index', compact('inventories', 'categories', 'stats'));
     }
 
     public function create()
     {
         $categories = InventoryCategory::active()->get();
-        $suppliers = Supplier::active()->get();
         $categoryUnits = $this->getCategoryUnits();
-        return view('admin.inventories.create', compact('categories', 'suppliers', 'categoryUnits'));
+        return view('admin.inventories.create', compact('categories', 'categoryUnits'));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
+        $data = $request->validate([
             'item_code' => ['required', 'string', 'max:255', Rule::unique('inventories', 'item_code')->withoutTrashed()],
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category_id' => 'required|exists:inventory_categories,id',
-            'supplier_id' => 'nullable|exists:suppliers,id',
             'quantity' => 'required|integer|min:0',
             'unit' => 'required|string',
             'unit_cost' => 'nullable|numeric|min:0',
@@ -83,7 +78,6 @@ class InventoryController extends Controller
             'location' => 'nullable|string',
             'low_stock_threshold' => 'required|integer|min:0',
             'date_added' => 'required|date',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
         ]);
 
         $duplicateItem = Inventory::query()
@@ -97,22 +91,7 @@ class InventoryController extends Controller
                 ->withInput();
         }
 
-        $data = $request->except('image');
-        
-        if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('inventories', 'public');
-            $data['image_path'] = $path;
-        }
-
         $inventory = Inventory::create($data);
-
-        // Check if quantity is below low stock threshold and send alert
-        if ($inventory->quantity <= $inventory->low_stock_threshold) {
-            $admins = User::role('admin')->get();
-            foreach ($admins as $admin) {
-                $admin->notify(new LowStockAlert($inventory));
-            }
-        }
 
         return redirect()->route('admin.inventories.index')
             ->with('success', 'Inventory item added successfully.');
@@ -120,26 +99,24 @@ class InventoryController extends Controller
 
     public function show(Inventory $inventory)
     {
-        $inventory->load(['category', 'supplier', 'borrowItems']);
+        $inventory->load(['category', 'borrowItems']);
         return view('admin.inventories.show', compact('inventory'));
     }
 
     public function edit(Inventory $inventory)
     {
         $categories = InventoryCategory::active()->get();
-        $suppliers = Supplier::active()->get();
         $categoryUnits = $this->getCategoryUnits();
-        return view('admin.inventories.edit', compact('inventory', 'categories', 'suppliers', 'categoryUnits'));
+        return view('admin.inventories.edit', compact('inventory', 'categories', 'categoryUnits'));
     }
 
     public function update(Request $request, Inventory $inventory)
     {
-        $request->validate([
+        $data = $request->validate([
             'item_code' => ['required', 'string', 'max:255', Rule::unique('inventories', 'item_code')->ignore($inventory->id)->withoutTrashed()],
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category_id' => 'required|exists:inventory_categories,id',
-            'supplier_id' => 'nullable|exists:suppliers,id',
             'quantity' => 'required|integer|min:0',
             'unit' => 'required|string',
             'unit_cost' => 'nullable|numeric|min:0',
@@ -148,7 +125,6 @@ class InventoryController extends Controller
             'location' => 'nullable|string',
             'low_stock_threshold' => 'required|integer|min:0',
             'date_added' => 'required|date',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
         ]);
 
         $duplicateItem = Inventory::query()
@@ -163,22 +139,7 @@ class InventoryController extends Controller
                 ->withInput();
         }
 
-        $data = $request->except('image');
-        
-        if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('inventories', 'public');
-            $data['image_path'] = $path;
-        }
-
         $inventory->update($data);
-
-        // Check if quantity is below low stock threshold and send alert
-        if ($inventory->quantity <= $inventory->low_stock_threshold) {
-            $admins = User::role('admin')->get();
-            foreach ($admins as $admin) {
-                $admin->notify(new LowStockAlert($inventory));
-            }
-        }
 
         return redirect()->route('admin.inventories.index')
             ->with('success', 'Inventory item updated successfully.');
@@ -193,26 +154,58 @@ class InventoryController extends Controller
 
     public function lowStock()
     {
-        $inventories = Inventory::lowStock()->with(['category', 'supplier'])->get();
+        $inventories = Inventory::lowStock()->with(['category'])->get();
         return view('admin.inventories.low-stock', compact('inventories'));
     }
 
-    public function generateQrCode(Inventory $inventory)
+    public function generateQrCode(string $token)
     {
-        $qrData = [
-            'item_code' => $inventory->item_code,
-            'name' => $inventory->name,
-            'category' => $inventory->category->name,
-            'quantity' => $inventory->quantity,
-            'unit' => $inventory->unit,
-        ];
+        abort_unless(preg_match('/\\AQR-[A-Z0-9]{32}\\z/', $token) === 1, 404);
 
-        $qrCode = QrCode::format('png')
-            ->size(300)
-            ->margin(10)
-            ->generate(json_encode($qrData));
+        $inventory = Inventory::with('category:id,name')->where('qr_token', $token)->firstOrFail();
+        abort_unless(function_exists('imagecreatetruecolor'), 500, 'The GD extension is required to generate QR downloads.');
 
-        return response($qrCode)->header('Content-Type', 'image/png');
+        $matrix = Encoder::encode($inventory->qrUrl(), ErrorCorrectionLevel::H())->getMatrix();
+        $size = 600;
+        $quietZone = 4;
+        $totalModules = $matrix->getWidth() + ($quietZone * 2);
+        $moduleSize = intdiv($size, $totalModules);
+        $offset = intdiv($size - ($totalModules * $moduleSize), 2) + ($quietZone * $moduleSize);
+        $image = imagecreatetruecolor($size, $size);
+        $white = imagecolorallocate($image, 255, 255, 255);
+        $black = imagecolorallocate($image, 0, 0, 0);
+        imagefill($image, 0, 0, $white);
+
+        for ($y = 0; $y < $matrix->getHeight(); $y++) {
+            for ($x = 0; $x < $matrix->getWidth(); $x++) {
+                if ($matrix->get($x, $y) === 1) {
+                    imagefilledrectangle(
+                        $image,
+                        $offset + ($x * $moduleSize),
+                        $offset + ($y * $moduleSize),
+                        $offset + (($x + 1) * $moduleSize) - 1,
+                        $offset + (($y + 1) * $moduleSize) - 1,
+                        $black,
+                    );
+                }
+            }
+        }
+
+        ob_start();
+        imagejpeg($image, null, 95);
+        $jpeg = ob_get_clean();
+        imagedestroy($image);
+
+        $filename = \Illuminate\Support\Str::slug(implode('-', array_filter([
+            $inventory->item_code,
+            $inventory->name,
+            $inventory->category?->name,
+        ]))) . '.jpg';
+
+        return response($jpeg)->withHeaders([
+            'Content-Type' => 'image/jpeg',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 
     /**
@@ -235,7 +228,6 @@ class InventoryController extends Controller
             'unit_cost',
             'status',
             'condition',
-            'supplier',
             'location',
             'low_stock_threshold',
             'date_added',
@@ -251,7 +243,6 @@ class InventoryController extends Controller
             '25.50',
             'available',
             'good',
-            'Supplier Name',
             'Shelf A-1',
             '5',
             now()->format('Y-m-d'),

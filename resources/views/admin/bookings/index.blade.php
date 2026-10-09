@@ -129,7 +129,7 @@
                                         <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400">{{ $booking->contact_number }}</td>
                                         <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
                                             <p class="text-xs text-gray-800 dark:text-gray-100">{{ $booking->preferred_date->format('M d, Y') }}</p>
-                                            <p class="text-xs text-gray-500">{{ $booking->preferred_time }}</p>
+                                            <p class="text-xs text-gray-500">{{ $booking->preferred_time_formatted }}</p>
                                         </td>
                                         <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
                                             @if($booking->status == 'pending')
@@ -167,6 +167,15 @@
                                                         <i class="fas fa-times"></i>
                                                     </a>
                                                 @endif
+                                                @if(in_array($booking->status, ['completed', 'rejected'], true))
+                                                    <form action="{{ route('admin.bookings.destroy', $booking) }}" method="POST" class="inline" onsubmit="return confirm('Move this work request to trash?');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="w-9 h-9 bg-red-100 text-red-600 rounded-lg flex items-center justify-center hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors" title="Move to Trash" aria-label="Move to Trash">
+                                                            <i class="fas fa-trash-alt"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
@@ -197,9 +206,8 @@
     <div id="rejectModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 backdrop-blur-sm">
         <div class="card-mantis p-6 w-full max-w-md mx-4">
             <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Reject Work Request</h3>
-            <form id="rejectForm" method="POST">
+            <form id="rejectForm" method="POST" data-action-template="{{ route('admin.bookings.reject', ['booking' => '__BOOKING_ID__']) }}">
                 @csrf
-                <input type="hidden" name="booking_id" id="rejectBookingId">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Reason for Rejection *</label>
                     <textarea name="remarks" rows="4" required
@@ -222,7 +230,8 @@
 @push('scripts')
 <script>
 function showRejectModal(bookingId) {
-    document.getElementById('rejectBookingId').value = bookingId;
+    const form = document.getElementById('rejectForm');
+    form.action = form.dataset.actionTemplate.replace('__BOOKING_ID__', bookingId);
     document.getElementById('rejectModal').classList.remove('hidden');
     document.getElementById('rejectModal').classList.add('flex');
 }
@@ -232,23 +241,5 @@ function hideRejectModal() {
     document.getElementById('rejectModal').classList.remove('flex');
 }
 
-document.getElementById('rejectForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const bookingId = document.getElementById('rejectBookingId').value;
-    const formData = new FormData(this);
-    
-    fetch(`{{ route('admin.bookings.reject', ':id') }}`.replace(':id', bookingId), {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
-    }).then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                window.location.reload();
-            }
-        });
-});
 </script>
 @endpush

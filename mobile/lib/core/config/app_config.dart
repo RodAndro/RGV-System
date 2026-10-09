@@ -2,31 +2,27 @@ import 'package:flutter/foundation.dart';
 
 /// Application-wide configuration.
 ///
-/// The API base URL is injectable at build time with
-/// `flutter run --dart-define=API_BASE_URL=https://api.example.com/api/v1/mobile`.
+/// Supabase credentials are injected at build time with `SUPABASE_URL` and
+/// `SUPABASE_ANON_KEY` Dart defines.
 class AppConfig {
   const AppConfig._();
 
-  /// Base URL of the Laravel mobile API (no trailing slash).
-  ///
-  /// `10.0.2.2` is the Android emulator alias for the host machine, so the
-  /// default targets a local `php artisan serve` instance during development.
-  static const String apiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8000/api/v1/mobile',
+  static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const String supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
   );
 
-  /// Whether the configured base URL uses HTTPS.
-  static bool get isHttps => Uri.parse(apiBaseUrl).scheme == 'https';
+  static bool get isHttps =>
+      supabaseUrl.isNotEmpty && Uri.parse(supabaseUrl).scheme == 'https';
 
-  /// Guards the "HTTPS required outside local development" rule. Called once
-  /// at startup in release/profile builds so a misconfigured HTTP endpoint
-  /// fails fast instead of silently leaking credentials.
-  static void assertHttpsInProduction() {
-    if (kReleaseMode && !isHttps) {
+  static void validate() {
+    if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
       throw StateError(
-        'API_BASE_URL must use HTTPS in release builds. Configured: $apiBaseUrl',
+        'SUPABASE_URL and SUPABASE_ANON_KEY must be set with --dart-define.',
       );
+    }
+    if (kReleaseMode && !isHttps) {
+      throw StateError('SUPABASE_URL must use HTTPS in release builds.');
     }
   }
 }

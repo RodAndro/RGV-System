@@ -21,7 +21,7 @@
 
 ### Accessing the System
 
-The RGV System is accessed via your web browser at the application URL provided by your administrator.
+The RGV System is accessed via your web browser at the application URL provided by your administrator. The current implementation includes a public booking portal, an employee dashboard, an admin dashboard, and a Flutter Android app used by employees for mobile inventory and borrowing tasks.
 
 ### Account Setup
 
@@ -33,9 +33,9 @@ The RGV System is accessed via your web browser at the application URL provided 
 
 | Role | Access Level | Key Responsibilities |
 |------|-------------|---------------------|
-| **Public** | Booking form, booking tracking, AI chatbot | Submit and track service bookings |
-| **Employee** | Employee dashboard, assigned bookings, borrow requests, inventory | Handle assigned work, request inventory |
-| **Administrator** | Full system access | Manage users, bookings, inventory, reports, system configuration |
+| **Public** | Booking form and booking tracking | Submit and track service requests through the public portal |
+| **Employee** | Employee dashboard, assigned bookings, borrow requests, inventory, mobile app | Handle assigned work, request inventory, and process returns |
+| **Administrator** | Full system access | Manage users, bookings, inventory, reports, system configuration, imports, and backups |
 
 ---
 
@@ -59,7 +59,6 @@ The public-facing features allow customers to book services and track their requ
 | **Preferred Time** | Preferred time slot |
 | **Purpose Category** | Type of service needed |
 | **Reason** | Detailed description of the service request |
-| **Attachment** | Optional: Upload relevant files (photos, documents) |
 
 4. Click **"Submit Booking"**
 5. Save the **reference number** shown on the confirmation page (format: `BK-XXXXXXXXXXXXX`)
@@ -82,9 +81,12 @@ The public-facing features allow customers to book services and track their requ
 
 ### Using the AI Chatbot
 
-1. Click the chat icon on any public page
-2. Type your question about RGV services, booking process, or general inquiries
-3. The AI assistant responds with relevant information
+The AI chatbot is currently restricted to authenticated admin sessions and is used for internal operational support, reporting insights, and contextual system questions. Public users can still submit booking requests and track booking status without an account.
+
+1. Sign in to the admin portal
+2. Open the AI or report tools from the admin menu
+3. Submit a prompt relevant to bookings, inventory, or operational insights
+4. Review the AI-generated response and recommendations
 
 ---
 
@@ -127,8 +129,7 @@ and notifications remain in the web portal.
 
 1. Tap **Return** and select the borrowed items you are returning.
 2. Set each item's condition and add damage notes when needed.
-3. Attach a return-proof photo using the camera or image gallery, then tap **Submit Return**.
-4. The server uploads the photo to Google Drive. Stock is restored only after the upload succeeds.
+3. Select the return location and tap **Submit Return**. A photo is not required.
 
 #### Account Settings
 
@@ -142,7 +143,7 @@ Use **Account** to update your name or change your password.
 4. Update the booking:
    - **Add remarks** — Notes about the service visit
    - **Update status** — Change as work progresses
-   - **View customer details** — Contact information, address, attachments
+   - **View customer details** — Contact information and address
 
 ### Borrowing Inventory
 
@@ -274,7 +275,6 @@ The admin dashboard (`/admin/dashboard`) shows:
 | **Name** | Item name |
 | **Description** | Detailed description |
 | **Category** | Select from existing categories |
-| **Supplier** | Select supplier or add new |
 | **Quantity** | Initial stock count |
 | **Unit** | pcs, box, kg, etc. |
 | **Unit Cost** | Cost per unit |
@@ -495,7 +495,7 @@ Configure the admin email in **Backup Settings** or **Site Settings → Backup**
 
 ### Trash Management
 
-Soft-deleted items are moved to the trash, not permanently removed. Supported types: Bookings, Borrow Requests, Inventory, Inventory Categories, Suppliers.
+Soft-deleted items are moved to the trash, not permanently removed. Supported types: Bookings, Borrow Requests, Inventory, Inventory Categories.
 
 1. Navigate to **Admin** → **Trash**
 2. Filter by type using the tabs (each shows a count of trashed items)
@@ -536,13 +536,13 @@ Quick PDF generation from listing pages:
 
 The RGV System integrates with AI services to provide intelligent assistance.
 
-### Public AI Chatbot
+### Admin AI Tools
 
-Located on public pages, the chatbot answers customer questions about:
-- Services offered by RGV Multi-Tech Services
-- Booking process and requirements
-- Booking tracking
-- General company information
+The AI capabilities in the current system are provided through admin-side workflows, including:
+- Booking trend and service-volume questions
+- Inventory analysis and stock recommendations
+- Operational summaries and report generation
+- Contextual assistance for administrators working in the dashboard
 
 ### Admin AI Tools
 
@@ -582,7 +582,7 @@ Accessible from the Admin menu → **AI**:
 
 ### Getting Help
 
-- **AI Chatbot**: Available on public pages for immediate assistance
+- **AI tools**: Available in the admin portal for operational assistance and reporting
 - **In-app notifications**: Check for system announcements
 - **Administrator contact**: For account issues, contact your system administrator
 
@@ -614,4 +614,4 @@ Accessible from the Admin menu → **AI**:
 
 ---
 
-*Last Updated: September 30, 2026*
+*Last Updated: October 2, 2026*

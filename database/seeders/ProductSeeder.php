@@ -36,26 +36,27 @@ class ProductSeeder extends Seeder
                 continue;
             }
 
-            Inventory::updateOrCreate(
-                ['item_code' => $itemCode],
-                [
-                    'item_code' => $itemCode,
-                    'name' => $name,
-                    'brand' => $brand,
-                    'description' => $this->buildDescription($name, $brand),
-                    'category_id' => $categories->get($categorySlug)->id,
-                    'supplier_id' => null,
-                    'quantity' => $quantity,
-                    'unit' => $unit,
-                    'unit_cost' => null,
-                    'status' => 'available',
-                    'condition' => 'good',
-                    'location' => null,
-                    'low_stock_threshold' => 1,
-                    'date_added' => now()->toDateString(),
-                    'is_active' => true,
-                ]
-            );
+            $inventory = Inventory::firstOrNew(['item_code' => $itemCode]);
+            $inventory->fill([
+                'item_code' => $itemCode,
+                'name' => $name,
+                'brand' => $brand,
+                'description' => $this->buildDescription($name, $brand),
+                'category_id' => $categories->get($categorySlug)->id,
+                'quantity' => $quantity,
+                'unit' => $unit,
+                'unit_cost' => null,
+                'status' => 'available',
+                'condition' => 'good',
+                'location' => null,
+                'low_stock_threshold' => 1,
+                'date_added' => now()->toDateString(),
+                'is_active' => true,
+            ]);
+            if (! $inventory->exists) {
+                $inventory->qr_token = $inventory->generateUniqueQrToken();
+            }
+            Inventory::withoutEvents(fn () => $inventory->save());
         }
     }
 

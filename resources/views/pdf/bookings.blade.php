@@ -45,7 +45,7 @@
                     <td>{{ $booking->email }}</td>
                     <td>{{ $booking->contact_number }}</td>
                     <td>{{ $booking->preferred_date->format('M d, Y') }}</td>
-                    <td>{{ $booking->preferred_time }}</td>
+                    <td>{{ $booking->preferred_time_formatted }}</td>
                     <td>{{ ucfirst(str_replace('-', ' ', $booking->purpose_category)) }}</td>
                     <td><span class="badge badge-{{ $booking->status }}">{{ ucfirst($booking->status) }}</span></td>
                     <td>{{ $booking->employee ? $booking->employee->name : 'Unassigned' }}</td>

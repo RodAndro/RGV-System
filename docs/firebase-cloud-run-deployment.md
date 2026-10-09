@@ -1,9 +1,10 @@
 # Firebase Hosting + Cloud Run Deployment
 
-Firebase Hosting serves the Vite assets and rewrites application requests to
+Firebase Hosting serves the Vite assets and rewrites website requests to
 Laravel on Cloud Run. Laravel connects directly to Supabase PostgreSQL. The
-Firebase project is `rgv-system`; the Hosting site is
-`rgv-multi-tech-services`.
+Flutter Android app uses Supabase Auth and restricted database RPCs, so mobile
+employee workflows do not route through Cloud Run. The Firebase project
+is `rgv-system`; the Hosting site is `rgv-multi-tech-services`.
 
 ## Billing note
 
@@ -74,6 +75,29 @@ that has the same database variables and secrets:
 ```powershell
 php artisan migrate --force
 ```
+
+After migrations, run `database/supabase/mobile_backend.sql` in the Supabase SQL
+Editor. Invite existing active employees through Supabase Auth using their
+Laravel email addresses and require email confirmation. Employees set a new
+Supabase password from the invite; the SQL trigger links the confirmed identity
+and mirrors its bcrypt password hash to the Laravel employee row. Employees
+whose Laravel account requires MFA are prompted to enroll a Supabase TOTP factor
+in the app. Flutter must use only the Supabase URL and publishable key, never
+the service-role key.
+
+Build the Android app with the Supabase project values:
+
+```powershell
+Set-Location mobile
+flutter build apk --release `
+  --dart-define=SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co `
+  --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_KEY
+```
+
+The website and mobile app share PostgreSQL records. Loading the web request
+page after Cloud Run recovers reads those rows directly; no synchronization
+worker is needed. Mobile writes remain available while Cloud Run is down as
+long as Supabase Auth and PostgreSQL are reachable.
 
 Do not run the full project seeder in production; it creates demo users with
 known passwords. Set `QUEUE_CONNECTION=sync` until a separate worker is

@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Inventory;
 use App\Models\BorrowRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
@@ -14,13 +15,12 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
         
-        $stats = [
-            'my_borrow_requests' => $user->borrowRequests()->count(),
-            'pending_requests' => $user->borrowRequests()->pending()->count(),
-            'approved_requests' => $user->borrowRequests()->approved()->count(),
-            'borrowed_items' => $user->borrowRequests()->borrowed()->count(),
-            'returned_items' => $user->borrowRequests()->where('status', 'returned')->count(),
-        ];
+        $stats = Cache::remember("employee.dashboard.stats.{$user->id}", now()->addSeconds(20), function () use ($user) {
+            $row = $user->borrowRequests()->selectRaw("COUNT(*) as my_borrow_requests, COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_requests, COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_requests, COUNT(CASE WHEN status = 'borrowed' THEN 1 END) as borrowed_items, COUNT(CASE WHEN status = 'returned' THEN 1 END) as returned_items")
+                ->first();
+
+            return array_map('intval', $row->getAttributes());
+        });
 
         $availableInventory = Inventory::available()->with('category')->take(10)->get();
         $myBorrowRequests = $user->borrowRequests()->with('borrowItems.inventory')->latest()->take(5)->get();

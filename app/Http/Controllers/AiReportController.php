@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Inventory;
 use App\Models\BorrowRequest;
 use App\Services\OllamaService;
+use Illuminate\Support\Facades\DB;
 
 class AiReportController extends Controller
 {
@@ -15,22 +16,24 @@ class AiReportController extends Controller
 
     public function generateInsights()
     {
-        $bookings = Booking::all();
-        $inventory = Inventory::all();
-        $borrowRequests = BorrowRequest::all();
+        $bookingStats = Booking::query()->selectRaw("COUNT(*) as total_bookings, COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_bookings, COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_bookings, COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_bookings")
+            ->first();
+        $inventoryStats = Inventory::query()->selectRaw('COUNT(*) as total_inventory, COUNT(CASE WHEN quantity <= low_stock_threshold THEN 1 END) as low_stock_items')
+            ->first();
+        $borrowStats = BorrowRequest::query()->selectRaw("COUNT(*) as total_borrow_requests, COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_borrow_requests, COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_borrow_requests, COUNT(CASE WHEN status = 'borrowed' AND due_date < ? THEN 1 END) as overdue_borrow_requests", [now()])
+            ->first();
 
         $data = [
-            'total_bookings' => $bookings->count(),
-            'pending_bookings' => $bookings->where('status', 'pending')->count(),
-            'approved_bookings' => $bookings->where('status', 'approved')->count(),
-            'completed_bookings' => $bookings->where('status', 'completed')->count(),
-            'total_inventory' => $inventory->count(),
-            'low_stock_items' => $inventory->filter(fn($item) => $item->isLowStock())->count(),
-            'total_borrow_requests' => $borrowRequests->count(),
-            'pending_borrow_requests' => $borrowRequests->where('status', 'pending')->count(),
-            'approved_borrow_requests' => $borrowRequests->where('status', 'approved')->count(),
-            'overdue_borrow_requests' => $borrowRequests->where('status', 'borrowed')
-                ->filter(fn($req) => $req->due_date < now())->count(),
+            'total_bookings' => (int) $bookingStats->total_bookings,
+            'pending_bookings' => (int) $bookingStats->pending_bookings,
+            'approved_bookings' => (int) $bookingStats->approved_bookings,
+            'completed_bookings' => (int) $bookingStats->completed_bookings,
+            'total_inventory' => (int) $inventoryStats->total_inventory,
+            'low_stock_items' => (int) $inventoryStats->low_stock_items,
+            'total_borrow_requests' => (int) $borrowStats->total_borrow_requests,
+            'pending_borrow_requests' => (int) $borrowStats->pending_borrow_requests,
+            'approved_borrow_requests' => (int) $borrowStats->approved_borrow_requests,
+            'overdue_borrow_requests' => (int) $borrowStats->overdue_borrow_requests,
         ];
 
         $prompt = "Analyze the following data for RGV Multi-Tech Services and provide insights: " . json_encode($data);
@@ -45,20 +48,17 @@ class AiReportController extends Controller
 
     public function generateBookingForecast()
     {
-        $bookings = Booking::where('preferred_date', '>=', now()->subMonths(6))
-            ->orderBy('preferred_date')
-            ->get()
-            ->groupBy(function($booking) {
-                return $booking->preferred_date->format('Y-m');
-            });
+        $monthExpression = DB::connection()->getDriverName() === 'pgsql'
+            ? "TO_CHAR(preferred_date, 'YYYY-MM')"
+            : "strftime('%Y-%m', preferred_date)";
 
-        $monthlyData = [];
-        foreach ($bookings as $month => $monthBookings) {
-            $monthlyData[] = [
-                'month' => $month,
-                'count' => $monthBookings->count(),
-            ];
-        }
+        $monthlyData = Booking::selectRaw("{$monthExpression} as month, COUNT(*) as count")
+            ->where('preferred_date', '>=', now()->subMonths(6))
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->map(fn ($row) => ['month' => $row->month, 'count' => (int) $row->count])
+            ->all();
 
         $prompt = "Based on the following monthly booking data, provide a 3-month forecast: " . json_encode($monthlyData);
 
@@ -72,7 +72,7 @@ class AiReportController extends Controller
 
     public function generateInventoryRecommendations()
     {
-        $inventory = Inventory::with(['category', 'borrowItems'])->get();
+        $inventory = Inventory::with('category')->withCount('borrowItems')->get();
         
         $inventoryData = $inventory->map(function($item) {
             return [
@@ -81,7 +81,7 @@ class AiReportController extends Controller
                 'quantity' => $item->quantity,
                 'threshold' => $item->low_stock_threshold,
                 'status' => $item->status,
-                'borrow_count' => $item->borrowItems->count(),
+                'borrow_count' => $item->borrow_items_count,
             ];
         });
 

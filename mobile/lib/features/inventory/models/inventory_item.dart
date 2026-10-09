@@ -10,7 +10,6 @@ class InventoryItem {
     this.unit = 'pcs',
     this.status = 'available',
     this.condition = 'good',
-    this.imagePath,
     this.isActive = true,
   });
 
@@ -24,23 +23,23 @@ class InventoryItem {
   final String unit;
   final String status;
   final String condition;
-  final String? imagePath;
   final bool isActive;
 
-  bool get isAvailable => isActive && status == 'available';
+  bool get isAvailable => isActive && status == 'available' && quantity > 0;
+  String get availabilityLabel =>
+      status == 'available' && quantity <= 0 ? 'Out of stock' : status;
 
   factory InventoryItem.fromJson(Map<String, dynamic> json) => InventoryItem(
-        id: json['id'] as int,
-        itemCode: json['item_code'] as String? ?? '',
-        name: json['name'] as String? ?? '',
-        brand: json['brand'] as String?,
-        description: json['description'] as String?,
-        category: json['category'] as String?,
-        quantity: json['quantity'] as int? ?? 0,
-        unit: json['unit'] as String? ?? 'pcs',
-        status: json['status'] as String? ?? 'available',
-        condition: json['condition'] as String? ?? 'good',
-        imagePath: json['image_path'] as String?,
-        isActive: json['is_active'] as bool? ?? true,
-      );
+    id: json['id'] as int,
+    itemCode: json['item_code'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+    brand: json['brand'] as String?,
+    description: json['description'] as String?,
+    category: json['category'] as String?,
+    quantity: json['quantity'] as int? ?? 0,
+    unit: json['unit'] as String? ?? 'pcs',
+    status: json['status'] as String? ?? 'available',
+    condition: json['condition'] as String? ?? 'good',
+    isActive: json['is_active'] as bool? ?? true,
+  );
 }

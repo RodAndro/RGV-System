@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Api\BookController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\Mobile\AuthController as MobileAuthController;
 use App\Http\Controllers\Api\Mobile\BorrowRequestController as MobileBorrowRequestController;
@@ -11,9 +10,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['api.rate:public', 'camel.json'])->group(function () {
     Route::get('/inventories', [InventoryController::class, 'index']);
-    Route::get('/books', [BookController::class, 'index']);
-    Route::get('/books/search', [BookController::class, 'search']);
-    Route::get('/books/{isbn}', [BookController::class, 'show']);
 });
 
 Route::prefix('v1/mobile')->group(function () {

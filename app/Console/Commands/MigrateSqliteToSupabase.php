@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use PDO;
 
 class MigrateSqliteToSupabase extends Command
@@ -232,18 +233,17 @@ class MigrateSqliteToSupabase extends Command
 
             $id = $target->table('inventories')->insertGetId([
                 'item_code' => $row['item_code'],
+                'qr_token' => $this->inventoryQrToken($row['qr_token'] ?? null, $target),
                 'name' => $row['name'],
                 'brand' => $this->nullable($row['brand'] ?? null),
                 'description' => $this->nullable($row['description']),
                 'category_id' => (int) $row['category_id'],
-                'supplier_id' => $row['supplier_id'] ? (int) $row['supplier_id'] : null,
                 'quantity' => (int) $row['quantity'],
                 'unit' => $row['unit'] ?? 'pcs',
                 'unit_cost' => $this->nullable($row['unit_cost']),
                 'status' => $row['status'] ?? 'available',
                 'condition' => $row['condition'] ?? 'good',
                 'location' => $this->nullable($row['location'] ?? null),
-                'image_path' => $this->nullable($row['image_path'] ?? null),
                 'low_stock_threshold' => (int) ($row['low_stock_threshold'] ?? 5),
                 'date_added' => $this->toDate($row['date_added']),
                 'is_active' => (bool) ($row['is_active'] ?? true),
@@ -257,6 +257,21 @@ class MigrateSqliteToSupabase extends Command
         }
 
         return $map;
+    }
+
+    private function inventoryQrToken(mixed $sourceToken, $target): string
+    {
+        if (is_string($sourceToken)
+            && preg_match('/\\AQR-[A-Z0-9]{32}\\z/', $sourceToken) === 1
+            && ! $target->table('inventories')->where('qr_token', $sourceToken)->exists()) {
+            return $sourceToken;
+        }
+
+        do {
+            $token = 'QR-'.Str::upper(Str::random(32));
+        } while ($target->table('inventories')->where('qr_token', $token)->exists());
+
+        return $token;
     }
 
     private function migrateBorrowRequests(PDO $source, $target, array $userIdMap): array
@@ -281,7 +296,7 @@ class MigrateSqliteToSupabase extends Command
                 'borrow_date' => $this->toDate($row['borrow_date']),
                 'due_date' => $this->toDate($row['due_date']),
                 'return_date' => $this->toDate($row['return_date'] ?? null),
-                'penalty_notes' => $this->nullable($row['penalty_notes'] ?? null),
+                'return_location' => $this->nullable($row['return_location'] ?? null),
                 'admin_remarks' => $this->nullable($row['admin_remarks'] ?? null),
                 'approved_at' => $this->nullable($row['approved_at']),
                 'rejected_at' => $this->nullable($row['rejected_at']),

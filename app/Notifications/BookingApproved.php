@@ -33,7 +33,7 @@ class BookingApproved extends Notification
             ->line('Your booking has been approved!')
             ->line('Reference Number: ' . $this->booking->reference_number)
             ->line('Date: ' . $this->booking->preferred_date->format('F d, Y'))
-            ->line('Time: ' . $this->booking->preferred_time)
+            ->line('Time: ' . $this->booking->preferred_time_formatted)
             ->line('Please arrive on time for your scheduled appointment.')
             ->action('Track Booking', route('booking.track', $this->booking->reference_number))
             ->line('Thank you for choosing RGV Multi-Tech Services!');

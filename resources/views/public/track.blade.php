@@ -58,24 +58,22 @@
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-[#eff6ff]">
     <!-- Navigation -->
-    <nav class="bg-white/80 backdrop-blur-xl shadow-lg sticky top-0 z-50 border-b border-gray-200">
+    <nav class="bg-[#0f6f9d] shadow-lg sticky top-0 z-50 border-b border-[#0a5c83]">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 flex items-center">
                         <a href="{{ route('home') }}" class="flex items-center">
-                            <div class="w-10 h-10 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-xl flex items-center justify-center shadow-lg shadow-[#2563eb]/30">
-                                <i class="fas fa-cogs text-white text-xl"></i>
-                            </div>
-                            <span class="font-bold text-xl text-gray-800 ml-3">RGV Multi-Tech Services</span>
+                            <img src="{{ asset('images/RGV-Logo.png') }}" alt="RGV Multi-Tech Services logo" class="w-10 h-10 rounded-xl object-cover shadow-lg shadow-[#2563eb]/20">
+                            <span class="font-bold text-xl text-white ml-3">RGV Multi-Tech Services</span>
                         </a>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="{{ route('home') }}" class="text-gray-700 hover:text-[#2563eb] font-medium transition-colors">
+                    <a href="{{ route('home') }}" class="text-white hover:text-[#d6f4ff] font-medium transition-colors">
                         <i class="fas fa-home mr-2"></i>Home
                     </a>
-                    <a href="{{ route('booking.form') }}" class="text-gray-700 hover:text-[#2563eb] font-medium transition-colors">
+                    <a href="{{ route('booking.form') }}" class="text-white hover:text-[#d6f4ff] font-medium transition-colors">
                         <i class="fas fa-calendar-plus mr-2"></i>Book Appointment
                     </a>
                 </div>
@@ -123,7 +121,7 @@
                     </div>
                     <div>
                         <p class="text-sm text-gray-500 mb-1">Preferred Time</p>
-                        <p class="font-semibold text-gray-800">{{ $booking->preferred_time }}</p>
+                        <p class="font-semibold text-gray-800">{{ $booking->preferred_time_formatted }}</p>
                     </div>
                     <div class="md:col-span-2">
                         <p class="text-sm text-gray-500 mb-1">Address</p>
@@ -142,15 +140,6 @@
                     </div>
                 @endif
 
-                @if($booking->attachment_path)
-                    <div class="mt-6">
-                        <p class="text-sm text-gray-500 mb-2">Attachment</p>
-                        <a href="{{ asset('storage/' . $booking->attachment_path) }}" target="blank"
-                            class="inline-flex items-center text-[#2563eb] hover:text-[#1d4ed8] font-medium">
-                            <i class="fas fa-file-alt mr-2"></i>View Attachment
-                        </a>
-                    </div>
-                @endif
             </div>
 
             <!-- Status Timeline -->
@@ -248,7 +237,7 @@
     </section>
 
     <!-- Footer -->
-    <footer class="bg-gradient-to-r from-[#1e40af] to-[#2563eb] text-white py-8">
+    <footer class="bg-[#0f6f9d] border-t border-[#0a5c83] text-white py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p>&copy; 2026 RGV Multi-Tech Services. All rights reserved.</p>
         </div>

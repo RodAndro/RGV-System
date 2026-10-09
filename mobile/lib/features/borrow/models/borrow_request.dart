@@ -11,6 +11,7 @@ class BorrowItemLine {
     this.conditionReturned,
     this.isReturned = false,
     this.returnedAt,
+    this.returnLocation,
     this.damageNotes,
     this.returnEvidenceFileName,
   });
@@ -26,6 +27,7 @@ class BorrowItemLine {
   final String? conditionReturned;
   final bool isReturned;
   final String? returnedAt;
+  final String? returnLocation;
   final String? damageNotes;
   final String? returnEvidenceFileName;
 
@@ -41,6 +43,7 @@ class BorrowItemLine {
         conditionReturned: json['condition_returned'] as String?,
         isReturned: json['is_returned'] as bool? ?? false,
         returnedAt: json['returned_at'] as String?,
+        returnLocation: json['return_location'] as String?,
         damageNotes: json['damage_notes'] as String?,
         returnEvidenceFileName: (json['return_evidence'] as Map<String, dynamic>?)?['file_name'] as String?,
       );
@@ -55,6 +58,8 @@ class BorrowRequest {
     this.borrowDate,
     this.dueDate,
     this.returnDate,
+    this.returnedAt,
+    this.returnLocation,
     this.adminRemarks,
     this.items = const [],
   });
@@ -66,6 +71,8 @@ class BorrowRequest {
   final String? borrowDate;
   final String? dueDate;
   final String? returnDate;
+  final String? returnedAt;
+  final String? returnLocation;
   final String? adminRemarks;
   final List<BorrowItemLine> items;
 
@@ -77,6 +84,8 @@ class BorrowRequest {
         borrowDate: json['borrow_date'] as String?,
         dueDate: json['due_date'] as String?,
         returnDate: json['return_date'] as String?,
+        returnedAt: json['returned_at'] as String?,
+        returnLocation: json['return_location'] as String?,
         adminRemarks: json['admin_remarks'] as String?,
         items: (json['items'] as List? ?? const [])
             .map((e) => BorrowItemLine.fromJson(e as Map<String, dynamic>))

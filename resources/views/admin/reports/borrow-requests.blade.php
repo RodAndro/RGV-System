@@ -138,6 +138,7 @@
 </div>
 @endsection
 
-@push('scripts')
 <x-chatbot pageType="borrow_requests" />
+
+@push('scripts')
 @endpush

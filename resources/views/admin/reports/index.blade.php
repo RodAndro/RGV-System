@@ -173,4 +173,6 @@
                 </div>
             </div>
 
+            <x-chatbot pageType="reports" />
+
 @endsection

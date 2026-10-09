@@ -22,7 +22,6 @@ use App\Http\Controllers\Employee\BorrowRequestController;
 use App\Http\Controllers\Employee\InventoryController as EmployeeInventoryController;
 use App\Http\Controllers\PdfExportController;
 use App\Http\Controllers\AiReportController;
-use App\Http\Controllers\GeminiController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
@@ -33,9 +32,15 @@ Route::post('/booking', [PublicController::class, 'storeBooking'])->name('bookin
 Route::get('/booking/track/{reference}', [PublicController::class, 'trackBooking'])->name('booking.track');
 Route::post('/booking/search', [PublicController::class, 'searchBooking'])->name('booking.search');
 
-// Chatbot API Route
-Route::post('/api/chatbot/query', [ChatbotController::class, 'query'])->name('chatbot.query');
-Route::post('/ask-gemini', [GeminiController::class, 'ask'])->name('gemini.ask');
+// Inventory QR lookup — resolves the item from its immutable QR token only.
+Route::get('/inventory/qr/{token}', [PublicController::class, 'qrLookup'])
+    ->where('token', 'QR-[A-Z0-9]{32}')
+    ->name('inventory.qr.show');
+
+// Reports chatbot is restricted to administrators and rate limited.
+Route::post('/api/chatbot/query', [ChatbotController::class, 'query'])
+    ->middleware(['auth', 'admin', 'throttle:30,1'])
+    ->name('chatbot.query');
 
 // Auth Routes (from Laravel Breeze)
 require __DIR__.'/auth.php';
@@ -85,6 +90,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/bookings/{booking}/reject', [BookingController::class, 'reject'])->name('bookings.reject');
     Route::post('/bookings/{booking}/complete', [BookingController::class, 'complete'])->name('bookings.complete');
     Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
+    Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->name('bookings.destroy');
     Route::post('/bookings/{booking}/assign', [BookingController::class, 'assignEmployee'])->name('bookings.assign');
     
     // Inventory
@@ -92,11 +98,13 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/inventories/create', [InventoryController::class, 'create'])->name('inventories.create');
     Route::post('/inventories', [InventoryController::class, 'store'])->name('inventories.store');
     Route::get('/inventories/low-stock', [InventoryController::class, 'lowStock'])->name('inventories.low-stock');
+    Route::get('/inventories/qr/{token}', [InventoryController::class, 'generateQrCode'])
+        ->where('token', 'QR-[A-Z0-9]{32}')
+        ->name('inventories.qrcode');
     Route::get('/inventories/{inventory}', [InventoryController::class, 'show'])->name('inventories.show');
     Route::get('/inventories/{inventory}/edit', [InventoryController::class, 'edit'])->name('inventories.edit');
     Route::put('/inventories/{inventory}', [InventoryController::class, 'update'])->name('inventories.update');
     Route::delete('/inventories/{inventory}', [InventoryController::class, 'destroy'])->name('inventories.destroy');
-    Route::get('/inventories/{inventory}/qrcode', [InventoryController::class, 'generateQrCode'])->name('inventories.qrcode');
     Route::get('/inventories/import/template', [InventoryController::class, 'importTemplate'])->name('inventories.import-template');
     Route::post('/inventories/import', [InventoryController::class, 'import'])->name('inventories.import');
     
@@ -107,6 +115,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/borrow-requests/{borrowRequest}/reject', [AdminBorrowRequestController::class, 'reject'])->name('borrow-requests.reject');
     Route::post('/borrow-requests/{borrowRequest}/mark-borrowed', [AdminBorrowRequestController::class, 'markBorrowed'])->name('borrow-requests.mark-borrowed');
     Route::post('/borrow-requests/{borrowRequest}/return', [AdminBorrowRequestController::class, 'returnItems'])->name('borrow-returns.return');
+    Route::delete('/borrow-requests/{borrowRequest}', [AdminBorrowRequestController::class, 'destroy'])->name('borrow-requests.destroy');
     
     // Users
     Route::get('/users', [UserController::class, 'index'])->name('users.index');

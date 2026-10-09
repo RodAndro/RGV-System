@@ -4,9 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\BorrowRequest;
 use App\Models\BorrowReturnEvidence;
-use App\Services\GoogleDriveService;
+use App\Notifications\BorrowRequestReturned;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\WithRoles;
@@ -23,21 +22,15 @@ class MobileReturnTest extends TestCase
         Notification::fake();
     }
 
-    public function test_return_restores_stock_and_links_evidence(): void
+    public function test_return_without_photo_restores_stock_and_stores_location_and_time(): void
     {
         [$employee, $request, $item, $inventory] = $this->borrowedScenario();
 
-        $this->mock(GoogleDriveService::class, function ($mock) {
-            $mock->shouldReceive('uploadEvidence')
-                ->once()
-                ->andReturn(['drive_file_id' => 'drive-123', 'file_name' => 'Cruz - 9/30/2026.jpg', 'mime_type' => 'image/jpeg']);
-        });
-
         Sanctum::actingAs($employee, ['employee']);
 
-        $response = $this->post("/api/v1/mobile/borrow-requests/{$request->id}/return", [
+        $response = $this->postJson("/api/v1/mobile/borrow-requests/{$request->id}/return", [
             'idempotency_key' => '5f5f5f5f-0000-4000-8000-000000000001',
-            'photo' => UploadedFile::fake()->image('proof.jpg'),
+            'return_location' => 'Main Warehouse',
             'items' => [
                 ['borrow_item_id' => $item->id, 'condition_returned' => 'good', 'damage_notes' => null],
             ],
@@ -48,58 +41,50 @@ class MobileReturnTest extends TestCase
 
         $this->assertSame(2, $inventory->fresh()->quantity);
         $this->assertTrue((bool) $item->fresh()->is_returned);
-        $this->assertDatabaseHas('borrow_return_evidences', [
-            'borrow_request_id' => $request->id,
-            'drive_file_id' => 'drive-123',
-        ]);
+        $this->assertSame('Main Warehouse', $request->fresh()->return_location);
+        $this->assertNotNull($request->fresh()->returned_at);
+        $this->assertNotNull($item->fresh()->returned_at);
+        $this->assertSame(0, BorrowReturnEvidence::count());
+        Notification::assertSentTo(
+            $employee,
+            BorrowRequestReturned::class,
+            fn (BorrowRequestReturned $notification) => $notification->borrowRequest->returned_at !== null,
+        );
     }
 
     public function test_return_is_idempotent_on_retry(): void
     {
         [$employee, $request, $item, $inventory] = $this->borrowedScenario();
 
-        $this->mock(GoogleDriveService::class, function ($mock) {
-            $mock->shouldReceive('uploadEvidence')
-                ->once()
-                ->andReturn(['drive_file_id' => 'drive-123', 'file_name' => 'Cruz - 9/30/2026.jpg', 'mime_type' => 'image/jpeg']);
-        });
-
         Sanctum::actingAs($employee, ['employee']);
 
         $payload = [
             'idempotency_key' => '5f5f5f5f-0000-4000-8000-000000000002',
-            'photo' => UploadedFile::fake()->image('proof.jpg'),
+            'return_location' => 'Main Warehouse',
             'items' => [
                 ['borrow_item_id' => $item->id, 'condition_returned' => 'good', 'damage_notes' => null],
             ],
         ];
 
-        $this->post("/api/v1/mobile/borrow-requests/{$request->id}/return", $payload)->assertOk();
-        $this->post("/api/v1/mobile/borrow-requests/{$request->id}/return", $payload)->assertOk();
+        $this->postJson("/api/v1/mobile/borrow-requests/{$request->id}/return", $payload)->assertOk();
+        $this->postJson("/api/v1/mobile/borrow-requests/{$request->id}/return", $payload)->assertOk();
 
         $this->assertSame(2, $inventory->fresh()->quantity, 'Stock must not be restored twice.');
-        $this->assertSame(1, BorrowReturnEvidence::count());
+        $this->assertSame(0, BorrowReturnEvidence::count());
     }
 
-    public function test_upload_failure_keeps_return_incomplete(): void
+    public function test_return_requires_a_location(): void
     {
         [$employee, $request, $item, $inventory] = $this->borrowedScenario();
 
-        $this->mock(GoogleDriveService::class, function ($mock) {
-            $mock->shouldReceive('uploadEvidence')
-                ->once()
-                ->andThrow(new \RuntimeException('Drive unavailable'));
-        });
-
         Sanctum::actingAs($employee, ['employee']);
 
-        $this->post("/api/v1/mobile/borrow-requests/{$request->id}/return", [
+        $this->postJson("/api/v1/mobile/borrow-requests/{$request->id}/return", [
             'idempotency_key' => '5f5f5f5f-0000-4000-8000-000000000003',
-            'photo' => UploadedFile::fake()->image('proof.jpg'),
             'items' => [
                 ['borrow_item_id' => $item->id, 'condition_returned' => 'good', 'damage_notes' => null],
             ],
-        ])->assertStatus(502);
+        ])->assertUnprocessable()->assertJsonValidationErrors('return_location');
 
         $this->assertFalse((bool) $item->fresh()->is_returned);
         $this->assertSame(0, $inventory->fresh()->quantity, 'Stock must not be restored when upload fails.');

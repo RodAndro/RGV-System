@@ -6,12 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Inventory;
 use App\Models\InventoryCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class InventoryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Inventory::with(['category', 'supplier'])
+        $query = Inventory::with(['category'])
             ->where('status', 'available')
             ->where('quantity', '>', 0);
 
@@ -39,18 +40,19 @@ class InventoryController extends Controller
         $inventories = $query->latest()->paginate($perPage)->appends($request->except('page'));
         $categories = InventoryCategory::active()->get();
 
-        $stats = [
-            'total' => Inventory::count(),
-            'available' => Inventory::where('status', 'available')->where('quantity', '>', 0)->count(),
-            'low_stock' => Inventory::lowStock()->count(),
-        ];
+        $stats = Cache::remember('employee.stats.inventory', now()->addSeconds(20), function () {
+            $row = Inventory::query()->selectRaw("COUNT(*) as total, COUNT(CASE WHEN status = 'available' AND quantity > 0 THEN 1 END) as available, COUNT(CASE WHEN quantity <= low_stock_threshold THEN 1 END) as low_stock")
+                ->first();
+
+            return array_map('intval', $row->getAttributes());
+        });
 
         return view('employee.inventories.index', compact('inventories', 'categories', 'stats'));
     }
 
     public function show(Inventory $inventory)
     {
-        $inventory->load(['category', 'supplier']);
+        $inventory->load(['category']);
         return view('employee.inventories.show', compact('inventory'));
     }
 

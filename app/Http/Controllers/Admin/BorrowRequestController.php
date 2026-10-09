@@ -16,6 +16,10 @@ class BorrowRequestController extends Controller
 
     public function index(Request $request)
     {
+        $request->user()->unreadNotifications()
+            ->where('type', 'borrow_request')
+            ->update(['is_read' => true, 'read_at' => now()]);
+
         $query = BorrowRequest::with(['employee', 'borrowItems.inventory']);
 
         if ($request->filled('status')) {
@@ -42,14 +46,9 @@ class BorrowRequestController extends Controller
         $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $borrowRequests = $query->latest()->paginate($perPage)->appends($request->except('page'));
 
-        $stats = [
-            'total' => \App\Models\BorrowRequest::count(),
-            'pending' => \App\Models\BorrowRequest::where('status', 'pending')->count(),
-            'approved' => \App\Models\BorrowRequest::where('status', 'approved')->count(),
-            'borrowed' => \App\Models\BorrowRequest::where('status', 'borrowed')->count(),
-            'returned' => \App\Models\BorrowRequest::where('status', 'returned')->count(),
-            'rejected' => \App\Models\BorrowRequest::where('status', 'rejected')->count(),
-        ];
+        $row = BorrowRequest::query()->selectRaw("COUNT(*) as total, COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending, COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved, COUNT(CASE WHEN status = 'borrowed' THEN 1 END) as borrowed, COUNT(CASE WHEN status = 'returned' THEN 1 END) as returned, COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected, COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled")
+            ->first();
+        $stats = array_map('intval', $row->getAttributes());
 
         return view('admin.borrow-requests.index', compact('borrowRequests', 'stats'));
     }
@@ -57,7 +56,8 @@ class BorrowRequestController extends Controller
     public function show(BorrowRequest $borrowRequest)
     {
         $borrowRequest->load(['employee', 'borrowItems.inventory']);
-        return view('admin.borrow-requests.show', compact('borrowRequest'));
+        $locations = \App\Models\Inventory::whereNotNull('location')->distinct()->pluck('location');
+        return view('admin.borrow-requests.show', compact('borrowRequest', 'locations'));
     }
 
     public function approve(BorrowRequest $borrowRequest)
@@ -99,15 +99,31 @@ class BorrowRequestController extends Controller
 
     public function returnItems(Request $request, BorrowRequest $borrowRequest)
     {
+        $request->validate([
+            'return_location' => ['required', 'string', 'max:255'],
+        ]);
+
         try {
             $this->borrowService->returnItems($borrowRequest, $borrowRequest->borrowItems->map(fn ($item) => [
                 'borrow_item_id' => $item->id,
                 'condition_returned' => $item->condition_borrowed,
-            ])->toArray());
+            ])->toArray(), null, $request->return_location);
         } catch (\DomainException $e) {
             return back()->with('error', $e->getMessage());
         }
 
         return back()->with('success', 'Items returned successfully.');
+    }
+
+    public function destroy(BorrowRequest $borrowRequest)
+    {
+        if ($borrowRequest->status !== 'returned') {
+            return back()->with('error', 'Only returned borrow requests can be moved to trash.');
+        }
+
+        $borrowRequest->delete();
+
+        return redirect()->route('admin.borrow-requests.index')
+            ->with('success', 'Returned borrow request moved to trash.');
     }
 }

@@ -35,7 +35,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      setState(() => _error = 'Name cannot be empty.');
+      await context.read<AuthProvider>().logout();
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
       return;
     }
 
@@ -132,7 +135,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.lock_outline, color: RgvColors.blue),
+                  leading: const Icon(Icons.lock_outline, color: RgvColors.primary),
                   title: const Text('Change password'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.push(

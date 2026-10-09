@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -18,11 +20,22 @@ class BorrowHistoryScreen extends StatefulWidget {
 
 class _BorrowHistoryScreenState extends State<BorrowHistoryScreen> {
   late Future<List<BorrowRequest>> _future;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _future = context.read<BorrowRepository>().listRequests();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _reload(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   void _reload() {
@@ -36,12 +49,15 @@ class _BorrowHistoryScreenState extends State<BorrowHistoryScreen> {
       body: FutureBuilder<List<BorrowRequest>>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
             return const LoadingView();
           }
           if (snapshot.hasError) {
             final error = snapshot.error;
-            final message = error is AppException ? error.userMessage : 'Could not load requests.';
+            final message = error is AppException
+                ? error.userMessage
+                : 'Could not load requests.';
             return ErrorView(message: message, onRetry: _reload);
           }
           final requests = snapshot.data ?? [];
@@ -58,10 +74,7 @@ class _BorrowHistoryScreenState extends State<BorrowHistoryScreen> {
               itemCount: requests.length,
               itemBuilder: (context, index) {
                 final request = requests[index];
-                return _RequestCard(
-                  request: request,
-                  onChanged: _reload,
-                );
+                return _RequestCard(request: request, onChanged: _reload);
               },
             ),
           );
@@ -82,7 +95,9 @@ class _RequestCard extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Cancel request?'),
-        content: Text('Cancel ${request.requestNumber}? Reserved stock will be released.'),
+        content: Text(
+          'Cancel ${request.requestNumber}? Reserved stock will be released.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -104,7 +119,10 @@ class _RequestCard extends StatelessWidget {
     } on AppException catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.userMessage), backgroundColor: RgvColors.danger),
+          SnackBar(
+            content: Text(e.userMessage),
+            backgroundColor: RgvColors.danger,
+          ),
         );
       }
     }
@@ -112,7 +130,10 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final itemNames = request.items.map((i) => i.name ?? i.itemCode ?? '').where((s) => s.isNotEmpty).toList();
+    final itemNames = request.items
+        .map((i) => i.name ?? i.itemCode ?? '')
+        .where((s) => s.isNotEmpty)
+        .toList();
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -125,7 +146,10 @@ class _RequestCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     request.requestNumber,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
                 StatusChip(status: request.status),
@@ -142,11 +166,34 @@ class _RequestCard extends StatelessWidget {
               '${formatDate(request.borrowDate)} → ${formatDate(request.dueDate)}',
               style: const TextStyle(color: RgvColors.slateLight, fontSize: 13),
             ),
-            if (request.adminRemarks != null && request.adminRemarks!.isNotEmpty) ...[
+            if (request.returnLocation != null &&
+                request.returnLocation!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Returned at: ${request.returnLocation}',
+                style: const TextStyle(color: RgvColors.slate, fontSize: 13),
+              ),
+            ],
+            if (request.returnedAt != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Returned on: ${formatDate(request.returnedAt)}',
+                style: const TextStyle(
+                  color: RgvColors.slateLight,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+            if (request.adminRemarks != null &&
+                request.adminRemarks!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
                 'Admin: ${request.adminRemarks}',
-                style: const TextStyle(color: RgvColors.slateLight, fontSize: 13, fontStyle: FontStyle.italic),
+                style: const TextStyle(
+                  color: RgvColors.slateLight,
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ],
             if (request.status == 'pending') ...[

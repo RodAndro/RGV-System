@@ -1,49 +1,38 @@
 <div class="relative"
      x-data="{
-        unreadCount: {{ auth()->user()->unreadNotifications()->count() }},
+        unreadCount: 0,
         notifications: [],
         open: false,
         markAllInFlight: false,
-        baseUrl: '{{ auth()->user()->isAdmin() ? 'admin' : 'employee' }}',
         async fetchNotifications() {
             try {
                 const url = '{{ auth()->user()->isAdmin() ? route('admin.notifications.unread-count') : route('employee.notifications.unread-count') }}';
                 const res = await fetch(url);
+                if (!res.ok) return;
                 const data = await res.json();
                 this.unreadCount = data.count;
                 this.notifications = data.notifications;
-            } catch(e) {}
-        },
-        async markOneRead(id) {
-            try {
-                const url = `/${this.baseUrl}/notifications/${id}/mark-read`;
-                await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                        'Accept': 'application/json',
-                    },
-                });
+                window.dispatchEvent(new CustomEvent('rgv-notifications-updated', { detail: data }));
             } catch(e) {}
         },
         async openNotification(notification) {
             this.notifications = this.notifications.filter(n => n.id !== notification.id);
             if (this.unreadCount > 0) this.unreadCount--;
-            this.markOneRead(notification.id);
-            window.location.href = notification.link;
+            window.location.href = notification.open_url || notification.link;
         },
         async markAllRead() {
             if (this.markAllInFlight) return;
             this.markAllInFlight = true;
             try {
                 const url = '{{ auth()->user()->isAdmin() ? route('admin.notifications.mark-all-read') : route('employee.notifications.mark-all-read') }}';
-                await fetch(url, {
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                         'Accept': 'application/json',
                     },
                 });
+                if (!response.ok) return;
                 this.unreadCount = 0;
                 this.notifications = [];
             } catch(e) {} finally {
@@ -55,8 +44,8 @@
             setInterval(() => this.fetchNotifications(), 30000);
         }
     }">
-    <button @click="open = !open" class="relative">
-        <i class="fas fa-bell text-gray-600 text-xl cursor-pointer hover:text-[#2563eb] transition-colors"></i>
+    <button @click.stop="open = !open" class="relative">
+        <i class="fas fa-bell text-white/90 text-xl cursor-pointer hover:text-white transition-colors"></i>
         <span x-show="unreadCount > 0"
             x-cloak
             class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center"

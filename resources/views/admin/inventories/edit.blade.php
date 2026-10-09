@@ -23,7 +23,7 @@
             </div>
         @endif
 
-        <form action="{{ route('admin.inventories.update', $inventory) }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('admin.inventories.update', $inventory) }}" method="POST">
             @method('PUT')
             @csrf
             <div class="grid md:grid-cols-2 gap-6">
@@ -44,16 +44,6 @@
                         <option value="">Select category</option>
                         @foreach($categories as $category)
                             <option value="{{ $category->id }}" {{ $inventory->category_id == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Supplier</label>
-                    <select name="supplier_id"
-                        class="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100">
-                        <option value="">Select supplier</option>
-                        @foreach($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}" {{ $inventory->supplier_id == $supplier->id ? 'selected' : '' }}>{{ $supplier->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -120,20 +110,6 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
                     <textarea name="description" rows="3"
                         class="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100">{{ old('description', $inventory->description) }}</textarea>
-                </div>
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Item Image</label>
-                    @if($inventory->image_path)
-                        <div class="mb-4">
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Current Image:</p>
-                            <img src="{{ asset('storage/' . $inventory->image_path) }}" class="w-32 h-32 object-cover rounded-xl">
-                        </div>
-                    @endif
-                    <div class="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl p-6 text-center hover:border-[#2563eb] transition bg-gray-50 dark:bg-gray-800">
-                        <input type="file" name="image" accept=".jpg,.jpeg,.png"
-                            class="w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#eff6ff] dark:file:bg-blue-900/30 file:text-[#2563eb] dark:file:text-blue-400 hover:file:bg-[#dbeafe]">
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Accepted formats: JPG, PNG (Max 5MB)</p>
-                    </div>
                 </div>
             </div>
 

@@ -43,13 +43,9 @@
                     <tr class="hover:bg-red-50/30">
                         <td class="px-6 py-4">
                             <div class="flex items-center">
-                                @if($item->image_path)
-                                    <img src="{{ asset('storage/' . $item->image_path) }}" class="w-10 h-10 object-cover rounded-lg mr-3">
-                                @else
-                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                        <i class="fas fa-box text-red-500"></i>
-                                    </div>
-                                @endif
+                                <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fas fa-box text-red-500"></i>
+                                </div>
                                 <div>
                                     <p class="font-semibold text-gray-800">{{ $item->name }}</p>
                                     <p class="text-xs text-gray-400">{{ $item->item_code }}</p>

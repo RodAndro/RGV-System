@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\BorrowRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\WithRoles;
@@ -130,5 +131,44 @@ class MobileBorrowTest extends TestCase
         Sanctum::actingAs($employeeB, ['employee']);
 
         $this->getJson("/api/v1/mobile/borrow-requests/{$request->id}")->assertStatus(403);
+    }
+
+    public function test_admin_borrow_counts_read_latest_shared_request_rows(): void
+    {
+        $admin = $this->createAdmin();
+        $employee = $this->createEmployee();
+
+        BorrowRequest::create([
+            'employee_id' => $employee->id,
+            'status' => 'pending',
+            'reason' => 'Test request',
+            'borrow_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+        ]);
+        BorrowRequest::create([
+            'employee_id' => $employee->id,
+            'status' => 'cancelled',
+            'reason' => 'Cancelled test request',
+            'borrow_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+        ]);
+
+        Cache::put('admin.stats.borrow-requests', [
+            'total' => 0,
+            'pending' => 0,
+            'approved' => 0,
+            'borrowed' => 0,
+            'returned' => 0,
+            'rejected' => 0,
+        ], now()->addMinute());
+
+        $this->actingAs($admin)
+            ->get(route('admin.borrow-requests.index'))
+            ->assertOk()
+            ->assertViewHas('stats', fn (array $stats) =>
+                $stats['total'] === 2 && $stats['pending'] === 1 && $stats['cancelled'] === 1
+            )
+            ->assertSee('<option value="cancelled"', false)
+            ->assertSee('>Cancelled</p>', false);
     }
 }

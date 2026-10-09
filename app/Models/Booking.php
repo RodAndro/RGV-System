@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 
@@ -26,7 +27,6 @@ class Booking extends Model
         'status',
         'employee_id',
         'remarks',
-        'attachment_path',
         'approved_at',
         'rejected_at',
         'completed_at',
@@ -65,6 +65,20 @@ class Booking extends Model
     public function scopeForDate(Builder $query, string $date)
     {
         return $query->where('preferred_date', $date);
+    }
+
+    public function getPreferredTimeFormattedAttribute(): ?string
+    {
+        $preferredTime = $this->attributes['preferred_time'] ?? null;
+
+        return $preferredTime ? Carbon::parse($preferredTime)->format('g:i A') : null;
+    }
+
+    public function getPreferredTime24HourAttribute(): ?string
+    {
+        $preferredTime = $this->attributes['preferred_time'] ?? null;
+
+        return $preferredTime ? Carbon::parse($preferredTime)->format('H:i:s') : null;
     }
 
     protected static function boot()

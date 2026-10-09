@@ -50,9 +50,14 @@ class _MfaScreenState extends State<MfaScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final setupSecret = auth.mfaSetupSecret;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Two-Factor Authentication'),
+        title: Text(
+          setupSecret == null
+              ? 'Two-Factor Authentication'
+              : 'Set Up Authenticator',
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: _submitting
@@ -71,20 +76,38 @@ class _MfaScreenState extends State<MfaScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.shield_outlined, size: 64, color: RgvColors.blue),
+                  Image.asset(
+                    'assets/images/RGV-Logo.png',
+                    width: 112,
+                    height: 112,
+                    fit: BoxFit.contain,
+                  ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Enter your verification code',
+                    'Add your authenticator',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Your account has two-factor authentication enabled. Enter the code from your authenticator app to continue.',
+                  Text(
+                    setupSecret == null
+                        ? 'Enter the code from your authenticator app to continue.'
+                        : 'Add this setup key to your authenticator app, then enter its 6-digit code.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: RgvColors.slateLight),
                   ),
                   const SizedBox(height: 24),
+                  if (setupSecret != null) ...[
+                    SelectableText(
+                      setupSecret,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                   if (_error != null) ...[
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -126,7 +149,11 @@ class _MfaScreenState extends State<MfaScreen> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text('Verify'),
+                        : Text(
+                            setupSecret == null
+                                ? 'Verify'
+                                : 'Verify and Enable',
+                          ),
                   ),
                 ],
               ),

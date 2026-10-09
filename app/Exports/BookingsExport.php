@@ -33,6 +33,7 @@ class BookingsExport implements FromQuery, WithHeadings, WithMapping, WithChunkR
         return collect($this->selectedColumns())->map(function ($column) use ($booking) {
             return match ($column) {
                 'employee' => $booking->employee?->name,
+                'preferred_time' => $booking->preferred_time_formatted,
                 default => $booking->{$column},
             };
         })->all();

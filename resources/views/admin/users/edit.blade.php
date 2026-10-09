@@ -2,7 +2,9 @@
 
 @section('title', 'Edit User - Admin Dashboard')
 
-@section('header', 'Edit User: {{ $user->name }}')
+@section('header')
+    Edit User: {{ $user->name }}
+@endsection
 
 @section('content')
 <div class="p-4 md:p-8">

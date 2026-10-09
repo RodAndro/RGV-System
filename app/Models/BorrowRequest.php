@@ -21,7 +21,7 @@ class BorrowRequest extends Model
         'borrow_date',
         'due_date',
         'return_date',
-        'penalty_notes',
+        'return_location',
         'admin_remarks',
         'approved_at',
         'rejected_at',
@@ -74,12 +74,6 @@ class BorrowRequest extends Model
     public function scopeBorrowed($query)
     {
         return $query->where('status', 'borrowed');
-    }
-
-    public function scopeOverdue($query)
-    {
-        return $query->where('status', 'borrowed')
-            ->where('due_date', '<', now());
     }
 
     protected static function boot()

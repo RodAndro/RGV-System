@@ -38,23 +38,20 @@
                         </td>
                         <td class="px-4 py-3 border-b border-r border-gray-100 text-sm text-gray-600">{{ ucfirst(str_replace('_', ' ', $type)) }}</td>
                         <td class="px-4 py-3 border-b border-r border-gray-100 text-sm text-gray-500">{{ $record->deleted_at->format('M d, Y - g:i A') }}</td>
-                        <td class="px-4 py-3 border-b border-gray-100 text-sm space-x-2">
-                            <form action="{{ route('admin.trash.restore', ['type' => $type, 'id' => $record->id]) }}" method="POST" class="inline">
+                        <td class="px-4 py-3 border-b border-gray-100 text-sm">
+                            <div class="flex flex-wrap items-center gap-2">
+                            <form action="{{ route('admin.trash.restore', ['type' => $type, 'id' => $record->id]) }}" method="POST" class="inline-flex">
                                 @csrf
-                                <button type="submit" class="text-[#2563eb] hover:text-[#1d4ed8] font-medium">
+                                <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-blue-200 bg-blue-50 text-[#2563eb] hover:bg-blue-100 hover:text-[#1d4ed8] rounded-lg font-medium transition-colors">
                                     <i class="fas fa-trash-restore mr-1"></i>Restore
                                 </button>
                             </form>
-                            <button @click="$dispatch('open-modal', 'force-delete-{{ $type }}-{{ $record->id }}')" type="button" class="text-red-500 hover:text-red-600 font-medium">
+                            <button @click="$dispatch('open-modal', 'force-delete-{{ $type }}-{{ $record->id }}')" type="button" class="inline-flex items-center px-3 py-1.5 border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 rounded-lg font-medium transition-colors">
                                 <i class="fas fa-trash mr-1"></i>Delete Permanently
                             </button>
+                            </div>
                         </td>
                     </tr>
-                    <x-confirm-delete-modal 
-                        name="force-delete-{{ $type }}-{{ $record->id }}" 
-                        action="{{ route('admin.trash.force-delete', ['type' => $type, 'id' => $record->id]) }}" 
-                        itemName="{{ ucfirst(str_replace('_', ' ', $type)) }} #{{ $record->id }}" 
-                    />
                 @empty
                     <tr>
                         <td colspan="4" class="px-6 py-12 text-center text-gray-500">
@@ -71,5 +68,12 @@
             </div>
         @endif
     </div>
+    @foreach($records as $record)
+        <x-confirm-delete-modal
+            name="force-delete-{{ $type }}-{{ $record->id }}"
+            action="{{ route('admin.trash.force-delete', ['type' => $type, 'id' => $record->id]) }}"
+            itemName="{{ ucfirst(str_replace('_', ' ', $type)) }} #{{ $record->id }}"
+        />
+    @endforeach
 </div>
 @endsection
