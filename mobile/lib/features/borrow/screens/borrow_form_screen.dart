@@ -215,13 +215,15 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
                 children: [
                   ...availableItems.map(
                     (item) => Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
                           'Quantity for ${item.name} (max ${item.quantity} ${item.unit})',
+                          textAlign: TextAlign.center,
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             IconButton.outlined(
                               onPressed: (_quantities[item.id] ?? 1) > 1

@@ -66,7 +66,9 @@
         <div class="overflow-y-auto max-h-72">
             <template x-if="notifications.length === 0">
                 <div class="px-4 py-8 text-center text-gray-400 dark:text-gray-500">
-                    <i class="fas fa-bell-slash text-2xl mb-2 block"></i>
+                    <div class="flex justify-center mb-2">
+                        <i class="fas fa-bell-slash text-2xl"></i>
+                    </div>
                     <p class="text-sm">No new notifications</p>
                 </div>
             </template>
