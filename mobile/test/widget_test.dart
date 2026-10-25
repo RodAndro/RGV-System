@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rgv_employee_app/core/theme/app_theme.dart';
 import 'package:rgv_employee_app/features/auth/screens/login_screen.dart';
 import 'package:rgv_employee_app/features/inventory/models/inventory_item.dart';
+import 'package:rgv_employee_app/main.dart' as app;
 
 void main() {
   test(
@@ -50,5 +51,18 @@ void main() {
 
     expect(find.text('Enter your email address.'), findsOneWidget);
     expect(find.text('Enter your password.'), findsOneWidget);
+  });
+
+  testWidgets('startup shows a configuration error instead of a blank screen', (
+    tester,
+  ) async {
+    await app.main();
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Could not start the app'), findsOneWidget);
+    expect(
+      find.textContaining('SUPABASE_URL and SUPABASE_ANON_KEY'),
+      findsOneWidget,
+    );
   });
 }

@@ -91,19 +91,16 @@ class _DashboardScreenState extends State<DashboardScreen>
         child: FutureBuilder<DashboardData>(
           future: _future,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const LoadingView(label: 'Loading dashboard…');
-            }
-            if (snapshot.hasError) {
-              final error = snapshot.error;
-              final message = error is AppException
-                  ? error.userMessage
-                  : 'Could not load your dashboard.';
-              return ErrorView(message: message, onRetry: _reload);
-            }
             return _DashboardBody(
-              data: snapshot.data!,
+              data: snapshot.data,
               employeeName: user?.name ?? '',
+              isLoading: snapshot.connectionState == ConnectionState.waiting,
+              errorMessage: snapshot.hasError
+                  ? snapshot.error is AppException
+                      ? (snapshot.error! as AppException).userMessage
+                      : 'Could not load your dashboard.'
+                  : null,
+              onRetry: _reload,
               dismissedRequestIds: _dismissedRecentRequestIds,
               onRemoveRequest: (request) {
                 setState(() => _dismissedRecentRequestIds.add(request.id));
@@ -146,16 +143,23 @@ class _DashboardBody extends StatelessWidget {
     required this.employeeName,
     required this.dismissedRequestIds,
     required this.onRemoveRequest,
+    required this.isLoading,
+    required this.errorMessage,
+    required this.onRetry,
   });
 
-  final DashboardData data;
+  final DashboardData? data;
   final String employeeName;
   final Set<int> dismissedRequestIds;
   final ValueChanged<RecentRequest> onRemoveRequest;
+  final bool isLoading;
+  final String? errorMessage;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    final recentRequests = data.recentRequests
+    final summary = data?.summary;
+    final recentRequests = (data?.recentRequests ?? const <RecentRequest>[])
         .where((request) => !dismissedRequestIds.contains(request.id))
         .toList();
 
@@ -178,31 +182,43 @@ class _DashboardBody extends StatelessWidget {
           const SizedBox(height: 16),
         ],
         _ActionTiles(),
-        const SizedBox(height: 24),
-        const Text(
-          'My borrow requests',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 12),
-        _SummaryGrid(summary: data.summary),
-        const SizedBox(height: 24),
-        const Text(
-          'Recent requests',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        if (recentRequests.isEmpty)
-          const EmptyState(message: 'No recent requests to show.')
-        else
-          ...recentRequests.map(
-            (request) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _RecentRequestTile(
-                request: request,
-                onRemove: () => onRemoveRequest(request),
+        if (isLoading)
+          const Padding(
+            padding: EdgeInsets.only(top: 24),
+            child: LoadingView(label: 'Loading dashboard…'),
+          ),
+        if (errorMessage != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 24),
+            child: ErrorView(message: errorMessage!, onRetry: onRetry),
+          ),
+        if (summary != null) ...[
+          const SizedBox(height: 24),
+          const Text(
+            'My borrow requests',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          _SummaryGrid(summary: summary),
+          const SizedBox(height: 24),
+          const Text(
+            'Recent requests',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          if (recentRequests.isEmpty)
+            const EmptyState(message: 'No recent requests to show.')
+          else
+            ...recentRequests.map(
+              (request) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _RecentRequestTile(
+                  request: request,
+                  onRemove: () => onRemoveRequest(request),
+                ),
               ),
             ),
-          ),
+        ],
       ],
     );
   }
@@ -211,51 +227,56 @@ class _DashboardBody extends StatelessWidget {
 class _ActionTiles extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.5,
-      children: [
-        _ActionTile(
-          icon: Icons.qr_code_scanner,
-          label: 'Borrow',
-          color: RgvColors.primary,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const BorrowStartScreen()),
-          ),
+    final actions = [
+      _ActionTile(
+        icon: Icons.qr_code_scanner,
+        label: 'Borrow',
+        color: RgvColors.primary,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const BorrowStartScreen()),
         ),
-        _ActionTile(
-          icon: Icons.assignment_return,
-          label: 'Return',
-          color: RgvColors.primaryDark,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ReturnScreen()),
-          ),
+      ),
+      _ActionTile(
+        icon: Icons.assignment_return,
+        label: 'Return',
+        color: RgvColors.primaryDark,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ReturnScreen()),
         ),
-        _ActionTile(
-          icon: Icons.receipt_long,
-          label: 'History',
-          color: RgvColors.primary,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const BorrowHistoryScreen()),
-          ),
+      ),
+      _ActionTile(
+        icon: Icons.receipt_long,
+        label: 'History',
+        color: RgvColors.primary,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const BorrowHistoryScreen()),
         ),
-        _ActionTile(
-          icon: Icons.manage_accounts,
-          label: 'Account',
-          color: RgvColors.amber,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AccountSettingsScreen()),
-          ),
+      ),
+      _ActionTile(
+        icon: Icons.manage_accounts,
+        label: 'Account',
+        color: RgvColors.amber,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AccountSettingsScreen()),
         ),
-      ],
+      ),
+    ];
+
+    return SizedBox(
+      height: 124,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var index = 0; index < actions.length; index++) ...[
+            if (index > 0) const SizedBox(width: 8),
+            Expanded(child: actions[index]),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -283,18 +304,22 @@ class _ActionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color, size: 24),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
                 label,
                 maxLines: 1,
@@ -324,61 +349,58 @@ class _SummaryGrid extends StatelessWidget {
       ('Borrowed', summary.borrowed, RgvColors.primaryDark),
       ('Overdue', summary.overdue, RgvColors.danger),
     ];
-    const spacing = 12.0;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final tileWidth = (constraints.maxWidth - spacing) / 2;
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: items.map((e) {
-            return SizedBox(
-              width: tileWidth,
+    return SizedBox(
+      height: 88,
+      child: Row(
+        children: [
+          for (var index = 0; index < items.length; index++) ...[
+            if (index > 0) const SizedBox(width: 8),
+            Expanded(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                child: Row(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      width: 4,
-                      height: 40,
+                      width: 24,
+                      height: 3,
                       decoration: BoxDecoration(
-                        color: e.$3,
+                        color: items[index].$3,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '${e.$2}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                          ),
-                          Text(
-                            e.$1,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: RgvColors.slateLight, fontSize: 13),
-                          ),
-                        ],
+                    const SizedBox(height: 6),
+                    Text(
+                      '${items[index].$2}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      items[index].$1,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: RgvColors.slateLight,
+                        fontSize: 12,
                       ),
                     ),
                   ],
                 ),
               ),
-            );
-          }).toList(),
-        );
-      },
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -8,16 +8,16 @@
         <!-- Email Address -->
         <div>
             <x-input-label for="email" :value="__('Email')" class="!text-gray-900 font-semibold" />
-            <x-text-input id="email" class="block mt-1 w-full px-4 bg-white dark:bg-white dark:text-gray-900 border-2 border-gray-300 dark:border-gray-500" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
+            <x-text-input id="email" class="block mt-1 h-[36px] w-full !rounded-full border-2 border-[#586273] bg-white px-5 !py-0 dark:bg-white dark:text-gray-900 focus:!border-black focus:!ring-0" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
         <!-- Password -->
-        <div class="mt-4">
+        <div class="mt-2">
             <x-input-label for="password" :value="__('Password')" class="!text-gray-900 font-semibold" />
 
             <div class="relative">
-                <x-text-input id="password" class="block mt-1 w-full px-4 pr-12 bg-white dark:bg-white dark:text-gray-900 border-2 border-gray-300 dark:border-gray-500"
+                <x-text-input id="password" class="block mt-1 h-[36px] w-full !rounded-full border-2 border-[#586273] bg-white px-5 pr-12 !py-0 dark:bg-white dark:text-gray-900 focus:!border-black focus:!ring-0"
                                 type="password"
                                 name="password"
                                 required autocomplete="current-password" />
@@ -45,14 +45,14 @@
         @endif
 
         <!-- Remember Me -->
-        <div class="block mt-4">
+        <div class="block mt-2">
             <label for="remember_me" class="inline-flex items-center">
                 <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
                 <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
             </label>
         </div>
 
-        <div class="flex items-center justify-end mt-4">
+        <div class="flex items-center justify-end mt-2">
             @if (Route::has('password.request'))
                 <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('password.request') }}">
                     {{ __('Forgot your password?') }}

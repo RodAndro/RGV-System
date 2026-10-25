@@ -171,6 +171,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/audit-logs/clear-all', [AuditLogController::class, 'clearAll'])->name('audit.clear-all');
     Route::get('/backups', [BackupController::class, 'index'])->name('backups.index');
     Route::post('/backups/run', [BackupController::class, 'run'])->name('backups.run');
+    Route::post('/backups/export', [BackupController::class, 'export'])->name('backups.export');
+    Route::post('/backups/import', [BackupController::class, 'import'])->name('backups.import');
     Route::post('/backups/{backup}/verify', [BackupController::class, 'verify'])->name('backups.verify');
     Route::get('/backups/{backup}/download', [BackupController::class, 'download'])->name('backups.download');
     Route::post('/backups/clear-all', [BackupController::class, 'clearAll'])->name('backups.clear-all');

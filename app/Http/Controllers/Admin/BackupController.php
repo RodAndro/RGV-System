@@ -5,32 +5,73 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Jobs\RunBackup;
 use App\Models\BackupMonitoring;
+use App\Services\DatabaseBackupRestoreService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
+use Throwable;
 
 class BackupController extends Controller
 {
     public function index()
     {
         $retention = $this->retentionInfo();
+        $backups = BackupMonitoring::latest()->paginate(20);
+
+        foreach ($backups as $backup) {
+            if (
+                $backup->status === 'success'
+                && (!$backup->file_path || !$backup->checksum || !Storage::disk('local')->exists($backup->file_path))
+            ) {
+                $backup->update(['status' => 'failed']);
+            }
+        }
 
         return view('admin.backups.index', [
-            'backups' => BackupMonitoring::latest()->paginate(20),
+            'backups' => $backups,
             'retention' => $retention,
         ]);
     }
 
     public function run()
     {
-        $monitor = BackupMonitoring::create([
-            'disk' => 'local',
-            'status' => 'queued',
-            'started_at' => now(),
+        $monitor = $this->createBackup();
+
+        if ($monitor->status !== 'success') {
+            return back()->with('error', $this->backupFailureMessage($monitor, 'Database backup failed. Check the backup configuration and try again.'));
+        }
+
+        return back()->with('success', 'Database backup created successfully.');
+    }
+
+    public function export()
+    {
+        $backup = $this->createBackup();
+
+        if ($backup->status !== 'success') {
+            return back()->with('error', $this->backupFailureMessage($backup, 'Database export failed. Check the backup configuration and try again.'));
+        }
+
+        return $this->download($backup);
+    }
+
+    public function import(Request $request, DatabaseBackupRestoreService $restoreService)
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:zip', 'max:512000'],
         ]);
 
-        RunBackup::dispatchSync($monitor->id);
+        try {
+            $restoreService->restore($request->file('file'));
+        } catch (InvalidArgumentException $exception) {
+            return back()->withErrors(['file' => $exception->getMessage()]);
+        } catch (Throwable $exception) {
+            report($exception);
 
-        return back()->with('success', 'Backup queued. It will run in the background.');
+            return back()->with('error', 'Backup restore failed. The database transaction was rolled back.');
+        }
+
+        return back()->with('success', 'Database backup restored successfully.');
     }
 
     public function verify(BackupMonitoring $backup)
@@ -50,11 +91,36 @@ class BackupController extends Controller
 
     public function download(BackupMonitoring $backup)
     {
-        if (!$backup->file_path || !Storage::disk('local')->exists($backup->file_path)) {
+        if (
+            !$backup->file_path
+            || !$backup->checksum
+            || !Storage::disk('local')->exists($backup->file_path)
+            || !$backup->verifyChecksum()
+        ) {
             return back()->with('error', 'Backup file not found on disk.');
         }
 
         return Storage::disk('local')->download($backup->file_path, 'rgv-backup-' . $backup->created_at->format('Y-m-d-His') . '.zip');
+    }
+
+    private function createBackup(): BackupMonitoring
+    {
+        $monitor = BackupMonitoring::create([
+            'disk' => 'local',
+            'status' => 'queued',
+            'started_at' => now(),
+        ]);
+
+        RunBackup::dispatchSync($monitor->id);
+
+        return $monitor->fresh();
+    }
+
+    private function backupFailureMessage(BackupMonitoring $backup, string $fallback): string
+    {
+        return str_starts_with((string) $backup->message, 'PostgreSQL client tools missing:')
+            ? $backup->message
+            : $fallback;
     }
 
     public function clearAll()

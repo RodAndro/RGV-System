@@ -4,20 +4,30 @@
 
 @section('content')
 <div class="p-6 space-y-6">
+    @if(session('success'))
+        <div class="rounded bg-green-50 p-4 text-green-700">{{ session('success') }}</div>
+    @endif
     @if(session('error'))
         <div class="rounded bg-red-50 p-4 text-red-700">{{ session('error') }}</div>
     @endif
+    @if($errors->any())
+        <div class="rounded bg-red-50 p-4 text-red-700">{{ $errors->first() }}</div>
+    @endif
 
     <section class="bg-white rounded-lg shadow p-6">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <h1 class="text-2xl font-semibold text-gray-900">Backups</h1>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
                 <a href="{{ route('admin.backups.settings') }}" class="rounded bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300">
                     <i class="fas fa-cog mr-1"></i>Settings
                 </a>
                 <form method="POST" action="{{ route('admin.backups.run') }}">
                     @csrf
-                    <button class="rounded bg-[#2563eb] px-4 py-2 font-semibold text-white">Run Manual Backup</button>
+                    <button class="rounded bg-[#2563eb] px-4 py-2 font-semibold text-white"><i class="fas fa-database mr-1"></i>Create Backup</button>
+                </form>
+                <form method="POST" action="{{ route('admin.backups.export') }}">
+                    @csrf
+                    <button class="rounded bg-[#0f766e] px-4 py-2 font-semibold text-white"><i class="fas fa-file-export mr-1"></i>Export ZIP</button>
                 </form>
                 <form action="{{ route('admin.backups.clear-all') }}" method="POST" onsubmit="return confirm('Delete ALL backup records? This cannot be undone.');">
                     @csrf
@@ -40,6 +50,19 @@
             Auto-cleanup runs daily at 3:30 AM.
         </div>
         @endif
+    </section>
+
+    <section class="card-mantis p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">Import Backup</h2>
+        <p class="text-sm text-gray-600 mb-4">Restore a ZIP containing one SQL file. This replaces the current public database contents.</p>
+        <form method="POST" action="{{ route('admin.backups.import') }}" enctype="multipart/form-data" class="flex flex-wrap items-end gap-3" onsubmit="return confirm('Restore this backup and replace current database contents?');">
+            @csrf
+            <div class="min-w-0 flex-1">
+                <label for="backup-file" class="block text-sm font-medium text-gray-700 mb-1">Backup ZIP</label>
+                <input id="backup-file" name="file" type="file" accept=".zip,application/zip" required class="block w-full rounded border border-gray-300 px-3 py-2 text-sm">
+            </div>
+            <button type="submit" class="rounded bg-red-700 px-4 py-2 font-semibold text-white hover:bg-red-800"><i class="fas fa-upload mr-1"></i>Import and Restore</button>
+        </form>
     </section>
 
     <section class="card-mantis overflow-hidden">
@@ -86,7 +109,7 @@
                                 <span class="text-gray-400">—</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 border-b border-r border-gray-100 text-xs">{{ Str::limit($backup->message, 80) }}</td>
+                        <td title="{{ $backup->message }}" class="px-4 py-3 border-b border-r border-gray-100 text-xs">{{ Str::limit($backup->message, 140) }}</td>
                         <td class="px-4 py-3 border-b border-gray-100 text-xs">
                             @if($backup->checksum && $backup->file_path)
                                 <div class="flex items-center gap-2">

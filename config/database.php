@@ -106,6 +106,11 @@ return [
             'sslmode' => env('DB_SSLMODE', 'prefer'),
             'connect_timeout' => env('DB_CONNECT_TIMEOUT', 3),
             'retry_attempts' => env('DB_RETRY_ATTEMPTS', 1),
+            'dump_binary_path' => env('DB_DUMP_BINARY_PATH', ''),
+            'dump' => [
+                'set_dump_binary_path' => env('DB_DUMP_BINARY_PATH', ''),
+                'add_extra_option' => '--no-owner --no-privileges --clean --if-exists --schema=public',
+            ],
         ],
 
         'sqlsrv' => [

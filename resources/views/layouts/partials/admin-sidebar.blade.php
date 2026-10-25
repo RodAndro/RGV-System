@@ -67,6 +67,9 @@
                 <a href="{{ route('admin.audit.index') }}" class="sidebar-link-mantis {{ request()->routeIs('admin.audit.*') ? 'sidebar-link-active-mantis' : '' }}">
                     <i class="fas fa-history mr-3 w-5"></i>Audit Logs
                 </a>
+                <a href="{{ route('admin.backups.index') }}" class="sidebar-link-mantis pl-12 {{ request()->routeIs('admin.backups.*') ? 'sidebar-link-active-mantis' : '' }}">
+                    <i class="fas fa-database mr-3 w-5"></i>Backups
+                </a>
             </div>
         </nav>
     </div>

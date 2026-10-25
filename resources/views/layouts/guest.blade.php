@@ -21,14 +21,14 @@
         </style>
     </head>
     <body class="font-sans text-gray-900 antialiased bg-gradient-to-br from-gray-50 to-[#eff6ff]">
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
-            <div class="mb-6 -mt-6">
+        <div class="min-h-screen flex flex-col items-center justify-center px-4 py-8">
+            <div class="mb-10">
                 <a href="/">
-                    <img src="{{ asset('images/RGV-Logo.png') }}" alt="RGV Multi-Tech Services logo" class="w-40 h-40 rounded-2xl object-cover shadow-lg shadow-[#2563eb]/20">
+                    <img src="{{ asset('images/RGV-Logo.png') }}" alt="RGV Multi-Tech Services logo" class="h-[160px] w-[160px] rounded-2xl object-cover shadow-lg shadow-[#2563eb]/20">
                 </a>
             </div>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-8 bg-white shadow-xl overflow-hidden sm:rounded-2xl border border-gray-100">
+            <div class="w-full max-w-[440px] rounded-xl border border-gray-100 bg-white px-6 py-6 shadow-xl">
                 {{ $slot }}
             </div>
         </div>

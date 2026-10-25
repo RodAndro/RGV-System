@@ -13,6 +13,8 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
+use ZipArchive;
 
 class RunBackup implements ShouldQueue
 {
@@ -32,13 +34,24 @@ class RunBackup implements ShouldQueue
         $monitor->update(['status' => 'processing']);
 
         try {
-            Artisan::call('backup:run', ['--disable-notifications' => true]);
+            $disk = Storage::disk('local');
+            $backupDir = config('backup.backup.name', 'Laravel');
+            $existingFiles = $disk->files($backupDir);
+            $exitCode = Artisan::call('backup:run', ['--disable-notifications' => true]);
+            $output = trim(Artisan::output());
 
-            $this->populateBackupFileInfo($monitor);
+            if ($exitCode !== 0) {
+                throw new RuntimeException($output ?: "Backup command failed with exit code {$exitCode}.");
+            }
+
+            $fileInfo = $this->findNewBackupFile($existingFiles);
 
             $monitor->update([
                 'status' => 'success',
-                'message' => trim(Artisan::output()),
+                'file_path' => $fileInfo['path'],
+                'size_bytes' => $fileInfo['size'],
+                'checksum' => $fileInfo['checksum'],
+                'message' => $output,
                 'completed_at' => now(),
             ]);
 
@@ -46,9 +59,16 @@ class RunBackup implements ShouldQueue
                 Mail::to($email)->send(new BackupCompleted($monitor->fresh()));
             }
         } catch (\Throwable $e) {
+            report($e);
+            $message = $e->getMessage();
+
+            if (stripos($message, 'pg_dump') !== false && stripos($message, 'not recognized') !== false) {
+                $message = 'PostgreSQL client tools missing: install pg_dump and set DB_DUMP_BINARY_PATH to its bin folder, or add it to PATH.';
+            }
+
             $monitor->update([
                 'status' => 'failed',
-                'message' => $e->getMessage(),
+                'message' => $message,
                 'completed_at' => now(),
             ]);
 
@@ -58,28 +78,50 @@ class RunBackup implements ShouldQueue
         }
     }
 
-    private function populateBackupFileInfo(BackupMonitoring $monitor): void
+    private function findNewBackupFile(array $existingFiles): array
     {
-        try {
-            $disk = Storage::disk('local');
-            $backupDir = config('backup.backup.name', 'Laravel');
+        $disk = Storage::disk('local');
+        $backupDir = config('backup.backup.name', 'Laravel');
+        $newFile = collect($disk->files($backupDir))
+            ->filter(fn ($file) => str_ends_with(strtolower($file), '.zip'))
+            ->reject(fn ($file) => in_array($file, $existingFiles, true))
+            ->sortByDesc(fn ($file) => $disk->lastModified($file))
+            ->first();
 
-            $files = collect($disk->files($backupDir))
-                ->filter(fn ($f) => str_ends_with($f, '.zip'))
-                ->sortByDesc(fn ($f) => $disk->lastModified($f));
-
-            $latest = $files->first();
-
-            if ($latest) {
-                $fullPath = $disk->path($latest);
-                $monitor->update([
-                    'file_path' => $latest,
-                    'size_bytes' => filesize($fullPath),
-                    'checksum' => hash_file('sha256', $fullPath),
-                ]);
-            }
-        } catch (\Throwable) {
-            // Non-critical — file info is best-effort
+        if (!$newFile) {
+            throw new RuntimeException('Backup command completed without creating a new ZIP file.');
         }
+
+        $fullPath = $disk->path($newFile);
+        $zip = new ZipArchive();
+
+        if ($zip->open($fullPath) !== true) {
+            throw new RuntimeException('Backup command created an unreadable ZIP file.');
+        }
+
+        $sqlFiles = 0;
+
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            $name = $zip->statIndex($index)['name'] ?? '';
+
+            if (str_ends_with(strtolower($name), '.sql')) {
+                $sqlFiles++;
+            }
+        }
+
+        $zip->close();
+
+        if ($sqlFiles !== 1) {
+            throw new RuntimeException('Backup ZIP must contain exactly one SQL file.');
+        }
+
+        $size = filesize($fullPath);
+        $checksum = hash_file('sha256', $fullPath);
+
+        if ($size === false || $checksum === false) {
+            throw new RuntimeException('Backup ZIP could not be measured or verified.');
+        }
+
+        return ['path' => $newFile, 'size' => $size, 'checksum' => $checksum];
     }
 }

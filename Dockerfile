@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq-dev \
         libxml2-dev \
         libzip-dev \
+        postgresql-client \
         unzip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" bcmath curl dom gd intl mbstring opcache pdo_pgsql simplexml xml xmlreader xmlwriter zip \

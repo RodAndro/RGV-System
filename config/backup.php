@@ -15,14 +15,6 @@ return [
                  * The list of directories and files that will be included in the backup.
                  */
                 'include' => [
-                    base_path('app'),
-                    base_path('config'),
-                    base_path('database'),
-                    base_path('public'),
-                    base_path('resources'),
-                    base_path('routes'),
-                    base_path('storage/app/public'),
-                    base_path('.env'),
                 ],
 
                 /*
@@ -84,7 +76,7 @@ return [
              * For a complete list of available customization options, see https://github.com/spatie/db-dumper
              */
             'databases' => [
-                'sqlite',
+                'pgsql',
             ],
         ],
 
@@ -120,7 +112,7 @@ return [
          * If not specified, the file extension will be .archive for MongoDB and .sql for all other databases
          * The file extension should be specified without a leading .
          */
-        'database_dump_file_extension' => '',
+        'database_dump_file_extension' => 'sql',
 
         'destination' => [
             /*

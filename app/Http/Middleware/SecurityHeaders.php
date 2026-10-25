@@ -30,11 +30,12 @@ class SecurityHeaders
         if (app()->environment('local')) {
             // The Vite dev server may bind to IPv6 or IPv4 localhost.
             $vite = [
-                'http://[::1]:5173', 'http://127.0.0.1:5173', 'http://localhost:5173',
-                'ws://[::1]:5173', 'ws://127.0.0.1:5173', 'ws://localhost:5173',
+                'http://127.0.0.1:5173', 'http://localhost:5173',
+                'ws://127.0.0.1:5173', 'ws://localhost:5173',
             ];
             $scriptSrc = array_merge($scriptSrc, $vite);
             $styleSrc = array_merge($styleSrc, $vite);
+            $fontSrc = array_merge($fontSrc, ['http://127.0.0.1:5173', 'http://localhost:5173']);
             $connectSrc = array_merge($connectSrc, $vite);
         }
 

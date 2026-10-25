@@ -244,6 +244,26 @@ class PlatformFeaturesTest extends TestCase
         $this->assertTrue($employee->fresh()->hasRole('employee'));
     }
 
+    public function test_last_admin_cannot_be_demoted_or_deactivated(): void
+    {
+        $admin = $this->createAdmin();
+
+        $this->actingAs($admin)
+            ->put(route('admin.users.update', $admin), [
+                'name' => $admin->name,
+                'email' => $admin->email,
+                'role' => 'employee',
+            ])
+            ->assertSessionHas('error', 'The last administrator cannot be removed or deactivated.');
+
+        $this->assertTrue($admin->fresh()->hasRole('admin'));
+
+        $this->post(route('admin.users.toggle-status', $admin))
+            ->assertSessionHas('error', 'You cannot deactivate the last active administrator account.');
+
+        $this->assertTrue($admin->fresh()->is_active);
+    }
+
     public function test_admin_created_employee_is_provisioned_in_supabase_auth(): void
     {
         config([
@@ -276,6 +296,17 @@ class PlatformFeaturesTest extends TestCase
             && $request->hasHeader('Authorization', 'Bearer test-server-secret')
             && $request->data()['email_confirm'] === true
             && $request->data()['user_metadata']['name'] === 'Native Employee');
+    }
+
+    public function test_admin_creation_command_creates_required_roles(): void
+    {
+        $this->artisan('app:create-admin admin-command@example.test')
+            ->expectsQuestion('New password', 'SecurePassword123!')
+            ->expectsQuestion('Confirm new password', 'SecurePassword123!')
+            ->assertExitCode(0);
+
+        $this->assertDatabaseHas('roles', ['name' => 'admin', 'guard_name' => 'web']);
+        $this->assertDatabaseHas('roles', ['name' => 'employee', 'guard_name' => 'web']);
     }
 
     public function test_admin_employee_edits_are_synced_to_the_linked_supabase_auth_account(): void

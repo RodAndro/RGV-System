@@ -114,6 +114,12 @@ class UserController extends Controller
             'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        if ($user->isAdmin()
+            && $validated['role'] !== 'admin'
+            && ($this->isLastAdministrator($user) || $this->isLastActiveAdministrator($user))) {
+            return back()->withInput()->with('error', 'The last administrator cannot be removed or deactivated.');
+        }
+
         $previousRole = $user->roles()->value('name');
         $supabaseAuthId = null;
         if ($validated['role'] === 'employee' || ($previousRole === 'employee' && $user->supabase_auth_id !== null)) {
@@ -158,6 +164,10 @@ class UserController extends Controller
             return back()->with('error', 'You cannot delete your own account.');
         }
 
+        if ($this->isLastAdministrator($user)) {
+            return back()->with('error', 'You cannot delete the last administrator account.');
+        }
+
         if ($user->is_active) {
             return back()->with('error', 'You must deactivate the user before deleting.');
         }
@@ -184,6 +194,10 @@ class UserController extends Controller
     public function toggleStatus(User $user)
     {
         $newStatus = ! $user->is_active;
+
+        if ($newStatus === false && $this->isLastActiveAdministrator($user)) {
+            return back()->with('error', 'You cannot deactivate the last active administrator account.');
+        }
 
         if ($user->isEmployee() && $user->supabase_auth_id !== null) {
             try {
@@ -220,5 +234,21 @@ class UserController extends Controller
     public function analytics()
     {
         return view('admin.users.analytics');
+    }
+
+    private function isLastAdministrator(User $user): bool
+    {
+        return $user->isAdmin()
+            && ! User::role('admin')->whereKeyNot($user->getKey())->exists();
+    }
+
+    private function isLastActiveAdministrator(User $user): bool
+    {
+        return $user->is_active
+            && $user->isAdmin()
+            && ! User::role('admin')
+                ->where('is_active', true)
+                ->whereKeyNot($user->getKey())
+                ->exists();
     }
 }

@@ -44,6 +44,10 @@ class CreateAdminAccount extends Command
                 'name' => 'admin',
                 'guard_name' => 'web',
             ]);
+            Role::firstOrCreate([
+                'name' => 'employee',
+                'guard_name' => 'web',
+            ]);
 
             $user = User::create([
                 'name' => (string) $this->option('name'),

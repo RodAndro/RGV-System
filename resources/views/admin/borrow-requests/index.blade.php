@@ -17,8 +17,8 @@
                     </div>
                 @endif
 
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-3 mb-4">
-                    <div class="card-mantis px-4 py-3 flex items-center gap-3">
+                <div class="flex flex-nowrap gap-3 mb-4 overflow-x-auto pb-1">
+                    <div class="card-mantis flex flex-1 shrink-0 items-center gap-2 px-3 py-3 min-w-[128px]">
                         <div class="bg-gray-50 dark:bg-gray-800 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
                             <i class="fas fa-hand-holding text-gray-600"></i>
                         </div>
@@ -27,7 +27,7 @@
                             <p class="text-lg font-bold text-gray-800 dark:text-gray-100">{{ $stats['total'] }}</p>
                         </div>
                     </div>
-                    <div class="card-mantis px-4 py-3 flex items-center gap-3">
+                    <div class="card-mantis flex flex-1 shrink-0 items-center gap-2 px-3 py-3 min-w-[128px]">
                         <div class="bg-yellow-50 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
                             <i class="fas fa-clock text-yellow-600"></i>
                         </div>
@@ -36,7 +36,7 @@
                             <p class="text-lg font-bold text-yellow-600">{{ $stats['pending'] }}</p>
                         </div>
                     </div>
-                    <div class="card-mantis px-4 py-3 flex items-center gap-3">
+                    <div class="card-mantis flex flex-1 shrink-0 items-center gap-2 px-3 py-3 min-w-[128px]">
                         <div class="bg-blue-50 dark:bg-blue-900/30 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
                             <i class="fas fa-check-circle text-blue-600"></i>
                         </div>
@@ -45,7 +45,7 @@
                             <p class="text-lg font-bold text-blue-600">{{ $stats['approved'] }}</p>
                         </div>
                     </div>
-                    <div class="card-mantis px-4 py-3 flex items-center gap-3">
+                    <div class="card-mantis flex flex-1 shrink-0 items-center gap-2 px-3 py-3 min-w-[128px]">
                         <div class="bg-purple-50 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
                             <i class="fas fa-truck-loading text-purple-600"></i>
                         </div>
@@ -54,7 +54,7 @@
                             <p class="text-lg font-bold text-purple-600">{{ $stats['borrowed'] }}</p>
                         </div>
                     </div>
-                    <div class="card-mantis px-4 py-3 flex items-center gap-3">
+                    <div class="card-mantis flex flex-1 shrink-0 items-center gap-2 px-3 py-3 min-w-[128px]">
                         <div class="bg-green-50 dark:bg-green-900/30 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
                             <i class="fas fa-undo text-green-600"></i>
                         </div>
@@ -63,7 +63,7 @@
                             <p class="text-lg font-bold text-green-600">{{ $stats['returned'] }}</p>
                         </div>
                     </div>
-                    <div class="card-mantis px-4 py-3 flex items-center gap-3">
+                    <div class="card-mantis flex flex-1 shrink-0 items-center gap-2 px-3 py-3 min-w-[128px]">
                         <div class="bg-red-50 dark:bg-red-900/30 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
                             <i class="fas fa-times-circle text-red-600"></i>
                         </div>
@@ -72,7 +72,7 @@
                             <p class="text-lg font-bold text-red-600">{{ $stats['rejected'] }}</p>
                         </div>
                     </div>
-                    <div class="card-mantis px-4 py-3 flex items-center gap-3">
+                    <div class="card-mantis flex flex-1 shrink-0 items-center gap-2 px-3 py-3 min-w-[128px]">
                         <div class="bg-gray-50 dark:bg-gray-800 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
                             <i class="fas fa-ban text-gray-600"></i>
                         </div>
