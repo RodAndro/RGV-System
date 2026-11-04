@@ -68,49 +68,75 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        @forelse($inventories as $inventory)
-            <div class="card-mantis overflow-hidden">
-                <div class="w-full h-48 bg-gray-100 flex items-center justify-center">
-                    <i class="fas fa-box text-gray-300 text-5xl"></i>
-                </div>
-                <div class="p-4">
-                    @if($inventory->isLowStock())
-                        <div class="mb-2"><span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Low Stock Alert</span></div>
-                    @endif
-                    <div class="flex items-center space-x-2 mb-1">
-                        <span class="text-xs font-mono text-[#2563eb] font-semibold">{{ $inventory->item_code }}</span>
-                        <span class="badge-mantis-success">{{ ucfirst($inventory->condition) }}</span>
-                    </div>
-                    <h3 class="font-bold text-gray-800 mb-2">{{ $inventory->name }}</h3>
-                    <p class="text-sm text-gray-500 mb-3 line-clamp-2">{{ $inventory->description ?? 'No description' }}</p>
-                    <div class="flex items-center justify-between text-sm mb-3">
-                        <span class="text-gray-500"><i class="fas fa-tag mr-1"></i>{{ $inventory->category->name }}</span>
-                        <span class="font-semibold text-gray-800">{{ $inventory->quantity }} {{ $inventory->unit }}</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <a href="{{ route('employee.inventories.show', $inventory) }}" class="text-[#2563eb] hover:text-[#1d4ed8] font-semibold text-sm">
-                            <i class="fas fa-eye mr-1"></i>View Details
-                        </a>
-                        <a href="{{ route('employee.borrow-requests.create') }}?item={{ $inventory->id }}" class="btn-mantis text-sm px-4 py-2">
-                            <i class="fas fa-hand-holding mr-1"></i>Borrow
-                        </a>
-                    </div>
-                </div>
+    <div class="card-mantis overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+                <thead class="bg-gradient-to-r from-[#eff6ff] to-white">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Item Code</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Category</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Quantity</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-r border-gray-200">Condition</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b border-gray-200">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($inventories as $inventory)
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-4 py-3 border-b border-r border-gray-100">
+                                <span class="font-mono text-xs font-semibold text-[#2563eb]">{{ $inventory->item_code }}</span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-r border-gray-100">
+                                <p class="font-semibold text-sm text-gray-800">{{ $inventory->name }}</p>
+                                @if($inventory->isLowStock())
+                                    <span class="text-xs text-red-600">Low Stock Alert</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 border-b border-r border-gray-100 text-xs text-gray-600">{{ $inventory->category?->name ?? 'Uncategorized' }}</td>
+                            <td class="px-4 py-3 border-b border-r border-gray-100">
+                                <p class="font-semibold text-sm text-gray-800">{{ $inventory->quantity }} {{ $inventory->unit }}</p>
+                            </td>
+                            <td class="px-4 py-3 border-b border-r border-gray-100">
+                                <span class="badge-mantis-success">Available</span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-r border-gray-100">
+                                <span class="badge-mantis-{{ in_array($inventory->condition, ['new', 'good'], true) ? 'success' : ($inventory->condition === 'fair' ? 'warning' : 'danger') }}">
+                                    {{ ucfirst($inventory->condition) }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-100">
+                                <div class="flex items-center gap-2">
+                                    <a href="{{ route('employee.inventories.show', $inventory) }}" class="w-9 h-9 bg-[#eff6ff] text-[#2563eb] rounded-lg flex items-center justify-center hover:bg-[#dbeafe] transition-colors" title="View details" aria-label="View {{ $inventory->name }} details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{{ route('employee.borrow-requests.create') }}?item={{ $inventory->id }}" class="w-9 h-9 bg-[#0f6f9d] text-white rounded-lg flex items-center justify-center hover:bg-[#0a5c83] transition-colors" title="Borrow item" aria-label="Borrow {{ $inventory->name }}">
+                                        <i class="fas fa-hand-holding"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                                <div class="w-16 h-16 bg-[#eff6ff] rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i class="fas fa-box-open text-[#2563eb] text-2xl"></i>
+                                </div>
+                                <p class="font-medium">No inventory items found</p>
+                                <a href="{{ route('employee.inventories.index') }}" class="text-[#2563eb] hover:text-[#1d4ed8] font-semibold mt-4 inline-block">Clear filters</a>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        @if($inventories->hasPages())
+            <div class="px-6 py-4 border-t border-gray-100">
+                {{ $inventories->links() }}
             </div>
-        @empty
-            <div class="col-span-full text-center py-12 text-gray-500">
-                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-boxes text-gray-400 text-2xl"></i>
-                </div>
-                <p class="font-medium">No inventory items found</p>
-                <a href="{{ route('employee.inventories.index') }}" class="text-[#2563eb] hover:text-[#1d4ed8] font-semibold mt-4 inline-block">Clear filters</a>
-            </div>
-        @endforelse
+        @endif
     </div>
-    
-    @if($inventories->hasPages())
-        <div class="mt-8">{{ $inventories->links() }}</div>
-    @endif
 </div>
 @endsection

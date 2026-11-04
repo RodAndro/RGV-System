@@ -15,7 +15,8 @@ class AuthenticatedSessionController extends Controller
 {
     public function create(): View
     {
-        $bruteForceDetected = RateLimiter::attempts('failed-login-ip:' . request()->ip()) >= 3;
+        $bruteForceDetected = ! app()->environment(['local', 'testing'])
+            && RateLimiter::attempts('failed-login-ip:' . request()->ip()) >= 3;
 
         $captchaA = $captchaB = null;
 

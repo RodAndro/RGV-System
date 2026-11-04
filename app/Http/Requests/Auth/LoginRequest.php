@@ -32,7 +32,7 @@ class LoginRequest extends FormRequest
             'password' => ['required', 'string'],
         ];
 
-        if (session('captcha_required')) {
+        if (! app()->environment(['local', 'testing']) && session('captcha_required')) {
             $rules['captcha'] = ['required', 'integer', 'in:' . session('captcha_answer')];
         }
 

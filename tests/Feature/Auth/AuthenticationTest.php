@@ -35,7 +35,7 @@ class AuthenticationTest extends TestCase
         $this->assertSame(0, $auditQueries);
     }
 
-    public function test_login_captcha_uses_failed_login_rate_limit(): void
+    public function test_login_captcha_is_disabled_locally_and_required_in_production(): void
     {
         $key = 'failed-login-ip:127.0.0.1';
         RateLimiter::clear($key);
@@ -43,9 +43,20 @@ class AuthenticationTest extends TestCase
         RateLimiter::hit($key, 3600);
         RateLimiter::hit($key, 3600);
 
+        $this->app['env'] = 'local';
         $this->get('/login')
             ->assertOk()
+            ->assertDontSee('Please verify you are human.');
+
+        $this->app['env'] = 'production';
+        $this->get('https://localhost/login')
+            ->assertOk()
             ->assertSee('Please verify you are human.');
+
+        $this->post('https://localhost/login', [
+            'email' => 'admin@rgvtech.com',
+            'password' => 'Password123',
+        ])->assertSessionHasErrors('captcha');
 
         RateLimiter::clear($key);
     }
