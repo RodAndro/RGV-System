@@ -1,40 +1,49 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/errors/supabase_call.dart';
+import '../../../core/network/mobile_api_client.dart';
 import '../../borrow/models/borrow_request.dart';
 import '../models/returnable_item.dart';
 
 class ReturnRepository {
-  ReturnRepository(this._supabase);
+  ReturnRepository(this._api);
 
-  final SupabaseClient _supabase;
+  final MobileApiClient _api;
 
-  Future<List<ReturnableItem>> returnableItems() => supabaseCall(() async {
-    final json = await _supabase.rpc('mobile_returnable_items');
-    return (json as List? ?? const [])
+  RealtimeChannel subscribeToRequestChanges({
+    required int employeeId,
+    required void Function() onChange,
+    required void Function(Object?) onError,
+  }) => _api.subscribeToBorrowRequestChanges(
+    employeeId: employeeId,
+    channelName: 'return',
+    onChange: onChange,
+    onError: onError,
+  );
+
+  Future<List<ReturnableItem>> returnableItems() async {
+    final result = await _api.get('borrow-requests/returnable');
+    final items = (result['items'] as List? ?? const [])
         .map(
-          (e) => ReturnableItem.fromJson(Map<String, dynamic>.from(e as Map)),
+          (item) =>
+              ReturnableItem.fromJson(Map<String, dynamic>.from(item as Map)),
         )
         .toList();
-  });
+    return items.where((item) => item.status == 'borrowed').toList();
+  }
 
-  /// Marks the selected items returned.
-  ///
-  /// [idempotencyKey] must be stable across retries of the same submission so
-  /// the server can deduplicate the upload and never restore stock twice.
   Future<BorrowRequest> submitReturn({
     required int requestId,
     required String idempotencyKey,
     required String returnLocation,
     required List<({int borrowItemId, String condition, String? notes})> items,
-  }) => supabaseCall(() async {
-    final json = await _supabase.rpc(
-      'mobile_return_borrow_items',
-      params: {
-        'p_request_id': requestId,
-        'p_idempotency_key': idempotencyKey,
-        'p_return_location': returnLocation,
-        'p_items': items
+  }) async {
+    final result = await _api.post(
+      'borrow-requests/$requestId/return',
+      idempotencyKey: idempotencyKey,
+      body: {
+        'idempotency_key': idempotencyKey,
+        'return_location': returnLocation,
+        'items': items
             .map(
               (item) => {
                 'borrow_item_id': item.borrowItemId,
@@ -45,6 +54,8 @@ class ReturnRepository {
             .toList(),
       },
     );
-    return BorrowRequest.fromJson(Map<String, dynamic>.from(json as Map));
-  });
+    return BorrowRequest.fromJson(
+      Map<String, dynamic>.from(result['request'] as Map),
+    );
+  }
 }

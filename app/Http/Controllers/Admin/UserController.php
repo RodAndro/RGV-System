@@ -6,13 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\LoginHistory;
 use App\Models\User;
 use App\Notifications\UserStatusChanged;
-use App\Services\SupabaseEmployeeAccountService;
+use App\Services\SupabaseAuthAdminService;
+use App\Services\SupabaseAuthSyncException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
-use RuntimeException;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -42,7 +42,7 @@ class UserController extends Controller
         return view('admin.users.create', compact('roles'));
     }
 
-    public function store(Request $request, SupabaseEmployeeAccountService $supabaseAccounts)
+    public function store(Request $request, SupabaseAuthAdminService $supabaseAuth)
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -53,35 +53,30 @@ class UserController extends Controller
             'role' => ['required', Rule::in(self::ASSIGNABLE_ROLES), Rule::exists('roles', 'name')->where('guard_name', 'web')],
         ]);
 
-        $supabaseAuthId = null;
-        if ($validated['role'] === 'employee') {
-            try {
-                $supabaseAuthId = $supabaseAccounts->sync([
-                    ...$validated,
+        try {
+            $user = DB::transaction(function () use ($validated, $supabaseAuth) {
+                $user = User::create([
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'password' => Hash::make($validated['password']),
+                    'phone' => $validated['phone'] ?? null,
+                    'address' => $validated['address'] ?? null,
                     'is_active' => true,
-                ], password: $validated['password']);
-            } catch (RuntimeException $exception) {
-                return back()->withInput()->withErrors(['supabase' => $exception->getMessage()]);
-            }
-        }
+                ]);
+                $user->assignRole($validated['role']);
 
-        $user = DB::transaction(function () use ($validated, $supabaseAuthId) {
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'phone' => $validated['phone'] ?? null,
-                'address' => $validated['address'] ?? null,
-                'is_active' => true,
+                if ($validated['role'] === 'employee') {
+                    $authId = $supabaseAuth->syncUser($user, $validated['password']);
+                    $user->forceFill(['supabase_auth_id' => $authId])->save();
+                }
+
+                return $user;
+            });
+        } catch (SupabaseAuthSyncException $exception) {
+            return back()->withInput()->withErrors([
+                'supabase' => $exception->getMessage(),
             ]);
-            $user->assignRole($validated['role']);
-
-            if ($supabaseAuthId !== null) {
-                $user->forceFill(['supabase_auth_id' => $supabaseAuthId])->save();
-            }
-
-            return $user;
-        });
+        }
 
         return redirect()->route('admin.users.show', $user)
             ->with('success', "User '{$user->name}' has been created successfully.");
@@ -103,8 +98,11 @@ class UserController extends Controller
         return view('admin.users.edit', compact('user', 'roles'));
     }
 
-    public function update(Request $request, User $user, SupabaseEmployeeAccountService $supabaseAccounts)
-    {
+    public function update(
+        Request $request,
+        User $user,
+        SupabaseAuthAdminService $supabaseAuth,
+    ) {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email,'.$user->id],
@@ -120,20 +118,6 @@ class UserController extends Controller
             return back()->withInput()->with('error', 'The last administrator cannot be removed or deactivated.');
         }
 
-        $previousRole = $user->roles()->value('name');
-        $supabaseAuthId = null;
-        if ($validated['role'] === 'employee' || ($previousRole === 'employee' && $user->supabase_auth_id !== null)) {
-            try {
-                $supabaseAuthId = $supabaseAccounts->sync([
-                    ...$validated,
-                    'role' => $validated['role'],
-                    'is_active' => $user->is_active,
-                ], $user->supabase_auth_id, $validated['password'] ?? null, [$user->email]);
-            } catch (RuntimeException $exception) {
-                return back()->withInput()->withErrors(['supabase' => $exception->getMessage()]);
-            }
-        }
-
         $data = [
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -145,6 +129,29 @@ class UserController extends Controller
             $data['password'] = Hash::make($validated['password']);
         }
 
+        $credentialsChanged = $validated['email'] !== $user->email
+            || ! empty($validated['password']);
+        $previousRole = $user->roles()->value('name');
+        $supabaseAuthId = null;
+        if (
+            $validated['role'] === 'employee'
+            || ($previousRole === 'employee' && $user->supabase_auth_id !== null)
+        ) {
+            $supabaseUser = clone $user;
+            $supabaseUser->forceFill($data);
+            try {
+                $supabaseAuthId = $supabaseAuth->syncUser(
+                    $supabaseUser,
+                    $validated['password'] ?? null,
+                    role: $validated['role'],
+                );
+            } catch (SupabaseAuthSyncException $exception) {
+                return back()->withInput()->withErrors([
+                    'supabase' => $exception->getMessage(),
+                ]);
+            }
+        }
+
         DB::transaction(function () use ($user, $data, $validated, $supabaseAuthId) {
             $user->update($data);
             $user->syncRoles([$validated['role']]);
@@ -154,12 +161,23 @@ class UserController extends Controller
             }
         });
 
+        if (! empty($validated['password'])) {
+            $user->tokens()->delete();
+        }
+
+        $successMessage = $credentialsChanged
+            ? "Credentials for '{$user->name}' have been updated successfully."
+            : "User '{$user->name}' has been updated successfully.";
+
         return redirect()->route('admin.users.show', $user)
-            ->with('success', "User '{$user->name}' has been updated successfully.");
+            ->with('success', $successMessage);
     }
 
-    public function destroy(Request $request, User $user, SupabaseEmployeeAccountService $supabaseAccounts)
-    {
+    public function destroy(
+        Request $request,
+        User $user,
+        SupabaseAuthAdminService $supabaseAuth,
+    ) {
         if ($user->id === auth()->id()) {
             return back()->with('error', 'You cannot delete your own account.');
         }
@@ -178,8 +196,8 @@ class UserController extends Controller
 
         if ($user->supabase_auth_id !== null) {
             try {
-                $supabaseAccounts->delete($user->supabase_auth_id);
-            } catch (RuntimeException $exception) {
+                $supabaseAuth->deleteUser($user->supabase_auth_id);
+            } catch (SupabaseAuthSyncException $exception) {
                 return back()->with('error', $exception->getMessage());
             }
         }
@@ -191,8 +209,10 @@ class UserController extends Controller
             ->with('success', "User '{$name}' has been deleted successfully.");
     }
 
-    public function toggleStatus(User $user)
-    {
+    public function toggleStatus(
+        User $user,
+        SupabaseAuthAdminService $supabaseAuth,
+    ) {
         $newStatus = ! $user->is_active;
 
         if ($newStatus === false && $this->isLastActiveAdministrator($user)) {
@@ -201,15 +221,8 @@ class UserController extends Controller
 
         if ($user->isEmployee() && $user->supabase_auth_id !== null) {
             try {
-                app(SupabaseEmployeeAccountService::class)->sync([
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone' => $user->phone,
-                    'address' => $user->address,
-                    'role' => 'employee',
-                    'is_active' => $newStatus,
-                ], $user->supabase_auth_id);
-            } catch (RuntimeException $exception) {
+                $supabaseAuth->syncUser($user, isActive: $newStatus);
+            } catch (SupabaseAuthSyncException $exception) {
                 return back()->with('error', $exception->getMessage());
             }
         }
@@ -217,6 +230,9 @@ class UserController extends Controller
         $user->update([
             'is_active' => $newStatus,
         ]);
+        if (! $newStatus) {
+            $user->tokens()->delete();
+        }
 
         // Send notification to user about status change
         $user->notify(new UserStatusChanged($user, $newStatus));

@@ -8,13 +8,17 @@ use App\Models\Booking;
 use App\Models\Inventory;
 use App\Models\InventoryCategory;
 use App\Models\NotificationPreference;
+use App\Models\User;
 use App\Notifications\BookingAssigned;
 use App\Notifications\LowStockAlert;
+use App\Services\NotificationSettings;
+use App\Services\SupabaseAuthAdminService;
+use App\Services\SupabaseAuthSyncException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
@@ -126,6 +130,23 @@ class PlatformFeaturesTest extends TestCase
         ]);
     }
 
+    public function test_approved_work_request_cannot_be_rejected(): void
+    {
+        $admin = $this->createAdmin();
+        $booking = Booking::factory()->create(['status' => 'approved']);
+
+        $this->actingAs($admin)
+            ->from(route('admin.bookings.index'))
+            ->post(route('admin.bookings.reject', $booking), ['remarks' => 'No longer needed.'])
+            ->assertRedirect(route('admin.bookings.index'))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'status' => 'approved',
+        ]);
+    }
+
     public function test_rejected_work_request_can_be_moved_to_trash_and_restored(): void
     {
         $admin = $this->createAdmin();
@@ -176,6 +197,99 @@ class PlatformFeaturesTest extends TestCase
         ]);
     }
 
+    public function test_notification_preferences_are_account_scoped_and_honor_global_email_toggle(): void
+    {
+        $admin = $this->createAdmin();
+        $employee = $this->createEmployee();
+        $inventory = $this->createInventory(['quantity' => 1, 'low_stock_threshold' => 2]);
+        $notification = new LowStockAlert($inventory);
+
+        NotificationPreference::create([
+            'user_id' => $admin->id,
+            'type' => 'inventory',
+            'email_enabled' => true,
+            'in_app_enabled' => false,
+        ]);
+        NotificationPreference::create([
+            'user_id' => $employee->id,
+            'type' => 'inventory',
+            'email_enabled' => false,
+            'in_app_enabled' => true,
+        ]);
+
+        $originalValue = getenv('NOTIFICATION_EMAIL_ENABLED');
+        $originalEnv = $_ENV['NOTIFICATION_EMAIL_ENABLED'] ?? null;
+        $originalServer = $_SERVER['NOTIFICATION_EMAIL_ENABLED'] ?? null;
+        $setGlobalEmail = static function (string $value): void {
+            putenv('NOTIFICATION_EMAIL_ENABLED='.$value);
+            $_ENV['NOTIFICATION_EMAIL_ENABLED'] = $value;
+            $_SERVER['NOTIFICATION_EMAIL_ENABLED'] = $value;
+        };
+
+        try {
+            $setGlobalEmail('true');
+            $this->assertTrue(NotificationSettings::emailEnabled());
+            $this->assertSame(['mail'], $notification->via($admin));
+            $this->assertSame(['database'], $notification->via($employee));
+
+            $this->actingAs($admin);
+            $settings = $this->get(route('admin.settings.index'))
+                ->assertOk()
+                ->viewData('settings');
+            $this->assertTrue($settings['notifications']['email_enabled']);
+
+            $this->actingAs($employee)
+                ->put(route('profile.notification-preferences.update'), [
+                    'preferences' => [[
+                        'type' => 'inventory',
+                        'email_enabled' => true,
+                        'in_app_enabled' => false,
+                    ]],
+                ])
+                ->assertRedirect(route('profile.edit'));
+
+            $this->assertDatabaseHas('notification_preferences', [
+                'user_id' => $employee->id,
+                'type' => 'inventory',
+                'email_enabled' => true,
+                'in_app_enabled' => false,
+            ]);
+            $this->assertDatabaseHas('notification_preferences', [
+                'user_id' => $admin->id,
+                'type' => 'inventory',
+                'email_enabled' => true,
+                'in_app_enabled' => false,
+            ]);
+
+            $setGlobalEmail('false');
+            $this->assertFalse(NotificationSettings::emailEnabled());
+            $this->assertSame([], $notification->via($admin));
+            $this->assertSame([], $notification->via($employee));
+
+            $this->actingAs($admin);
+            $settings = $this->get(route('admin.settings.index'))
+                ->assertOk()
+                ->viewData('settings');
+            $this->assertFalse($settings['notifications']['email_enabled']);
+        } finally {
+            $originalValue === false
+                ? putenv('NOTIFICATION_EMAIL_ENABLED')
+                : putenv('NOTIFICATION_EMAIL_ENABLED='.$originalValue);
+
+            if ($originalEnv === null) {
+                unset($_ENV['NOTIFICATION_EMAIL_ENABLED']);
+            } else {
+                $_ENV['NOTIFICATION_EMAIL_ENABLED'] = $originalEnv;
+            }
+
+            if ($originalServer === null) {
+                unset($_SERVER['NOTIFICATION_EMAIL_ENABLED']);
+            } else {
+                $_SERVER['NOTIFICATION_EMAIL_ENABLED'] = $originalServer;
+            }
+        }
+    }
+
     public function test_audit_logs_have_valid_checksums(): void
     {
         $log = AuditLog::create([
@@ -213,7 +327,38 @@ class PlatformFeaturesTest extends TestCase
             ->get(route('admin.users.edit', $employee))
             ->assertOk()
             ->assertSee('Edit User: Edit Form Employee')
+            ->assertSee('::-ms-reveal', false)
+            ->assertSee('::-webkit-credentials-auto-fill-button', false)
+            ->assertSee('autocomplete="new-password"', false)
             ->assertDontSee('<?php echo e($user->name); ?>');
+    }
+
+    public function test_add_user_password_fields_have_one_conditional_visibility_toggle(): void
+    {
+        $admin = $this->createAdmin();
+
+        $response = $this->actingAs($admin)->get(route('admin.users.create'));
+        $response->assertOk();
+
+        $html = $response->getContent();
+
+        // Exactly one toggle and one icon per password field.
+        $this->assertSame(1, substr_count($html, 'data-password-toggle="password"'));
+        $this->assertSame(1, substr_count($html, 'data-password-toggle="password_confirmation"'));
+        $this->assertSame(1, substr_count($html, 'id="eye-icon" class='));
+        $this->assertSame(1, substr_count($html, 'id="eye-icon-confirm" class='));
+        $this->assertStringNotContainsString('class="fas fa-eye-slash"', $html);
+
+        // The toggle starts hidden and is revealed by input length in script.
+        $this->assertStringContainsString(
+            'absolute inset-y-0 right-0 hidden items-center',
+            $html
+        );
+        $this->assertStringContainsString('input.value.length > 0', $html);
+
+        // Browser-native reveal/autofill controls are suppressed.
+        $this->assertStringContainsString('::-ms-reveal', $html);
+        $this->assertStringContainsString('::-webkit-credentials-auto-fill-button', $html);
     }
 
     public function test_user_management_only_assigns_admin_and_employee_roles(): void
@@ -264,18 +409,10 @@ class PlatformFeaturesTest extends TestCase
         $this->assertTrue($admin->fresh()->is_active);
     }
 
-    public function test_admin_created_employee_is_provisioned_in_supabase_auth(): void
+    public function test_admin_created_employee_is_linked_to_supabase_auth(): void
     {
-        config([
-            'services.supabase.url' => 'https://project.supabase.co',
-            'services.supabase.secret_key' => 'test-server-secret',
-        ]);
-        Http::fake([
-            'https://project.supabase.co/auth/v1/admin/users' => Http::response([
-                'id' => '123e4567-e89b-12d3-a456-426614174000',
-            ], 201),
-        ]);
-
+        $authId = '00000000-0000-4000-8000-000000000001';
+        $this->fakeSupabaseAuth($authId);
         $admin = $this->createAdmin();
         $this->actingAs($admin)->post(route('admin.users.store'), [
             'name' => 'Native Employee',
@@ -289,13 +426,49 @@ class PlatformFeaturesTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'email' => 'native.employee@example.test',
-            'supabase_auth_id' => '123e4567-e89b-12d3-a456-426614174000',
         ]);
-        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
-            && $request->url() === 'https://project.supabase.co/auth/v1/admin/users'
-            && $request->hasHeader('Authorization', 'Bearer test-server-secret')
-            && $request->data()['email_confirm'] === true
-            && $request->data()['user_metadata']['name'] === 'Native Employee');
+        $employee = User::where('email', 'native.employee@example.test')->firstOrFail();
+        $this->assertTrue(Hash::check('SecurePassword123!', $employee->password));
+        $this->assertTrue($employee->hasRole('employee'));
+        $this->assertSame($authId, $employee->supabase_auth_id);
+        Http::assertSent(fn (HttpRequest $request) => $request->method() === 'POST'
+            && str_contains($request->url(), '/auth/v1/admin/users')
+            && $request->hasHeader('apikey', 'test-publishable-key')
+            && $request->hasHeader('Authorization', 'Bearer test-service-role')
+            && $request['password'] === 'SecurePassword123!');
+    }
+
+    public function test_supabase_auth_admin_uses_secret_key_as_api_key_not_bearer_token(): void
+    {
+        $authId = '00000000-0000-4000-8000-000000000004';
+        $employee = $this->createEmployee();
+        config([
+            'services.supabase.url' => 'https://rgv-test.supabase.co',
+            'services.supabase.publishable_key' => 'test-publishable-key',
+            'services.supabase.secret_key' => 'sb_secret_test-secret',
+            'services.supabase.service_role_key' => null,
+        ]);
+        Http::fake(function (HttpRequest $request) use ($authId) {
+            if ($request->method() === 'GET') {
+                return Http::response(['users' => []]);
+            }
+
+            return Http::response(['id' => $authId]);
+        });
+
+        $this->assertSame(
+            $authId,
+            app(SupabaseAuthAdminService::class)->syncUser(
+                $employee,
+                'SecurePassword123!',
+                role: 'employee',
+            ),
+        );
+
+        Http::assertSent(fn (HttpRequest $request) => $request->method() === 'POST'
+            && str_contains($request->url(), '/auth/v1/admin/users')
+            && $request->hasHeader('apikey', 'sb_secret_test-secret')
+            && ! $request->hasHeader('Authorization'));
     }
 
     public function test_admin_creation_command_creates_required_roles(): void
@@ -309,21 +482,13 @@ class PlatformFeaturesTest extends TestCase
         $this->assertDatabaseHas('roles', ['name' => 'employee', 'guard_name' => 'web']);
     }
 
-    public function test_admin_employee_edits_are_synced_to_the_linked_supabase_auth_account(): void
+    public function test_admin_employee_edits_update_the_local_account_and_revoke_tokens_after_password_change(): void
     {
-        config([
-            'services.supabase.url' => 'https://project.supabase.co',
-            'services.supabase.secret_key' => 'test-server-secret',
-        ]);
-        Http::fake([
-            'https://project.supabase.co/auth/v1/admin/users/*' => Http::response([
-                'id' => '123e4567-e89b-12d3-a456-426614174000',
-            ]),
-        ]);
-
+        $authId = '00000000-0000-4000-8000-000000000002';
+        $this->fakeSupabaseAuth($authId);
         $admin = $this->createAdmin();
         $employee = $this->createEmployee(['email' => 'before@example.test']);
-        $employee->forceFill(['supabase_auth_id' => '123e4567-e89b-12d3-a456-426614174000'])->save();
+        $token = $employee->createToken('test')->accessToken;
 
         $this->actingAs($admin)->put(route('admin.users.update', $employee), [
             'name' => 'Updated Employee',
@@ -333,69 +498,138 @@ class PlatformFeaturesTest extends TestCase
             'password' => 'UpdatedPassword123!',
             'password_confirmation' => 'UpdatedPassword123!',
             'role' => 'employee',
-        ])->assertRedirect();
+        ])->assertRedirect(route('admin.users.show', $employee))
+            ->assertSessionHas(
+                'success',
+                "Credentials for 'Updated Employee' have been updated successfully.",
+            );
 
         $this->assertDatabaseHas('users', [
             'id' => $employee->id,
             'name' => 'Updated Employee',
             'email' => 'after@example.test',
-            'supabase_auth_id' => '123e4567-e89b-12d3-a456-426614174000',
         ]);
-        Http::assertSent(fn (Request $request) => $request->method() === 'PUT'
-            && $request->url() === 'https://project.supabase.co/auth/v1/admin/users/123e4567-e89b-12d3-a456-426614174000'
-            && $request->data()['email'] === 'after@example.test'
-            && $request->data()['password'] === 'UpdatedPassword123!'
-            && $request->data()['user_metadata']['name'] === 'Updated Employee');
+        $this->get(route('admin.users.show', $employee))
+            ->assertOk()
+            ->assertSee("Credentials for 'Updated Employee' have been updated successfully.");
+        $this->assertTrue(Hash::check('UpdatedPassword123!', $employee->fresh()->password));
+        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $token->id]);
+        $this->assertSame($authId, $employee->fresh()->supabase_auth_id);
+        Http::assertSent(fn (HttpRequest $request) => $request->method() === 'POST'
+            && str_contains($request->url(), '/auth/v1/admin/users')
+            && $request->hasHeader('apikey', 'test-publishable-key')
+            && $request->hasHeader('Authorization', 'Bearer test-service-role')
+            && $request['password'] === 'UpdatedPassword123!');
     }
 
-    public function test_admin_employee_status_changes_are_synced_to_supabase_auth_metadata(): void
+    public function test_employee_with_an_auth_id_from_another_project_can_be_relinked(): void
+    {
+        $newAuthId = '00000000-0000-4000-8000-000000000003';
+        $this->fakeSupabaseAuth($newAuthId);
+        $admin = $this->createAdmin();
+        $employee = $this->createEmployee(['email' => 'relink@example.test']);
+        $employee->forceFill([
+            'supabase_auth_id' => '00000000-0000-4000-8000-000000000099',
+        ])->save();
+
+        $this->actingAs($admin)->put(route('admin.users.update', $employee), [
+            'name' => $employee->name,
+            'email' => $employee->email,
+            'password' => 'UpdatedPassword123!',
+            'password_confirmation' => 'UpdatedPassword123!',
+            'role' => 'employee',
+        ])->assertRedirect();
+
+        $this->assertSame($newAuthId, $employee->fresh()->supabase_auth_id);
+        Http::assertSent(fn (HttpRequest $request) => $request->method() === 'POST'
+            && str_contains($request->url(), '/auth/v1/admin/users')
+            && $request['password'] === 'UpdatedPassword123!');
+    }
+
+    public function test_employee_auth_provisioning_rejects_mismatched_supabase_projects(): void
+    {
+        $employee = $this->createEmployee();
+        $originalConfig = [
+            'database.default' => config('database.default'),
+            'database.connections.pgsql.host' => config('database.connections.pgsql.host'),
+            'database.connections.pgsql.username' => config('database.connections.pgsql.username'),
+            'services.supabase.url' => config('services.supabase.url'),
+            'services.supabase.publishable_key' => config('services.supabase.publishable_key'),
+            'services.supabase.service_role_key' => config('services.supabase.service_role_key'),
+        ];
+        config([
+            'database.default' => 'pgsql',
+            'database.connections.pgsql.host' => 'aws-1-ap-south-1.pooler.supabase.com',
+            'database.connections.pgsql.username' => 'postgres.fywtxrptaqcmkzsgfehp',
+            'services.supabase.url' => 'https://otherproject.supabase.co',
+            'services.supabase.publishable_key' => 'test-publishable-key',
+            'services.supabase.service_role_key' => 'test-service-role',
+        ]);
+        Http::fake();
+
+        try {
+            app(SupabaseAuthAdminService::class)->syncUser(
+                $employee,
+                'SecurePassword123!',
+                role: 'employee',
+            );
+            $this->fail('Provisioning must reject a mismatched Supabase project.');
+        } catch (SupabaseAuthSyncException $exception) {
+            $this->assertSame(
+                'SUPABASE_URL and the PostgreSQL connection point to different Supabase projects.',
+                $exception->getMessage(),
+            );
+        } finally {
+            config($originalConfig);
+        }
+
+        Http::assertNothingSent();
+    }
+
+    private function fakeSupabaseAuth(string $createdUserId): void
     {
         config([
-            'services.supabase.url' => 'https://project.supabase.co',
-            'services.supabase.secret_key' => 'test-server-secret',
+            'services.supabase.url' => 'https://rgv-test.supabase.co',
+            'services.supabase.publishable_key' => 'test-publishable-key',
+            'services.supabase.secret_key' => null,
+            'services.supabase.service_role_key' => 'test-service-role',
         ]);
-        Http::fake([
-            'https://project.supabase.co/auth/v1/admin/users/*' => Http::response([
-                'id' => '123e4567-e89b-12d3-a456-426614174000',
-            ]),
-        ]);
+        Http::fake(function (HttpRequest $request) use ($createdUserId) {
+            if ($request->method() === 'GET') {
+                return Http::response(['users' => []]);
+            }
+            if ($request->method() === 'DELETE') {
+                return Http::response([], 204);
+            }
 
+            return Http::response(['id' => $createdUserId]);
+        });
+    }
+
+    public function test_admin_employee_deactivation_revokes_mobile_tokens(): void
+    {
         $admin = $this->createAdmin();
         $employee = $this->createEmployee();
-        $employee->forceFill(['supabase_auth_id' => '123e4567-e89b-12d3-a456-426614174000'])->save();
+        $token = $employee->createToken('test')->accessToken;
 
         $this->actingAs($admin)
             ->post(route('admin.users.toggle-status', $employee))
             ->assertRedirect();
 
         $this->assertFalse($employee->fresh()->is_active);
-        Http::assertSent(fn (Request $request) => $request->method() === 'PUT'
-            && $request->data()['user_metadata']['is_active'] === false);
+        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $token->id]);
     }
 
-    public function test_deleting_employee_also_deletes_the_linked_supabase_auth_account(): void
+    public function test_deleting_employee_removes_the_local_account_without_external_auth(): void
     {
-        config([
-            'services.supabase.url' => 'https://project.supabase.co',
-            'services.supabase.secret_key' => 'test-server-secret',
-        ]);
-        Http::fake([
-            'https://project.supabase.co/auth/v1/admin/users/*' => Http::response([], 204),
-        ]);
-
         $admin = $this->createAdmin(['password' => 'AdminPassword123!']);
         $employee = $this->createEmployee(['is_active' => false]);
-        $authUserId = '123e4567-e89b-12d3-a456-426614174000';
-        $employee->forceFill(['supabase_auth_id' => $authUserId])->save();
 
         $this->actingAs($admin)
             ->delete(route('admin.users.destroy', $employee), ['password' => 'AdminPassword123!'])
             ->assertRedirect(route('admin.users.index'));
 
         $this->assertDatabaseMissing('users', ['id' => $employee->id]);
-        Http::assertSent(fn (Request $request) => $request->method() === 'DELETE'
-            && $request->url() === "https://project.supabase.co/auth/v1/admin/users/{$authUserId}"
-            && $request->hasHeader('Authorization', 'Bearer test-server-secret'));
     }
 
     public function test_api_rate_limit_returns_custom_429_response(): void

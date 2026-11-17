@@ -55,6 +55,27 @@ class AdminDatabaseBackupTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_backup_history_respects_the_selected_page_size(): void
+    {
+        $admin = $this->createAdmin();
+
+        foreach (range(1, 12) as $index) {
+            BackupMonitoring::create([
+                'disk' => 'local',
+                'status' => 'failed',
+                'message' => 'Demo backup ' . $index,
+            ]);
+        }
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.backups.index', ['per_page' => 10]))
+            ->assertOk();
+        $backups = $response->viewData('backups');
+
+        $this->assertSame(10, $backups->perPage());
+        $this->assertCount(10, $backups->items());
+    }
+
     public function test_import_rejects_a_zip_without_a_sql_dump(): void
     {
         $admin = $this->createAdmin();

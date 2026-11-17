@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/review_dialog.dart';
 import '../../inventory/models/inventory_item.dart';
 import '../data/borrow_repository.dart';
 
@@ -24,6 +26,7 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
   late DateTime _dueDate = DateTime.now().add(const Duration(days: 7));
   final Map<int, int> _quantities = {};
   bool _submitting = false;
+  String? _idempotencyKey;
 
   @override
   void initState() {
@@ -71,35 +74,29 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        scrollable: true,
-        title: const Text('Review request'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ...widget.items.map(
-              (item) => _reviewRow(
-                item.name,
-                '${_quantities[item.id]} ${item.unit} (${item.itemCode})',
-              ),
+      builder: (_) => ReviewDialog(
+        title: 'Review request',
+        subtitle: 'Please verify the information before submitting.',
+        cancelLabel: 'Edit',
+        confirmLabel: 'Submit',
+        rows: [
+          ...widget.items.map(
+            (item) => ReviewDialogRow(
+              label: item.name,
+              value: '${_quantities[item.id]} ${item.unit} (${item.itemCode})',
             ),
-            _reviewRow(
-              'Borrow date',
-              DateFormat('MMM d, yyyy').format(_borrowDate),
-            ),
-            _reviewRow('Due date', DateFormat('MMM d, yyyy').format(_dueDate)),
-            _reviewRow('Reason', _reasonController.text.trim()),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Edit'),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Submit'),
+          ReviewDialogRow(
+            label: 'Borrow date',
+            value: DateFormat('MMM d, yyyy').format(_borrowDate),
+          ),
+          ReviewDialogRow(
+            label: 'Due date',
+            value: DateFormat('MMM d, yyyy').format(_dueDate),
+          ),
+          ReviewDialogRow(
+            label: 'Reason',
+            value: _reasonController.text.trim(),
           ),
         ],
       ),
@@ -110,6 +107,7 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
     setState(() => _submitting = true);
     try {
       final request = await context.read<BorrowRepository>().createRequest(
+        idempotencyKey: _idempotencyKey ??= const Uuid().v4(),
         borrowDate: DateFormat('yyyy-MM-dd').format(_borrowDate),
         dueDate: DateFormat('yyyy-MM-dd').format(_dueDate),
         reason: _reasonController.text.trim(),
@@ -130,8 +128,12 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
         ),
       );
     } on AppException catch (e) {
+      if (!e.isNetworkError && (e.statusCode ?? 0) < 500) {
+        _idempotencyKey = null;
+      }
       _showError(e.userMessage);
     } catch (_) {
+      _idempotencyKey = null;
       _showError('Could not submit your request. Please try again.');
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -141,30 +143,6 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: RgvColors.danger),
-    );
-  }
-
-  Widget _reviewRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: const TextStyle(color: RgvColors.slateLight),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -190,9 +168,9 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
+                color: RgvColors.warningBackground,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFFDE68A)),
+                border: Border.all(color: RgvColors.warningBorder),
               ),
               child: Row(
                 children: [
@@ -201,7 +179,7 @@ class _BorrowFormScreenState extends State<BorrowFormScreen> {
                   Expanded(
                     child: Text(
                       'Some selected items are currently unavailable and cannot be requested.',
-                      style: const TextStyle(color: Color(0xFF92400E)),
+                      style: const TextStyle(color: RgvColors.warningText),
                     ),
                   ),
                 ],
@@ -425,9 +403,9 @@ class _BorrowSuccessScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
-              Text(
+              const Text(
                 'Request number',
-                style: const TextStyle(color: RgvColors.slateLight),
+                style: TextStyle(color: RgvColors.slateLight),
               ),
               const SizedBox(height: 4),
               Text(
@@ -442,6 +420,7 @@ class _BorrowSuccessScreen extends StatelessWidget {
               const SizedBox(height: 8),
               const Text(
                 'Status: Pending approval',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: RgvColors.amber,
                   fontWeight: FontWeight.w600,

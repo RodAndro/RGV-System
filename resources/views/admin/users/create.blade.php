@@ -63,17 +63,31 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Password *</label>
-                    <div class="relative"><input type="password" name="password" id="password" required
-                        class="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
-                        placeholder="Enter secure password"><button type="button" onclick="togglePassword('password', 'eye-icon')" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"><i id="eye-icon" class="fas fa-eye"></i></button></div>
+                    <div class="relative">
+                        <input type="password" name="password" id="password" required autocomplete="new-password"
+                            class="password-field w-full pl-4 pr-12 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
+                            placeholder="Enter secure password">
+                        <button type="button" id="password-toggle" data-password-toggle="password" data-password-icon="eye-icon"
+                            aria-label="Show password" aria-pressed="false"
+                            class="absolute inset-y-0 right-0 hidden items-center px-3 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none">
+                            <i id="eye-icon" class="fas fa-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Minimum 8 characters.</p>
                     @error('password')<p class="text-red-500 text-sm mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Confirm Password *</label>
-                    <div class="relative"><input type="password" name="password_confirmation" id="password_confirmation" required
-                        class="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
-                        placeholder="Confirm password"><button type="button" onclick="togglePassword('password_confirmation', 'eye-icon-confirm')" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"><i id="eye-icon-confirm" class="fas fa-eye"></i></button></div>
+                    <div class="relative">
+                        <input type="password" name="password_confirmation" id="password_confirmation" required autocomplete="new-password"
+                            class="password-field w-full pl-4 pr-12 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
+                            placeholder="Confirm password">
+                        <button type="button" id="password-confirmation-toggle" data-password-toggle="password_confirmation" data-password-icon="eye-icon-confirm"
+                            aria-label="Show password" aria-pressed="false"
+                            class="absolute inset-y-0 right-0 hidden items-center px-3 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none">
+                            <i id="eye-icon-confirm" class="fas fa-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
                     @error('password_confirmation')<p class="text-red-500 text-sm mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div class="md:col-span-2">
@@ -97,7 +111,54 @@
 @endsection
 
 @push('scripts')
+<style>
+    /* Keep the custom toggle the only control inside the password fields.
+       Edge/IE (::-ms-reveal) and Chromium autofill draw their own icons. */
+    .password-field::-ms-reveal,
+    .password-field::-ms-clear {
+        display: none;
+    }
+
+    .password-field::-webkit-credentials-auto-fill-button,
+    .password-field::-webkit-contacts-auto-fill-button {
+        visibility: hidden;
+        pointer-events: none;
+    }
+</style>
 <script>
-    function togglePassword(inputId, iconId) { const input = document.getElementById(inputId); const icon = document.getElementById(iconId); if (input.type === 'password') { input.type = 'text'; icon.classList.replace('fa-eye', 'fa-eye-slash'); } else { input.type = 'password'; icon.classList.replace('fa-eye-slash', 'fa-eye'); } }
+    document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+        var input = document.getElementById(button.dataset.passwordToggle);
+        var icon = document.getElementById(button.dataset.passwordIcon);
+        if (!input || !icon) return;
+
+        function syncToggle() {
+            var hasValue = input.value.length > 0;
+            button.classList.toggle('hidden', !hasValue);
+            button.classList.toggle('flex', hasValue);
+
+            if (!hasValue) {
+                // Never leave a cleared field revealed or its icon stuck.
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+                button.setAttribute('aria-label', 'Show password');
+                button.setAttribute('aria-pressed', 'false');
+            }
+        }
+
+        button.addEventListener('click', function () {
+            var reveal = input.type === 'password';
+            input.type = reveal ? 'text' : 'password';
+            icon.classList.toggle('fa-eye', !reveal);
+            icon.classList.toggle('fa-eye-slash', reveal);
+            button.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+            button.setAttribute('aria-pressed', String(reveal));
+            input.focus();
+        });
+
+        input.addEventListener('input', syncToggle);
+        input.addEventListener('change', syncToggle);
+        syncToggle();
+    });
 </script>
 @endpush

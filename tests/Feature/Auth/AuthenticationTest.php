@@ -54,6 +54,7 @@ class AuthenticationTest extends TestCase
             ->assertSee('Please verify you are human.');
 
         $this->post('https://localhost/login', [
+            '_token' => session()->token(),
             'email' => 'admin@rgvtech.com',
             'password' => 'Password123',
         ])->assertSessionHasErrors('captcha');
@@ -72,6 +73,39 @@ class AuthenticationTest extends TestCase
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
+    }
+
+    public function test_mfa_verification_page_does_not_expose_the_current_authenticator_code(): void
+    {
+        $user = User::factory()->create([
+            'mfa_enabled' => true,
+            'mfa_secret' => 'JBSWY3DPEHPK3PXP',
+        ]);
+        $currentCode = $user->getCurrentTotpCode();
+
+        $this->withSession(['mfa.pending' => $user->id])
+            ->get(route('mfa.verify'))
+            ->assertOk()
+            ->assertSee('Authenticator Code')
+            ->assertSee(route('mfa.verify'))
+            ->assertDontSee('Current Code')
+            ->assertDontSee('Expires in')
+            ->assertDontSee($currentCode);
+    }
+
+    public function test_mfa_verification_still_accepts_the_user_entered_authenticator_code(): void
+    {
+        $user = User::factory()->create([
+            'mfa_enabled' => true,
+            'mfa_secret' => 'JBSWY3DPEHPK3PXP',
+        ]);
+
+        $this->withSession(['mfa.pending' => $user->id, 'mfa.remember' => false])
+            ->post(route('mfa.verify'), ['code' => $user->getCurrentTotpCode()])
+            ->assertRedirect(route('dashboard'));
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertTrue(session('mfa.verified'));
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void

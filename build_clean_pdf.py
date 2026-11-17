@@ -169,7 +169,7 @@ p2_content = """
     <div class="diagram-arrow">&harr;</div>
     <div class="diagram-node">
       Flutter Android App
-      <small>Direct RPCs + QR Scanner</small>
+      <small>Laravel API + QR Scanner</small>
     </div>
     <div class="diagram-arrow">&harr;</div>
     <div class="diagram-node">
@@ -222,8 +222,8 @@ p3_content = """
     </tr>
     <tr>
       <td><strong>Employee Mobile Client</strong></td>
-      <td>Flutter (Dart), <code>mobile_scanner</code>, <code>supabase_flutter</code></td>
-      <td>Dedicated Android application featuring instant camera QR recognition, direct Supabase RPC execution, and offline resilience.</td>
+      <td>Flutter (Dart), <code>mobile_scanner</code>, <code>http</code> + Laravel Sanctum REST API</td>
+      <td>Independent Flutter Android app for QR lookup, inventory, borrowing, returns, and account tasks through the Laravel API.</td>
     </tr>
     <tr>
       <td><strong>Authentication &amp; RBAC</strong></td>
@@ -254,7 +254,7 @@ p3_content = """
 </table>
 
 <div class="callout callout-success">
-  <strong>Key Architectural Advantage:</strong> By decoupling the Flutter mobile client from the Laravel HTTP request cycle through direct Supabase RPCs, field technicians can continue looking up inventory and processing returns even when the main web server undergoes scheduled maintenance.
+  <strong>Key Architectural Advantage:</strong> The Flutter mobile client remains a native Android app and uses Laravel Sanctum endpoints for all business data and actions; Laravel connects to the canonical Supabase PostgreSQL database.
 </div>
 """
 
@@ -472,7 +472,7 @@ p6_content = """
 p7_content = """
 <h1>3.3 Flutter Android Mobile Application (Field Operations)</h1>
 <p class="section-intro">
-  The native Android app in <code>mobile/</code> is purpose-built for technicians working in equipment yards, service vans, and customer facilities. Built with Flutter, it operates independently of the web application server by interacting directly with Supabase PostgreSQL.
+  The native Android app in <code>mobile/</code> is purpose-built for technicians working in equipment yards, service vans, and customer facilities. Built with Flutter, it uses Laravel Sanctum REST endpoints, with Laravel connected to the canonical Supabase PostgreSQL database.
 </p>
 
 <table>
@@ -495,7 +495,7 @@ p7_content = """
       <td>Instant fallback for scratched, dirty, or damaged QR tags, or low-light field conditions.</td>
     </tr>
     <tr>
-      <td><strong>Direct Supabase RPCs</strong></td>
+      <td><strong>Laravel Sanctum REST API</strong></td>
       <td>Transactional stored procedures: <code>borrow_request</code>, <code>return_items</code>.</td>
       <td>App continues functioning even if the Laravel web application is restarting or offline.</td>
     </tr>
@@ -511,7 +511,7 @@ p7_content = """
     </tr>
     <tr>
       <td><strong>Mobile Security &amp; MFA</strong></td>
-      <td>Supabase Auth with mandatory TOTP MFA (AAL2 compliance).</td>
+      <td>Laravel user accounts with Sanctum tokens and configured MFA.</td>
       <td>High security; credentials encrypted using <code>flutter_secure_storage</code>.</td>
     </tr>
   </tbody>
@@ -555,7 +555,7 @@ p7_content = """
 </div>
 
 <div class="callout callout-info">
-  <strong>Dual Mobile API Architecture:</strong> In addition to native Supabase RPCs, the Laravel backend maintains authenticated REST endpoints under <code>/api/v1/mobile/*</code> (protected by Laravel Sanctum bearer tokens with dedicated rate limiting of 20 req/min for auth and 120 req/min for operational endpoints) to support external integrations and legacy clients.
+  <strong>Mobile API:</strong> The Flutter app uses authenticated Laravel Sanctum endpoints under <code>/api/v1/mobile/*</code>; Laravel owns authorization, validation, and business rules.
 </div>
 """
 
@@ -1413,7 +1413,7 @@ p17_content = """
     </tr>
     <tr>
       <td><strong>Employee Mobile Platform</strong></td>
-      <td>Flutter Android Native Client &bull; <code>supabase_flutter</code> &bull; <code>mobile_scanner</code> hardware integration</td>
+      <td>Flutter Android Native Client &bull; <code>http</code> + Laravel Sanctum REST API &bull; <code>mobile_scanner</code> hardware integration</td>
     </tr>
     <tr>
       <td><strong>Frontend Stack</strong></td>

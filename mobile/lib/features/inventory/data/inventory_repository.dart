@@ -1,60 +1,60 @@
 import 'dart:convert';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-import '../../../core/errors/supabase_call.dart';
+import '../../../core/network/mobile_api_client.dart';
 import '../models/inventory_item.dart';
 
 class InventoryRepository {
-  InventoryRepository(this._supabase);
+  InventoryRepository(this._api);
 
-  final SupabaseClient _supabase;
+  final MobileApiClient _api;
 
-  /// Resolves a raw QR payload or item code to current item details. The
-  /// backend treats any scanned JSON as a hint and returns live availability.
-  Future<InventoryItem> lookup(String code) => supabaseCall(() async {
-    final json = await _supabase.rpc(
-      'mobile_inventory_lookup',
-      params: {'p_code': code},
+  Future<InventoryItem> lookup(String code) async {
+    final result = await _api.get('inventory/lookup', query: {'code': code});
+    return InventoryItem.fromJson(
+      Map<String, dynamic>.from(result['item'] as Map),
     );
-    return InventoryItem.fromJson(Map<String, dynamic>.from(json as Map));
-  });
+  }
 
-  Future<List<InventoryItem>> search(String query) => supabaseCall(() async {
-    final json = await _supabase.rpc(
-      'mobile_inventory_search',
-      params: {'p_query': query.trim(), 'p_limit': 50},
+  Future<List<InventoryItem>> search(String query) async {
+    final result = await _api.get(
+      'inventory/search',
+      query: {'q': query.trim()},
     );
-    return (json as List? ?? const [])
+    return (result['items'] as List? ?? const [])
         .map(
           (item) =>
               InventoryItem.fromJson(Map<String, dynamic>.from(item as Map)),
         )
         .toList();
-  });
+  }
 
-  /// Decodes a raw QR string into the best item-code hint (JSON or plain).
   String normalizeCode(String raw) {
     final trimmed = raw.trim();
     try {
       final decoded = jsonDecode(trimmed);
       if (decoded is Map<String, dynamic>) {
-        for (final key in ['item_code', 'itemCode', 'code', 'id']) {
+        for (final key in [
+          'qr_token',
+          'qrToken',
+          'token',
+          'id',
+          'item_code',
+          'itemCode',
+          'code',
+        ]) {
           final value = decoded[key];
           if (value is String && value.isNotEmpty) return value;
           if (value is num) return value.toString();
         }
       }
     } on FormatException {
-      // Not JSON — treat as a plain item code.
+      // The QR content is a plain inventory code.
     }
-
     final uri = Uri.tryParse(trimmed);
     if (uri != null && uri.hasScheme && uri.pathSegments.isNotEmpty) {
       final token = uri.pathSegments.last.toUpperCase();
       if (RegExp(r'^QR-[A-Z0-9]{32}$').hasMatch(token)) return token;
     }
-
     return trimmed;
   }
 }

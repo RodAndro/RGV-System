@@ -23,9 +23,7 @@ class MfaController extends Controller
             return redirect()->intended(route('dashboard'));
         }
 
-        return view('auth.mfa-verify', [
-            'currentCode' => $user->getCurrentTotpCode(),
-        ]);
+        return view('auth.mfa-verify');
     }
 
     public function verify(Request $request)

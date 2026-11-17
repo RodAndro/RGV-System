@@ -1,36 +1,56 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/errors/supabase_call.dart';
+import '../../../core/errors/app_exception.dart';
+import '../../../core/network/mobile_api_client.dart';
 import '../models/borrow_request.dart';
 
 class BorrowRepository {
-  BorrowRepository(this._supabase);
+  BorrowRepository(this._api);
 
-  final SupabaseClient _supabase;
+  final MobileApiClient _api;
 
-  Future<List<BorrowRequest>> listRequests() => supabaseCall(() async {
-    final json = await _supabase.rpc('mobile_list_borrow_requests');
-    return (json as List? ?? const [])
-        .map((e) => BorrowRequest.fromJson(Map<String, dynamic>.from(e as Map)))
+  RealtimeChannel subscribeToRequestChanges({
+    required int employeeId,
+    required void Function() onChange,
+    required void Function(Object?) onError,
+  }) => _api.subscribeToBorrowRequestChanges(
+    employeeId: employeeId,
+    channelName: 'history',
+    onChange: onChange,
+    onError: onError,
+  );
+
+  Future<List<BorrowRequest>> listRequests() async {
+    final result = await _api.get('borrow-requests');
+    return (result['requests'] as List? ?? const [])
+        .map(
+          (item) =>
+              BorrowRequest.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
         .toList();
-  });
+  }
 
   Future<BorrowRequest> getRequest(int id) async =>
-      (await listRequests()).firstWhere((request) => request.id == id);
+      (await listRequests()).firstWhere(
+        (request) => request.id == id,
+        orElse: () => throw const AppException('Borrow request not found.'),
+      );
 
   Future<BorrowRequest> createRequest({
+    required String idempotencyKey,
     required String borrowDate,
     required String dueDate,
     required String reason,
     required List<({int inventoryId, int quantity})> items,
-  }) => supabaseCall(() async {
-    final json = await _supabase.rpc(
-      'mobile_create_borrow_request',
-      params: {
-        'p_borrow_date': borrowDate,
-        'p_due_date': dueDate,
-        'p_reason': reason,
-        'p_items': items
+  }) async {
+    final result = await _api.post(
+      'borrow-requests',
+      idempotencyKey: idempotencyKey,
+      body: {
+        'borrow_date': borrowDate,
+        'due_date': dueDate,
+        'reason': reason,
+        'items': items
             .map(
               (item) => {
                 'inventory_id': item.inventoryId,
@@ -40,14 +60,15 @@ class BorrowRepository {
             .toList(),
       },
     );
-    return BorrowRequest.fromJson(Map<String, dynamic>.from(json as Map));
-  });
-
-  Future<BorrowRequest> cancelRequest(int id) => supabaseCall(() async {
-    final json = await _supabase.rpc(
-      'mobile_cancel_borrow_request',
-      params: {'p_request_id': id},
+    return BorrowRequest.fromJson(
+      Map<String, dynamic>.from(result['request'] as Map),
     );
-    return BorrowRequest.fromJson(Map<String, dynamic>.from(json as Map));
-  });
+  }
+
+  Future<BorrowRequest> cancelRequest(int id) async {
+    final result = await _api.post('borrow-requests/$id/cancel');
+    return BorrowRequest.fromJson(
+      Map<String, dynamic>.from(result['request'] as Map),
+    );
+  }
 }

@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Network access for the Laravel API. -->
+    <!-- Network access for Supabase. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Camera is used for QR scanning. -->
     <uses-permission android:name="android.permission.CAMERA"/>

@@ -199,7 +199,7 @@
 
                 <div>
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" name="email_enabled" value="1" {{ $settings['notifications']['email_enabled'] === 'true' ? 'checked' : '' }} class="rounded border-gray-300">
+                        <input type="checkbox" name="email_enabled" value="1" {{ $settings['notifications']['email_enabled'] ? 'checked' : '' }} class="rounded border-gray-300">
                         <span class="text-sm font-medium text-gray-700">Enable global email notifications</span>
                     </label>
                     <p class="text-xs text-gray-400 mt-1 ml-6">When disabled, no email notifications will be sent from the system.</p>

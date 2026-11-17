@@ -16,6 +16,7 @@ class MfaScreen extends StatefulWidget {
 class _MfaScreenState extends State<MfaScreen> {
   final _codeController = TextEditingController();
   bool _submitting = false;
+  bool _useRecoveryCode = false;
   String? _error;
 
   @override
@@ -26,8 +27,15 @@ class _MfaScreenState extends State<MfaScreen> {
 
   Future<void> _verify() async {
     final code = _codeController.text.trim();
-    if (code.length != 6) {
-      setState(() => _error = 'Enter the 6-digit verification code.');
+    final validCode = _useRecoveryCode
+        ? RegExp(r'^[a-fA-F0-9]{8}-[a-fA-F0-9]{8}$').hasMatch(code)
+        : RegExp(r'^\d{6}$').hasMatch(code);
+    if (!validCode) {
+      setState(
+        () => _error = _useRecoveryCode
+            ? 'Enter a recovery code in 8-8 format.'
+            : 'Enter the 6-digit verification code.',
+      );
       return;
     }
 
@@ -83,8 +91,10 @@ class _MfaScreenState extends State<MfaScreen> {
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Add your authenticator',
+                  Text(
+                    setupSecret == null
+                        ? 'Two-factor verification'
+                        : 'Set up your authenticator',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
@@ -112,30 +122,57 @@ class _MfaScreenState extends State<MfaScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFEE2E2),
+                        color: RgvColors.dangerBackground,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         _error!,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Color(0xFF991B1B)),
+                        style: const TextStyle(color: RgvColors.dangerText),
                       ),
                     ),
                     const SizedBox(height: 16),
                   ],
                   TextField(
                     controller: _codeController,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
+                    keyboardType: _useRecoveryCode
+                        ? TextInputType.text
+                        : TextInputType.number,
+                    textCapitalization: _useRecoveryCode
+                        ? TextCapitalization.characters
+                        : TextCapitalization.none,
+                    maxLength: _useRecoveryCode ? 17 : 6,
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 24, letterSpacing: 8),
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: const InputDecoration(
-                      labelText: '6-digit code',
+                    inputFormatters: [
+                      _useRecoveryCode
+                          ? FilteringTextInputFormatter.allow(
+                              RegExp(r'[a-fA-F0-9-]'),
+                            )
+                          : FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    decoration: InputDecoration(
+                      labelText: _useRecoveryCode
+                          ? 'Recovery code'
+                          : '6-digit code',
                       counterText: '',
                     ),
                     onChanged: (_) => setState(() => _error = null),
                     onSubmitted: (_) => _verify(),
+                  ),
+                  TextButton(
+                    onPressed: _submitting
+                        ? null
+                        : () => setState(() {
+                            _useRecoveryCode = !_useRecoveryCode;
+                            _codeController.clear();
+                            _error = null;
+                          }),
+                    child: Text(
+                      _useRecoveryCode
+                          ? 'Use an authenticator code'
+                          : 'Use a recovery code',
+                    ),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(

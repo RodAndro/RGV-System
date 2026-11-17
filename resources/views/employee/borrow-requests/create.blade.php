@@ -5,13 +5,13 @@
 @section('header', 'New Borrow Request')
 
 @section('content')
-<div class="p-8">
+<div class="p-4 md:p-8">
     <div class="section-header">
         <h2 class="section-title"><i class="fas fa-info-circle"></i>Request Information</h2>
     </div>
-    <div class="card-mantis p-8 mb-8">
+    <div class="card-mantis p-6 md:p-8 mb-6">
         @if($errors->any())
-            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6">
+            <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl mb-6">
                 <ul class="list-disc list-inside">
                     @foreach($errors->all() as $error) <li>{{ $error }}</li> @endforeach
                 </ul>
@@ -21,21 +21,21 @@
         <form action="{{ route('employee.borrow-requests.store') }}" method="POST">
             @csrf
             <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Reason for Borrowing *</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reason for Borrowing *</label>
                 <textarea name="reason" rows="3" required
-                    class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50"
+                    class="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
                     placeholder="Explain why you need to borrow these items"></textarea>
             </div>
             <div class="grid md:grid-cols-2 gap-6 mb-6">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Borrow Date *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Borrow Date *</label>
                     <input type="date" name="borrow_date" value="{{ old('borrow_date') }}" required min="{{ date('Y-m-d') }}"
-                        class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50">
+                        class="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Due Date *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Due Date *</label>
                     <input type="date" name="due_date" value="{{ old('due_date') }}" required
-                        class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50">
+                        class="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100">
                 </div>
             </div>
     </div>
@@ -52,20 +52,20 @@
             $oldItems = [['inventory_id' => '', 'quantity' => '']];
         }
     @endphp
-    <div class="card-mantis p-8 mb-8">
+    <div class="card-mantis p-6 md:p-8 mb-6">
         <div id="items-container">
             @foreach($oldItems as $index => $oldItem)
-                <div class="item-row bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200" data-item-row>
+                <div class="item-row bg-gray-50 dark:bg-gray-800 rounded-xl p-4 mb-4 border border-gray-200 dark:border-gray-700" data-item-row>
                     <div class="flex items-center justify-between mb-3">
-                        <span class="font-semibold text-gray-700">Item</span>
+                        <span class="font-semibold text-gray-700 dark:text-gray-200">Item</span>
                         <button type="button" onclick="removeItemRow(this)" class="text-red-600 hover:text-red-800 transition-colors">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
                     <div class="grid md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm text-gray-600 mb-1">Select Item</label>
-                            <select name="items[{{ $index }}][inventory_id]" class="item-select w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-white">
+                            <label class="block text-sm text-gray-600 dark:text-gray-300 mb-1">Select Item</label>
+                            <select name="items[{{ $index }}][inventory_id]" class="item-select w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-white dark:bg-gray-900 dark:text-gray-100">
                                 <option value="">Choose an item</option>
                                 @foreach($availableInventory as $item)
                                     <option value="{{ $item->id }}" data-max="{{ $item->quantity }}" {{ (string)($oldItem['inventory_id'] ?? '') === (string)$item->id ? 'selected' : '' }}>
@@ -75,10 +75,10 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm text-gray-600 mb-1">Quantity</label>
+                            <label class="block text-sm text-gray-600 dark:text-gray-300 mb-1">Quantity</label>
                             <input type="number" name="items[{{ $index }}][quantity]" min="1"
                                 value="{{ old('items.'.$index.'.quantity', $oldItem['quantity'] ?? '') }}"
-                                class="item-quantity w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-white"
+                                class="item-quantity w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-white dark:bg-gray-900 dark:text-gray-100"
                                 placeholder="Enter quantity">
                         </div>
                     </div>
@@ -93,7 +93,7 @@
     <div class="section-divider"></div>
 
     <div class="flex justify-end space-x-4">
-        <a href="{{ route('employee.borrow-requests.index') }}" class="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium">Cancel</a>
+        <a href="{{ route('employee.borrow-requests.index') }}" class="px-6 py-3 border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all font-medium">Cancel</a>
         <button type="submit" class="btn-mantis"><i class="fas fa-paper-plane mr-2"></i>Submit Request</button>
     </div>
     </form>
@@ -102,15 +102,15 @@
 
 @push('scripts')
 <template id="item-template">
-    <div class="item-row bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
+    <div class="item-row bg-gray-50 dark:bg-gray-800 rounded-xl p-4 mb-4 border border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between mb-3">
-            <span class="font-semibold text-gray-700">Item</span>
+            <span class="font-semibold text-gray-700 dark:text-gray-200">Item</span>
             <button type="button" onclick="removeItemRow(this)" class="text-red-600 hover:text-red-800 transition-colors"><i class="fas fa-times"></i></button>
         </div>
         <div class="grid md:grid-cols-2 gap-4">
             <div>
-                <label class="block text-sm text-gray-600 mb-1">Select Item</label>
-                <select name="items[__INDEX__][inventory_id]" class="item-select w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-white">
+                <label class="block text-sm text-gray-600 dark:text-gray-300 mb-1">Select Item</label>
+                <select name="items[__INDEX__][inventory_id]" class="item-select w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-white dark:bg-gray-900 dark:text-gray-100">
                     <option value="">Choose an item</option>
                     @foreach($availableInventory as $item)
                         <option value="{{ $item->id }}" data-max="{{ $item->quantity }}">{{ $item->name }} (Available: {{ $item->quantity }} {{ $item->unit }})</option>
@@ -118,9 +118,9 @@
                 </select>
             </div>
             <div>
-                <label class="block text-sm text-gray-600 mb-1">Quantity</label>
+                <label class="block text-sm text-gray-600 dark:text-gray-300 mb-1">Quantity</label>
                 <input type="number" name="items[__INDEX__][quantity]" min="1"
-                    class="item-quantity w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-white"
+                    class="item-quantity w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-white dark:bg-gray-900 dark:text-gray-100"
                     placeholder="Enter quantity">
             </div>
         </div>

@@ -36,7 +36,7 @@ class InventoryController extends Controller
             $query->where('condition', $request->condition);
         }
 
-        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 20;
+        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $inventories = $query->latest()->paginate($perPage)->appends($request->except('page'));
         $categories = InventoryCategory::active()->get();
 
@@ -72,7 +72,7 @@ class InventoryController extends Controller
             $query->where('category_id', $request->category);
         }
 
-        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 20;
+        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $inventories = $query->latest()->paginate($perPage)->appends($request->except('page'));
         $categories = \App\Models\InventoryCategory::active()->get();
 

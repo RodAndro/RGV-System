@@ -93,7 +93,7 @@ class BookingController extends Controller
 
     public function reject(Request $request, Booking $booking)
     {
-        if (!in_array($booking->status, ['pending', 'approved'])) {
+        if ($booking->status !== 'pending') {
             return back()->with('error', 'This work request can no longer be rejected.');
         }
 

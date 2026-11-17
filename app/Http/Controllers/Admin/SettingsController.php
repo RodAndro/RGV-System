@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\NotificationSettings;
 use Illuminate\Http\Request;
 
 class SettingsController extends Controller
@@ -62,7 +63,7 @@ class SettingsController extends Controller
             ],
             'notifications' => [
                 'notification_email' => env('SYSTEM_NOTIFICATION_EMAIL', ''),
-                'email_enabled' => env('NOTIFICATION_EMAIL_ENABLED', 'true'),
+                'email_enabled' => NotificationSettings::emailEnabled(),
             ],
             'maintenance' => [
                 'enabled' => app()->isDownForMaintenance(),

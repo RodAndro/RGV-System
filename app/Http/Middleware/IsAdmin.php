@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,7 +16,19 @@ class IsAdmin
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!auth()->check() || !auth()->user()->isAdmin()) {
+        $user = $request->user();
+
+        if (!$user || !$user->isAdmin()) {
+            $originalAdmin = User::find($request->session()->get('impersonate.original_id'));
+
+            if (
+                $user?->isEmployee()
+                && filled($request->session()->get('impersonate.token'))
+                && $originalAdmin?->isAdmin()
+            ) {
+                return redirect()->route('employee.dashboard');
+            }
+
             abort(403, 'Unauthorized action.');
         }
 

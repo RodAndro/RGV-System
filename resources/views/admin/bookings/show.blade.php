@@ -6,6 +6,10 @@
 
 @section('content')
 <div class="p-4 md:p-8">
+    <a href="{{ route('admin.bookings.index') }}" class="inline-flex items-center text-gray-600 hover:text-[#2563eb] transition-colors text-sm mb-3">
+        <i class="fas fa-arrow-left mr-1"></i>Back to Work Request
+    </a>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2">
             <div class="card-mantis p-6 mb-6">

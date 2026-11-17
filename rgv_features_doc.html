@@ -501,7 +501,7 @@
     <div class="diagram-arrow">&harr;</div>
     <div class="diagram-node">
       Flutter Android App
-      <small>Direct RPCs + QR Scanner</small>
+      <small>Laravel API + QR Scanner</small>
     </div>
     <div class="diagram-arrow">&harr;</div>
     <div class="diagram-node">
@@ -538,8 +538,8 @@
     </tr>
     <tr>
       <td><strong>Employee Mobile</strong></td>
-      <td>Flutter (Dart), <code>mobile_scanner</code>, <code>supabase_flutter</code></td>
-      <td>Dedicated Android application featuring instant QR code recognition, direct Supabase RPCs, and field returns.</td>
+      <td>Flutter (Dart), <code>mobile_scanner</code>, <code>http</code> + Laravel Sanctum REST API</td>
+      <td>Independent Flutter Android app for QR lookup and field workflows through Laravel Sanctum endpoints.</td>
     </tr>
     <tr>
       <td><strong>Authentication &amp; RBAC</strong></td>
@@ -709,7 +709,7 @@
 
 <h2>3.2 Flutter Android Mobile Application (Field Technician App)</h2>
 <p>
-  The native Android app in <code>mobile/</code> is purpose-built for agility in workshops, vehicles, and client job sites. It communicates directly with Supabase Auth and restricted PostgreSQL RPCs, guaranteeing operational independence even during web server restarts.
+  The native Android app in <code>mobile/</code> is purpose-built for agility in workshops, vehicles, and client job sites. It authenticates with Laravel Sanctum and uses Laravel REST endpoints for all business data and actions.
 </p>
 
 <table class="avoid-break">
@@ -732,7 +732,7 @@
       <td>Instant fallback for scratched, dirty, or damaged QR tags, or low-light field conditions.</td>
     </tr>
     <tr>
-      <td><strong>Direct Supabase RPCs</strong></td>
+      <td><strong>Laravel Sanctum REST API</strong></td>
       <td>Transactional stored procedures: <code>borrow_request</code>, <code>return_items</code>.</td>
       <td>App continues functioning even if the Laravel web application is restarting or offline.</td>
     </tr>
@@ -748,14 +748,14 @@
     </tr>
     <tr>
       <td><strong>Mobile Security &amp; MFA</strong></td>
-      <td>Supabase Auth with mandatory TOTP MFA (AAL2 compliance).</td>
+      <td>Laravel user accounts with Sanctum tokens and configured MFA.</td>
       <td>High security; credentials encrypted using <code>flutter_secure_storage</code>.</td>
     </tr>
   </tbody>
 </table>
 
 <div class="callout callout-info avoid-break">
-  <strong>Dual Mobile API Architecture:</strong> While the primary Flutter app uses direct Supabase PostgreSQL RPCs for maximum availability, the Laravel backend maintains a complete set of authenticated REST endpoints under <code>/api/v1/mobile/*</code> (protected by Laravel Sanctum bearer tokens with dedicated rate limiting of 20 req/min for auth and 120 req/min for operational endpoints) to support external integrations and legacy clients.
+  <strong>Mobile API:</strong> The Flutter app uses authenticated Laravel Sanctum endpoints under <code>/api/v1/mobile/*</code>; Laravel owns authorization, validation, and business rules.
 </div>
 
 <h2>3.3 Equipment Requisition &amp; Return Lifecycle</h2>
@@ -1488,7 +1488,7 @@
     </tr>
     <tr>
       <td><strong>Employee Mobile Platform</strong></td>
-      <td>Flutter Android Native Client &bull; <code>supabase_flutter</code> &bull; <code>mobile_scanner</code> hardware integration</td>
+      <td>Flutter Android Native Client &bull; <code>http</code> + Laravel Sanctum REST API &bull; <code>mobile_scanner</code> hardware integration</td>
     </tr>
     <tr>
       <td><strong>Frontend Stack</strong></td>

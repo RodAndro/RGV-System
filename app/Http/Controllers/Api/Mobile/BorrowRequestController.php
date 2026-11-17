@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BorrowRequest;
 use App\Services\BorrowService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BorrowRequestController extends Controller
 {
@@ -35,6 +36,7 @@ class BorrowRequestController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
+            'idempotency_key' => ['required', 'string', 'max:64'],
             'borrow_date' => ['required', 'date', 'after_or_equal:today'],
             'due_date' => ['required', 'date', 'after:borrow_date'],
             'reason' => ['required', 'string', 'max:2000'],
@@ -43,22 +45,76 @@ class BorrowRequestController extends Controller
             'items.*.quantity' => ['required', 'integer', 'min:1'],
         ]);
 
+        $requestHash = hash('sha256', json_encode([
+            'borrow_date' => $data['borrow_date'],
+            'due_date' => $data['due_date'],
+            'reason' => $data['reason'],
+            'items' => $data['items'],
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+        $idempotencyKey = hash('sha256', 'laravel-api:'.trim($data['idempotency_key']));
+
         try {
-            $borrowRequest = $this->borrowService->createPending(
-                $request->user(),
-                $data['reason'],
-                $data['borrow_date'],
-                $data['due_date'],
-                $data['items'],
-            );
+            $response = DB::transaction(function () use ($request, $data, $requestHash, $idempotencyKey) {
+                $inserted = DB::table('mobile_borrow_idempotency')->insertOrIgnore([
+                    'employee_id' => $request->user()->id,
+                    'idempotency_key' => $idempotencyKey,
+                    'request_hash' => $requestHash,
+                    'response_payload' => null,
+                    'created_at' => now(),
+                ]);
+
+                if (! $inserted) {
+                    $existing = DB::table('mobile_borrow_idempotency')
+                        ->where('employee_id', $request->user()->id)
+                        ->where('idempotency_key', $idempotencyKey)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (! $existing) {
+                        throw new \RuntimeException('The borrow idempotency record could not be loaded.');
+                    }
+
+                    if (! hash_equals(trim($existing->request_hash), $requestHash)) {
+                        abort(409, 'This idempotency key was already used for a different request.');
+                    }
+
+                    if ($existing->response_payload === null) {
+                        abort(409, 'This borrow request is still being processed.');
+                    }
+
+                    return json_decode(
+                        (string) $existing->response_payload,
+                        true,
+                        flags: JSON_THROW_ON_ERROR,
+                    );
+                }
+
+                $borrowRequest = $this->borrowService->createPending(
+                    $request->user(),
+                    $data['reason'],
+                    $data['borrow_date'],
+                    $data['due_date'],
+                    $data['items'],
+                );
+                $response = [
+                    'message' => 'Borrow request submitted.',
+                    'request' => $this->requestPayload($borrowRequest->load('borrowItems.inventory')),
+                ];
+
+                DB::table('mobile_borrow_idempotency')
+                    ->where('employee_id', $request->user()->id)
+                    ->where('idempotency_key', $idempotencyKey)
+                    ->update([
+                        'response_payload' => json_encode($response, JSON_THROW_ON_ERROR),
+                    ]);
+
+                return $response;
+            });
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 409);
         }
 
-        return response()->json([
-            'message' => 'Borrow request submitted.',
-            'request' => $this->requestPayload($borrowRequest->load('borrowItems.inventory')),
-        ], 201);
+        return response()->json($response, 201);
     }
 
     public function cancel(Request $request, BorrowRequest $borrowRequest)
@@ -81,12 +137,13 @@ class BorrowRequestController extends Controller
     {
         $items = $request->user()->borrowRequests()
             ->where('status', 'borrowed')
-                ->with(['borrowItems' => fn ($q) => $q->where('is_returned', false)->with('inventory:id,item_code,name,brand,unit,condition,location')])
+            ->with(['borrowItems' => fn ($q) => $q->where('is_returned', false)->with('inventory:id,item_code,name,brand,unit,condition,location')])
             ->get()
             ->flatMap(fn ($borrowRequest) => $borrowRequest->borrowItems->map(fn ($item) => [
                 'borrow_item_id' => $item->id,
                 'request_number' => $borrowRequest->request_number,
                 'request_id' => $borrowRequest->id,
+                'status' => $borrowRequest->status,
                 'borrow_date' => optional($borrowRequest->borrow_date)->format('Y-m-d'),
                 'due_date' => optional($borrowRequest->due_date)->format('Y-m-d'),
                 'quantity' => (int) $item->quantity,
@@ -118,18 +175,53 @@ class BorrowRequestController extends Controller
             'items.*.damage_notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $payloadHash = hash('sha256', json_encode([
+            'return_location' => $data['return_location'],
+            'items' => $data['items'],
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+
         try {
-            $this->borrowService->returnItems($borrowRequest, $data['items'], null, $data['return_location']);
+            $response = DB::transaction(function () use ($request, $borrowRequest, $data, $payloadHash) {
+                // Serialize retries by request before checking/inserting the idempotency record.
+                BorrowRequest::query()->whereKey($borrowRequest->id)->lockForUpdate()->firstOrFail();
+                $existing = DB::table('mobile_return_idempotency')
+                    ->where('employee_id', $request->user()->id)
+                    ->where('borrow_request_id', $borrowRequest->id)
+                    ->where('idempotency_key', $data['idempotency_key'])
+                    ->first();
+
+                if ($existing) {
+                    $storedHash = json_decode((string) $existing->request_payload, true);
+                    if (! is_string($storedHash) || ! hash_equals($storedHash, $payloadHash)) {
+                        abort(409, 'This idempotency key was already used with different return details.');
+                    }
+
+                    return json_decode($existing->response_payload, true, flags: JSON_THROW_ON_ERROR);
+                }
+
+                $this->borrowService->returnItems($borrowRequest, $data['items'], null, $data['return_location']);
+                $borrowRequest->refresh()->load('borrowItems.inventory');
+                $payload = [
+                    'message' => 'Items returned successfully.',
+                    'request' => $this->requestPayload($borrowRequest),
+                ];
+
+                DB::table('mobile_return_idempotency')->insert([
+                    'employee_id' => $request->user()->id,
+                    'borrow_request_id' => $borrowRequest->id,
+                    'idempotency_key' => $data['idempotency_key'],
+                    'request_payload' => json_encode($payloadHash),
+                    'response_payload' => json_encode($payload, JSON_THROW_ON_ERROR),
+                    'created_at' => now(),
+                ]);
+
+                return $payload;
+            });
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 409);
         }
 
-        $borrowRequest->refresh()->load('borrowItems.inventory');
-
-        return response()->json([
-            'message' => 'Items returned successfully.',
-            'request' => $this->requestPayload($borrowRequest),
-        ]);
+        return response()->json($response);
     }
 
     private function authorizeOwnership(Request $request, BorrowRequest $borrowRequest): void

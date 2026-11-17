@@ -2,13 +2,14 @@
 
 namespace App\Notifications;
 
+use App\Services\NotificationSettings;
 use Illuminate\Notifications\AnonymousNotifiable;
 
 trait RespectsPreferences
 {
     protected function channelsViaPreferences(object $notifiable, string $type): array
     {
-        $emailEnabled = env('NOTIFICATION_EMAIL_ENABLED', 'true') === 'true';
+        $emailEnabled = NotificationSettings::emailEnabled();
 
         if ($notifiable instanceof AnonymousNotifiable) {
             return $emailEnabled ? ['mail'] : [];

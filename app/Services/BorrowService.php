@@ -176,7 +176,7 @@ class BorrowService
             $request = $this->lockRequest($borrowRequest->id);
 
             if (! in_array($request->status, ['borrowed', 'returned'], true)) {
-                throw new DomainException('Only currently borrowed requests can be returned.');
+                throw new DomainException('Only borrowed requests can be returned.');
             }
 
             if ($request->status === 'returned') {

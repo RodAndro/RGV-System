@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class TrashController extends Controller
 {
@@ -56,6 +57,7 @@ class TrashController extends Controller
 
         $record = $modelClass::onlyTrashed()->findOrFail($id);
         $record->restore();
+        Cache::forget('admin.trash.counts');
 
         return back()->with('success', 'Record restored successfully.');
     }
@@ -73,7 +75,55 @@ class TrashController extends Controller
 
         $record = $modelClass::onlyTrashed()->findOrFail($id);
         $record->forceDelete();
+        Cache::forget('admin.trash.counts');
 
         return back()->with('success', 'Record permanently deleted.');
+    }
+
+    public function forceDeleteSelected(Request $request, string $type)
+    {
+        $modelClass = $this->models[$type] ?? null;
+        if (!$modelClass) {
+            return back()->with('error', 'Invalid record type.');
+        }
+
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'integer', 'distinct'],
+            'password' => ['required', 'string'],
+        ]);
+
+        if (!Hash::check($validated['password'], auth()->user()->password)) {
+            return back()
+                ->withInput($request->except('password'))
+                ->withErrors(['password' => 'The password is incorrect.']);
+        }
+
+        $ids = array_map('intval', $validated['ids']);
+        $records = DB::transaction(function () use ($modelClass, $ids) {
+            $records = $modelClass::onlyTrashed()
+                ->whereKey($ids)
+                ->lockForUpdate()
+                ->get();
+
+            if ($records->count() !== count($ids)) {
+                throw ValidationException::withMessages([
+                    'ids' => 'Some selected records are no longer in the trash. No records were deleted.',
+                ]);
+            }
+
+            foreach ($records as $record) {
+                $record->forceDelete();
+            }
+
+            return $records;
+        });
+
+        Cache::forget('admin.trash.counts');
+
+        $count = $records->count();
+        $label = $count === 1 ? 'record' : 'records';
+
+        return back()->with('success', "{$count} {$label} permanently deleted.");
     }
 }

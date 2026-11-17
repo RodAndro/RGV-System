@@ -29,6 +29,7 @@ class MobileBorrowTest extends TestCase
         Sanctum::actingAs($employee, ['employee']);
 
         $response = $this->postJson('/api/v1/mobile/borrow-requests', [
+            'idempotency_key' => 'borrow-stock-reserve-001',
             'borrow_date' => now()->toDateString(),
             'due_date' => now()->addDays(7)->toDateString(),
             'reason' => 'Site work',
@@ -47,6 +48,23 @@ class MobileBorrowTest extends TestCase
         ]);
     }
 
+    public function test_borrow_request_requires_an_idempotency_key_before_reserving_stock(): void
+    {
+        $employee = $this->createEmployee();
+        $inventory = $this->createInventory(['quantity' => 2]);
+        Sanctum::actingAs($employee, ['employee']);
+
+        $this->postJson('/api/v1/mobile/borrow-requests', [
+            'borrow_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'reason' => 'Site work',
+            'items' => [['inventory_id' => $inventory->id, 'quantity' => 1]],
+        ])->assertUnprocessable()->assertJsonValidationErrors('idempotency_key');
+
+        $this->assertSame(2, $inventory->fresh()->quantity);
+        $this->assertSame(0, BorrowRequest::query()->count());
+    }
+
     public function test_request_above_availability_is_rejected(): void
     {
         $employee = $this->createEmployee();
@@ -55,6 +73,7 @@ class MobileBorrowTest extends TestCase
         Sanctum::actingAs($employee, ['employee']);
 
         $this->postJson('/api/v1/mobile/borrow-requests', [
+            'idempotency_key' => 'borrow-stock-reserve-002',
             'borrow_date' => now()->toDateString(),
             'due_date' => now()->addDays(7)->toDateString(),
             'reason' => 'Site work',
@@ -70,6 +89,7 @@ class MobileBorrowTest extends TestCase
 
         Sanctum::actingAs($employeeA, ['employee']);
         $this->postJson('/api/v1/mobile/borrow-requests', [
+            'idempotency_key' => 'borrow-stock-reserve-003',
             'borrow_date' => now()->toDateString(),
             'due_date' => now()->addDays(7)->toDateString(),
             'reason' => 'First',
@@ -78,11 +98,40 @@ class MobileBorrowTest extends TestCase
 
         Sanctum::actingAs($employeeB, ['employee']);
         $this->postJson('/api/v1/mobile/borrow-requests', [
+            'idempotency_key' => 'borrow-stock-reserve-004',
             'borrow_date' => now()->toDateString(),
             'due_date' => now()->addDays(7)->toDateString(),
             'reason' => 'Second',
             'items' => [['inventory_id' => $inventory->id, 'quantity' => 1]],
         ])->assertStatus(409);
+    }
+
+    public function test_retrying_borrow_submission_deducts_stock_only_once(): void
+    {
+        $employee = $this->createEmployee();
+        $inventory = $this->createInventory(['quantity' => 5]);
+        Sanctum::actingAs($employee, ['employee']);
+
+        $payload = [
+            'idempotency_key' => 'borrow-stock-retry-001',
+            'borrow_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'reason' => 'Site work',
+            'items' => [['inventory_id' => $inventory->id, 'quantity' => 2]],
+        ];
+
+        $firstResponse = $this->postJson('/api/v1/mobile/borrow-requests', $payload)
+            ->assertCreated();
+        $this->postJson('/api/v1/mobile/borrow-requests', $payload)
+            ->assertCreated()
+            ->assertJsonPath('request.id', $firstResponse->json('request.id'));
+
+        $this->assertSame(3, $inventory->fresh()->quantity);
+        $this->assertSame(1, BorrowRequest::query()->where('employee_id', $employee->id)->count());
+
+        $payload['items'][0]['quantity'] = 1;
+        $this->postJson('/api/v1/mobile/borrow-requests', $payload)->assertConflict();
+        $this->assertSame(3, $inventory->fresh()->quantity);
     }
 
     public function test_employee_can_cancel_pending_request(): void
@@ -165,10 +214,33 @@ class MobileBorrowTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.borrow-requests.index'))
             ->assertOk()
-            ->assertViewHas('stats', fn (array $stats) =>
-                $stats['total'] === 2 && $stats['pending'] === 1 && $stats['cancelled'] === 1
+            ->assertViewHas('stats', fn (array $stats) => $stats['total'] === 2 && $stats['pending'] === 1 && $stats['cancelled'] === 1
             )
             ->assertSee('<option value="cancelled"', false)
             ->assertSee('>Cancelled</p>', false);
+    }
+
+    public function test_mobile_created_request_is_visible_in_website_management(): void
+    {
+        $admin = $this->createAdmin();
+        $employee = $this->createEmployee();
+        $inventory = $this->createInventory(['item_code' => 'RGV-SHARED-001', 'quantity' => 3]);
+
+        Sanctum::actingAs($employee, ['employee']);
+        $this->postJson('/api/v1/mobile/borrow-requests', [
+            'idempotency_key' => 'borrow-stock-reserve-005',
+            'borrow_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'reason' => 'Shared source of truth check',
+            'items' => [['inventory_id' => $inventory->id, 'quantity' => 2]],
+        ])->assertCreated();
+
+        $this->assertSame(1, BorrowRequest::query()->where('employee_id', $employee->id)->count());
+        $this->assertSame(1, $inventory->fresh()->quantity);
+
+        $this->actingAs($admin)
+            ->get(route('admin.borrow-requests.index'))
+            ->assertOk()
+            ->assertViewHas('stats', fn (array $stats) => $stats['total'] === 1 && $stats['pending'] === 1);
     }
 }

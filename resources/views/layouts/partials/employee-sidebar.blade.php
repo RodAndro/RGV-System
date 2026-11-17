@@ -32,7 +32,7 @@
             <div class="nav-section-title">Borrow Management</div>
 
             <div class="nav-section">
-                <a href="{{ route('employee.borrow-requests.index') }}" class="sidebar-link-mantis {{ request()->routeIs('employee.borrow-requests.index') ? 'sidebar-link-active-mantis' : '' }}">
+                <a href="{{ route('employee.borrow-requests.index') }}" class="sidebar-link-mantis {{ request()->routeIs('employee.borrow-requests.index', 'employee.borrow-requests.show') ? 'sidebar-link-active-mantis' : '' }}">
                     <i class="fas fa-hand-holding mr-3 w-5"></i>My Requests
                 </a>
             </div>

@@ -60,7 +60,7 @@ void main() {
             'name': 'Handheld Jackhammer',
             'quantity': 1,
             'is_returned': false,
-          }
+          },
         ],
       });
 
@@ -90,6 +90,7 @@ void main() {
         'borrow_item_id': 21,
         'request_number': 'BR-ABC123',
         'request_id': 5,
+        'status': 'borrowed',
         'borrow_date': '2026-09-30',
         'due_date': '2026-10-07',
         'quantity': 1,
@@ -105,6 +106,8 @@ void main() {
 
       expect(item.borrowItemId, 21);
       expect(item.requestId, 5);
+      expect(item.status, 'borrowed');
+      expect(item.displayStatus, 'approved');
       expect(item.inventory?.brand, 'INGCO');
     });
   });

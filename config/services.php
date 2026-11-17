@@ -37,21 +37,16 @@ return [
 
     'ollama' => [
         'base_url' => env('OLLAMA_BASE_URL', 'http://127.0.0.1:11434'),
-        'model' => env('OLLAMA_MODEL', 'llama3.1'),
-        'temperature' => env('OLLAMA_TEMPERATURE', 0.7),
-        'timeout' => env('OLLAMA_TIMEOUT', 60),
-    ],
-
-    'gemini' => [
-        'api_key' => env('GEMINI_API_KEY'),
-        'model' => env('GEMINI_MODEL', 'gemini-2.0-flash'),
-        'timeout' => env('GEMINI_TIMEOUT', 30),
+        'model' => env('OLLAMA_MODEL', 'qwen3:1.7b'),
+        'temperature' => env('OLLAMA_TEMPERATURE', 0.3),
+        'timeout' => env('OLLAMA_TIMEOUT', 120),
     ],
 
     'supabase' => [
-        'url' => env('SUPABASE_URL'),
-        'secret_key' => env('SUPABASE_SECRET_KEY', env('SUPABASE_SERVICE_ROLE_KEY')),
-        'timeout' => env('SUPABASE_TIMEOUT', 15),
+        'url' => env('SUPABASE_URL', env('SUPABASE_PROJECT_URL')),
+        'publishable_key' => env('SUPABASE_PUBLISHABLE_KEY'),
+        'secret_key' => env('SUPABASE_SECRET_KEY'),
+        'service_role_key' => env('SUPABASE_SERVICE_ROLE_KEY'),
     ],
 
 ];

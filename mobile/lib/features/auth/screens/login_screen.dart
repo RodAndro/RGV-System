@@ -38,9 +38,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await context.read<AuthProvider>().login(
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
       // On success the AuthGate rebuilds and navigates away.
     } on AppException catch (e) {
       setState(() => _error = e.userMessage);
@@ -53,6 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final logoutWarning = context.watch<AuthProvider>().logoutWarning;
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -65,11 +66,34 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Image.asset(
-                      'assets/images/RGV-Logo.png',
-                      width: 144,
-                      height: 144,
-                      fit: BoxFit.contain,
+                    Center(
+                      child: SizedBox.square(
+                        key: const ValueKey('login-logo'),
+                        dimension: 160,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            border: Border.all(color: RgvColors.cardBorder),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x140F172A),
+                                blurRadius: 10,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/images/RGV-Logo.png',
+                              width: 148,
+                              height: 148,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     const Text(
@@ -88,6 +112,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(color: RgvColors.slateLight),
                     ),
                     const SizedBox(height: 32),
+                    if (logoutWarning != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: RgvColors.warningBackground,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: RgvColors.warningBorder),
+                        ),
+                        child: Text(
+                          logoutWarning,
+                          style: const TextStyle(color: RgvColors.warningText),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     if (_error != null) ...[
                       _ErrorBanner(message: _error!),
                       const SizedBox(height: 16),
@@ -103,8 +142,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       validator: (value) {
                         final email = value?.trim() ?? '';
-                        if (email.isEmpty) return 'Enter your email address.';
-                        if (!email.contains('@')) return 'Enter a valid email address.';
+                        if (email.isEmpty) {
+                          return 'Enter your email address.';
+                        }
+                        if (!email.contains('@')) {
+                          return 'Enter a valid email address.';
+                        }
                         return null;
                       },
                     ),
@@ -115,18 +158,28 @@ class _LoginScreenState extends State<LoginScreen> {
                       autofillHints: const [AutofillHints.password],
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _submit(),
+                      onChanged: (value) => setState(() {
+                        if (value.isEmpty) _obscurePassword = true;
+                      }),
                       decoration: InputDecoration(
                         labelText: 'Password',
                         prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                          ),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                        ),
+                        suffixIcon: _passwordController.text.isEmpty
+                            ? null
+                            : IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                ),
+                                onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
+                              ),
                       ),
-                      validator: (value) =>
-                          (value == null || value.isEmpty) ? 'Enter your password.' : null,
+                      validator: (value) => (value == null || value.isEmpty)
+                          ? 'Enter your password.'
+                          : null,
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton(
@@ -163,9 +216,9 @@ class _ErrorBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEE2E2),
+        color: RgvColors.dangerBackground,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFECACA)),
+        border: Border.all(color: RgvColors.dangerBorder),
       ),
       child: Row(
         children: [
@@ -174,7 +227,7 @@ class _ErrorBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: Color(0xFF991B1B), fontSize: 14),
+              style: const TextStyle(color: RgvColors.dangerText, fontSize: 14),
             ),
           ),
         ],

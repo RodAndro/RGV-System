@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class AuditLog extends Model
 {
@@ -55,6 +56,11 @@ class AuditLog extends Model
     protected static function booted(): void
     {
         static::creating(function (AuditLog $log) {
+            if (DB::connection()->getDriverName() === 'pgsql') {
+                // Coordinate checksum-chain writers across Laravel and the
+                // standalone mobile service.
+                DB::select('select pg_advisory_xact_lock(708196311)');
+            }
             $log->previous_checksum = static::query()->latest('id')->value('checksum');
             $log->checksum = self::makeChecksum($log->payloadForChecksum());
         });

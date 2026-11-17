@@ -41,9 +41,35 @@ class InventoryQrTest extends TestCase
         $response->assertOk()
             ->assertHeader('Content-Type', 'image/jpeg')
             ->assertHeader('Content-Disposition', 'attachment; filename="rgv-001-cordless-drill-tools.jpg"');
-        $imageInfo = getimagesizefromstring($response->getContent());
+        $jpeg = $response->getContent();
+        $imageInfo = getimagesizefromstring($jpeg);
         $this->assertIsArray($imageInfo);
         $this->assertSame(IMAGETYPE_JPEG, $imageInfo[2]);
+        $this->assertSame(600, $imageInfo[0]);
+        $this->assertSame(692, $imageInfo[1]);
+
+        // The item code is drawn centred in the band below the QR code.
+        $image = imagecreatefromstring($jpeg);
+        $darkPixels = 0;
+        $minX = $imageInfo[0];
+        $maxX = 0;
+        for ($y = 600; $y < $imageInfo[1]; $y++) {
+            for ($x = 0; $x < $imageInfo[0]; $x++) {
+                $rgb = imagecolorat($image, $x, $y);
+                $red = ($rgb >> 16) & 0xFF;
+                $green = ($rgb >> 8) & 0xFF;
+                $blue = $rgb & 0xFF;
+                if ($red < 100 && $green < 100 && $blue < 100) {
+                    $darkPixels++;
+                    $minX = min($minX, $x);
+                    $maxX = max($maxX, $x);
+                }
+            }
+        }
+        imagedestroy($image);
+
+        $this->assertGreaterThan(500, $darkPixels);
+        $this->assertLessThanOrEqual(12, abs((($minX + $maxX) / 2) - 300));
 
         $this->get(route('inventory.qr.show', ['token' => $inventory->qr_token]))
             ->assertOk()

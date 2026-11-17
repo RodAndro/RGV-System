@@ -1,0 +1,17 @@
+CREATE TABLE users (id bigserial primary key,name text,email text unique,password text,phone text,avatar_path text,is_active boolean default true,mfa_enabled boolean default false,mfa_type text,mfa_secret text,mfa_recovery_codes json,last_login_at timestamptz,updated_at timestamptz);
+CREATE TABLE roles (id bigserial primary key,name text,guard_name text);
+CREATE TABLE model_has_roles (role_id bigint,model_type text,model_id bigint);
+CREATE TABLE personal_access_tokens (id bigserial primary key,tokenable_type text,tokenable_id bigint,name text,token text unique,abilities text,last_used_at timestamptz,expires_at timestamptz,created_at timestamptz,updated_at timestamptz);
+CREATE TABLE mobile_login_attempts (key char(64) primary key,attempts smallint default 0,window_started_at timestamptz,updated_at timestamptz default now());
+CREATE TABLE mobile_api_rate_limits (key char(64) primary key,hits integer default 0,window_started_at timestamptz,updated_at timestamptz default now());
+CREATE TABLE login_history (id bigserial primary key,user_id bigint,ip_address text,user_agent text,logged_in_at timestamptz,logged_out_at timestamptz,created_at timestamptz,updated_at timestamptz);
+CREATE TABLE inventory_categories (id bigserial primary key,name text);
+CREATE TABLE inventories (id bigserial primary key,item_code text,name text,brand text,description text,category_id bigint,quantity integer,status text,condition text,unit text,location text,is_active boolean,deleted_at timestamptz,qr_token text,low_stock_threshold integer default 5,updated_at timestamptz);
+CREATE TABLE borrow_requests (id bigserial primary key,request_number text,employee_id bigint,approved_by bigint,status text,reason text,borrow_date date,due_date date,return_date date,return_location text,admin_remarks text,approved_at timestamptz,rejected_at timestamptz,cancelled_at timestamptz,borrowed_at timestamptz,returned_at timestamptz,deleted_at timestamptz,created_at timestamptz,updated_at timestamptz);
+CREATE TABLE borrow_items (id bigserial primary key,borrow_request_id bigint,inventory_id bigint,quantity integer,reserved_quantity integer,condition_borrowed text,condition_returned text,is_returned boolean,returned_at timestamptz,damage_notes text,created_at timestamptz,updated_at timestamptz);
+CREATE TABLE mobile_return_idempotency (employee_id bigint,borrow_request_id bigint,idempotency_key text,request_payload jsonb,response_payload jsonb,created_at timestamptz,primary key(employee_id,borrow_request_id,idempotency_key));
+CREATE TABLE mobile_borrow_idempotency (employee_id bigint,idempotency_key varchar(64),request_hash char(64),response_payload jsonb,created_at timestamptz,primary key(employee_id,idempotency_key));
+CREATE TABLE notification_preferences (user_id bigint,type text,in_app_enabled boolean,email_enabled boolean);
+CREATE TABLE notifications (id bigserial primary key,user_id bigint,type text,title text,message text,link text,is_read boolean,created_at timestamptz,updated_at timestamptz);
+CREATE TABLE activity_log (id bigserial primary key,log_name text,description text,subject_type text,subject_id bigint,causer_type text,causer_id bigint,properties jsonb,created_at timestamptz,updated_at timestamptz);
+CREATE TABLE audit_logs (id bigserial primary key,user_id bigint,event text,auditable_type text,auditable_id bigint,old_values json,new_values json,ip_address text,user_agent text,url text,checksum char(64) not null,previous_checksum char(64),archived_at timestamptz,created_at timestamptz,updated_at timestamptz);

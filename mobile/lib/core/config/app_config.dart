@@ -1,28 +1,41 @@
 import 'package:flutter/foundation.dart';
 
-/// Application-wide configuration.
+/// Supabase configuration for local development and native builds.
 ///
-/// Supabase credentials are injected at build time with `SUPABASE_URL` and
-/// `SUPABASE_ANON_KEY` Dart defines.
+/// When the app is launched with `--dart-define`, those values override the
+/// defaults below. This keeps local development and debug builds working without
+/// the native splash screen throwing before the app can start.
 class AppConfig {
   const AppConfig._();
 
-  static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const String _defaultSupabaseUrl =
+      'https://fywtxrptaqcmkzsgfehp.supabase.co';
+  static const String _defaultSupabaseAnonKey =
+      'sb_publishable_l0nUDT07PxzQ-nOnEK4E5w_fCfIlgM2';
+
+  static const String supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: _defaultSupabaseUrl,
+  );
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
+    defaultValue: _defaultSupabaseAnonKey,
   );
 
-  static bool get isHttps =>
-      supabaseUrl.isNotEmpty && Uri.parse(supabaseUrl).scheme == 'https';
-
   static void validate() {
-    if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
+    final uri = Uri.tryParse(supabaseUrl);
+    if (uri == null || !uri.hasAuthority || uri.scheme != 'https') {
       throw StateError(
-        'SUPABASE_URL and SUPABASE_ANON_KEY must be set with --dart-define.',
+        'SUPABASE_URL must be a valid HTTPS URL. Pass --dart-define=SUPABASE_URL=... when overriding the default.',
       );
     }
-    if (kReleaseMode && !isHttps) {
-      throw StateError('SUPABASE_URL must use HTTPS in release builds.');
+    if (supabaseAnonKey.isEmpty) {
+      throw StateError(
+        'SUPABASE_ANON_KEY must not be empty. Pass --dart-define=SUPABASE_ANON_KEY=... when overriding the default.',
+      );
+    }
+    if (kReleaseMode && uri.scheme != 'https') {
+      throw StateError('Supabase must use HTTPS in release builds.');
     }
   }
 }

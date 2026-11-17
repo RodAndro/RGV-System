@@ -14,12 +14,9 @@
                 <a class="px-3 py-2 border border-[#2563eb] rounded-lg text-xs text-[#2563eb] hover:bg-[#eff6ff] transition-colors font-medium" href="{{ route('admin.audit.export', request()->query() + ['format' => 'pdf']) }}">
                     <i class="fas fa-file-pdf mr-1"></i>PDF
                 </a>
-                <form action="{{ route('admin.audit.clear-all') }}" method="POST" onsubmit="return confirm('Delete ALL audit logs? This cannot be undone.');">
-                    @csrf
-                    <button type="submit" class="px-3 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors">
-                        <i class="fas fa-trash mr-1"></i>Clear All
-                    </button>
-                </form>
+                <button type="button" @click="$dispatch('open-modal', 'clear-audit-logs')" class="px-3 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors">
+                    <i class="fas fa-trash mr-1"></i>Clear All
+                </button>
             </div>
         </div>
 
@@ -40,8 +37,40 @@
         </form>
     </section>
 
+    <x-modal name="clear-audit-logs" maxWidth="md" :show="$errors->has('password')">
+        <form action="{{ route('admin.audit.clear-all') }}" method="POST" class="p-6">
+            @csrf
+
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-exclamation-triangle text-red-600"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Confirm Audit Log Deletion</h3>
+            </div>
+
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                This will permanently clear all audit logs and cannot be undone. Enter your password to continue.
+            </p>
+
+            <div class="mb-4">
+                <x-input-label for="clear-audit-password" value="Password" />
+                <x-text-input id="clear-audit-password" type="password" name="password" class="mt-1 block w-full" required autocomplete="current-password" />
+                <x-input-error :messages="$errors->get('password')" class="mt-2" />
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button type="button" @click="$dispatch('close-modal', 'clear-audit-logs')" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors text-sm font-medium">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium">
+                    <i class="fas fa-trash mr-2"></i>Clear All Logs
+                </button>
+            </div>
+        </form>
+    </x-modal>
+
     <section class="card-mantis overflow-hidden">
-        <div class="flex items-center justify-between px-6 py-3 border-b border-gray-100">
+        <div class="flex items-center justify-end px-6 py-3 border-b border-gray-100">
             <x-per-page-selector />
         </div>
         <table class="w-full border-collapse text-sm">

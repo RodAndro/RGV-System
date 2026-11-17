@@ -36,6 +36,8 @@ class AdminBorrowRequestTrashTest extends TestCase
         $trashPage = $this->get(route('admin.trash.index', ['type' => 'borrow_request']))
             ->assertOk()
             ->assertSee($borrowRequest->request_number)
+            ->assertSee('Select all records on this page')
+            ->assertSee('Delete Selected Permanently')
             ->assertSee('<template x-teleport="body">', false);
         $pageHtml = $trashPage->getContent();
         $tableEnd = strpos($pageHtml, '</table>');
@@ -120,5 +122,97 @@ class AdminBorrowRequestTrashTest extends TestCase
             ->assertSessionHas('success');
 
         $this->assertDatabaseMissing('borrow_requests', ['id' => $borrowRequest->id]);
+    }
+
+    public function test_admin_can_permanently_delete_selected_trashed_records(): void
+    {
+        $admin = $this->createAdmin();
+        $employee = $this->createEmployee();
+        $first = $this->createTrashedBorrowRequest($employee->id);
+        $second = $this->createTrashedBorrowRequest($employee->id);
+        $unselected = $this->createTrashedBorrowRequest($employee->id);
+        $trashUrl = route('admin.trash.index', ['type' => 'borrow_request']);
+
+        $this->actingAs($admin)
+            ->from($trashUrl)
+            ->delete(route('admin.trash.force-delete-selected', ['type' => 'borrow_request']), [
+                'ids' => [$first->id, $second->id],
+                'password' => 'password',
+            ])
+            ->assertRedirect($trashUrl)
+            ->assertSessionHas('success', '2 records permanently deleted.');
+
+        $this->assertDatabaseMissing('borrow_requests', ['id' => $first->id]);
+        $this->assertDatabaseMissing('borrow_requests', ['id' => $second->id]);
+        $this->assertSoftDeleted('borrow_requests', ['id' => $unselected->id]);
+    }
+
+    public function test_bulk_permanent_delete_rejects_an_incorrect_password(): void
+    {
+        $admin = $this->createAdmin();
+        $employee = $this->createEmployee();
+        $borrowRequest = $this->createTrashedBorrowRequest($employee->id);
+        $trashUrl = route('admin.trash.index', ['type' => 'borrow_request']);
+
+        $this->actingAs($admin)
+            ->from($trashUrl)
+            ->delete(route('admin.trash.force-delete-selected', ['type' => 'borrow_request']), [
+                'ids' => [$borrowRequest->id],
+                'password' => 'incorrect-password',
+            ])
+            ->assertRedirect($trashUrl)
+            ->assertSessionHasErrors('password');
+
+        $this->assertSoftDeleted('borrow_requests', ['id' => $borrowRequest->id]);
+        $this->get($trashUrl)
+            ->assertOk()
+            ->assertSee('The password is incorrect.')
+            ->assertSee('show: true', false);
+    }
+
+    public function test_bulk_permanent_delete_does_not_partially_delete_when_a_record_is_not_trashed(): void
+    {
+        $admin = $this->createAdmin();
+        $employee = $this->createEmployee();
+        $trashed = $this->createTrashedBorrowRequest($employee->id);
+        $active = BorrowRequest::create([
+            'employee_id' => $employee->id,
+            'status' => 'returned',
+            'reason' => 'Project work',
+            'borrow_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'return_date' => now()->toDateString(),
+            'returned_at' => now(),
+        ]);
+        $trashUrl = route('admin.trash.index', ['type' => 'borrow_request']);
+
+        $this->actingAs($admin)
+            ->from($trashUrl)
+            ->delete(route('admin.trash.force-delete-selected', ['type' => 'borrow_request']), [
+                'ids' => [$trashed->id, $active->id],
+                'password' => 'password',
+            ])
+            ->assertRedirect($trashUrl)
+            ->assertSessionHasErrors('ids');
+
+        $this->assertSoftDeleted('borrow_requests', ['id' => $trashed->id]);
+        $this->assertDatabaseHas('borrow_requests', ['id' => $active->id, 'deleted_at' => null]);
+    }
+
+    private function createTrashedBorrowRequest(int $employeeId): BorrowRequest
+    {
+        $borrowRequest = BorrowRequest::create([
+            'employee_id' => $employeeId,
+            'status' => 'returned',
+            'reason' => 'Project work',
+            'borrow_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'return_date' => now()->toDateString(),
+            'returned_at' => now(),
+        ]);
+
+        $borrowRequest->delete();
+
+        return $borrowRequest;
     }
 }

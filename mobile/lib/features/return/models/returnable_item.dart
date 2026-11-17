@@ -4,6 +4,7 @@ class ReturnableItem {
     required this.borrowItemId,
     required this.requestNumber,
     required this.requestId,
+    required this.status,
     this.borrowDate,
     this.dueDate,
     required this.quantity,
@@ -14,24 +15,42 @@ class ReturnableItem {
   final int borrowItemId;
   final String requestNumber;
   final int requestId;
+  final String status;
   final String? borrowDate;
   final String? dueDate;
   final int quantity;
   final String? conditionBorrowed;
   final ReturnableInventory? inventory;
 
+  String get displayStatus => status == 'borrowed' ? 'approved' : status;
+
   factory ReturnableItem.fromJson(Map<String, dynamic> json) => ReturnableItem(
-        borrowItemId: json['borrow_item_id'] as int,
-        requestNumber: json['request_number'] as String? ?? '',
-        requestId: json['request_id'] as int,
-        borrowDate: json['borrow_date'] as String?,
-        dueDate: json['due_date'] as String?,
-        quantity: json['quantity'] as int? ?? 1,
-        conditionBorrowed: json['condition_borrowed'] as String?,
-        inventory: json['inventory'] == null
-            ? null
-            : ReturnableInventory.fromJson(json['inventory'] as Map<String, dynamic>),
-      );
+    borrowItemId: json['borrow_item_id'] as int,
+    requestNumber: json['request_number'] as String? ?? '',
+    requestId: json['request_id'] as int,
+    status: json['status'] as String? ?? '',
+    borrowDate: json['borrow_date'] as String?,
+    dueDate: json['due_date'] as String?,
+    quantity: json['quantity'] as int? ?? 1,
+    conditionBorrowed: json['condition_borrowed'] as String?,
+    inventory: json['inventory'] == null
+        ? null
+        : ReturnableInventory.fromJson(
+            json['inventory'] as Map<String, dynamic>,
+          ),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'borrow_item_id': borrowItemId,
+    'request_number': requestNumber,
+    'request_id': requestId,
+    'status': status,
+    'borrow_date': borrowDate,
+    'due_date': dueDate,
+    'quantity': quantity,
+    'condition_borrowed': conditionBorrowed,
+    'inventory': inventory?.toJson(),
+  };
 }
 
 class ReturnableInventory {
@@ -60,7 +79,22 @@ class ReturnableInventory {
         unit: json['unit'] as String?,
         location: json['location'] as String?,
       );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'item_code': itemCode,
+    'name': name,
+    'brand': brand,
+    'unit': unit,
+    'location': location,
+  };
 }
 
 /// Condition choices offered to the employee on return.
-const List<String> returnConditions = ['new', 'good', 'fair', 'poor', 'damaged'];
+const List<String> returnConditions = [
+  'new',
+  'good',
+  'fair',
+  'poor',
+  'damaged',
+];

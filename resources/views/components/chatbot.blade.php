@@ -38,8 +38,8 @@
                     <i class="fas fa-robot text-white text-lg"></i>
                 </div>
                 <div>
-                    <h3 class="text-white font-bold">AI Support Assistant</h3>
-                    <p class="text-white/80 text-xs">Powered by RGV Multi-Tech</p>
+                    <h3 class="text-white font-bold">Reports Assistant</h3>
+                    <p class="text-white/80 text-xs">Admin Reports · database-backed</p>
                 </div>
             </div>
             <div class="flex items-center space-x-2">
@@ -99,17 +99,17 @@
         <div x-show="!isMinimized && messages.length === 0" class="p-3 border-t border-gray-200 bg-white">
             <p class="text-xs text-gray-500 mb-2">Quick Actions:</p>
             <div class="flex flex-wrap gap-2">
-                <button @click="sendQuickMessage('Show me booking summary')" class="px-3 py-1.5 bg-[#eff6ff] text-[#2563eb] rounded-full text-xs hover:bg-[#dbeafe] transition-colors">
+                <button @click="sendQuickMessage('Show me the bookings report summary')" class="px-3 py-1.5 bg-[#eff6ff] text-[#2563eb] rounded-full text-xs hover:bg-[#dbeafe] transition-colors">
                     📊 Booking Summary
                 </button>
-                <button @click="sendQuickMessage('What is the inventory status?')" class="px-3 py-1.5 bg-[#eff6ff] text-[#2563eb] rounded-full text-xs hover:bg-[#dbeafe] transition-colors">
-                    📦 Inventory Status
+                <button @click="sendQuickMessage('What is the inventory report status?')" class="px-3 py-1.5 bg-[#eff6ff] text-[#2563eb] rounded-full text-xs hover:bg-[#dbeafe] transition-colors">
+                    📦 Inventory Summary
                 </button>
-                <button @click="sendQuickMessage('How do I export reports?')" class="px-3 py-1.5 bg-[#eff6ff] text-[#2563eb] rounded-full text-xs hover:bg-[#dbeafe] transition-colors">
+                <button @click="sendQuickMessage('How do I export the reports?')" class="px-3 py-1.5 bg-[#eff6ff] text-[#2563eb] rounded-full text-xs hover:bg-[#dbeafe] transition-colors">
                     📥 Export Reports
                 </button>
-                <button @click="sendQuickMessage('Track borrow requests')" class="px-3 py-1.5 bg-[#eff6ff] text-[#2563eb] rounded-full text-xs hover:bg-[#dbeafe] transition-colors">
-                    🔍 Track Requests
+                <button @click="sendQuickMessage('Show me the borrow requests report summary')" class="px-3 py-1.5 bg-[#eff6ff] text-[#2563eb] rounded-full text-xs hover:bg-[#dbeafe] transition-colors">
+                    🔍 Borrow Requests
                 </button>
             </div>
         </div>
@@ -159,8 +159,12 @@ function chatbot() {
                 this.messages = [];
             }
             if (this.messages.length === 0) {
-                this.addBotMessage("Hello! I'm your AI Support Assistant. I can help you with:\n\n• 📊 Report analysis and summaries\n• 📦 Inventory insights\n• 🔍 Borrow request tracking\n• 👥 User statistics\n• 📥 Exporting reports\n\nHow can I assist you today?");
+                this.addBotMessage(this.welcomeMessage());
             }
+        },
+
+        welcomeMessage() {
+            return "Hello! I'm the Reports Assistant for the Admin Dashboard. I can answer questions about the Reports module using live database counts:\n\n• 📊 Bookings report totals and status counts\n• 📦 Inventory report totals, low stock and out of stock\n• 🔍 Borrow requests report status counts\n• 👥 Users report totals by role\n• 📥 How to export reports\n\nI can only help with the Reports module. What would you like to know?";
         },
 
         toggleChat() {
@@ -209,7 +213,7 @@ function chatbot() {
                 if (response.ok && data.success) {
                     this.addBotMessage(data.response);
                 } else {
-                    this.addBotMessage("I apologize, but I'm having trouble processing your request right now. Please try again or contact support for assistance.");
+                    this.addBotMessage(data.message || data.response || "The chatbot could not process your request. Please try again later.");
                 }
             } catch (error) {
                 console.error('Chatbot error:', error);
@@ -249,7 +253,7 @@ function chatbot() {
 
         clearChat() {
             this.messages = [];
-            this.addBotMessage("Hello! I'm your AI Support Assistant. I can help you with:\n\n• 📊 Report analysis and summaries\n• 📦 Inventory insights\n• 🔍 Borrow request tracking\n• 👥 User statistics\n• 📥 Exporting reports\n\nHow can I assist you today?");
+            this.addBotMessage(this.welcomeMessage());
             this.saveHistory();
         },
 

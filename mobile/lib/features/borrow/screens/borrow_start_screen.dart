@@ -108,12 +108,12 @@ class _BorrowStartScreenState extends State<BorrowStartScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFEE2E2),
+                color: RgvColors.dangerBackground,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 _error!,
-                style: const TextStyle(color: Color(0xFF991B1B)),
+                style: const TextStyle(color: RgvColors.dangerText),
               ),
             ),
             const SizedBox(height: 16),

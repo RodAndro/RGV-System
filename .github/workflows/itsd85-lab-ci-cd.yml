@@ -1,0 +1,76 @@
+name: ITSD 85 Lab CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'itsd85-lab/**'
+      - '.github/workflows/itsd85-lab-ci-cd.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'itsd85-lab/**'
+      - '.github/workflows/itsd85-lab-ci-cd.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: itsd85-lab
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: itsd85-lab/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: [self-hosted, linux, deploy]
+    concurrency:
+      group: itsd85-production-deploy
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: itsd85-lab
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and start the tested commit
+        env:
+          APP_VERSION: ${{ github.sha }}
+        run: |
+          docker compose -f compose.yaml config -q
+          docker compose -f compose.yaml up -d --build --remove-orphans
+      - name: Verify deployed version
+        env:
+          APP_VERSION: ${{ github.sha }}
+        run: |
+          set -eu
+          attempt=1
+          while [ "$attempt" -le 15 ]; do
+            if payload="$(curl --silent --show-error --fail http://127.0.0.1:8080/health)"; then
+              if printf '%s' "$payload" | grep -Fq '"status":"ok"' \
+                && printf '%s' "$payload" | grep -Fq "\"version\":\"$APP_VERSION\""; then
+                exit 0
+              fi
+            fi
+            if [ "$attempt" -eq 15 ]; then
+              docker compose -f compose.yaml logs --tail=200 app
+              exit 1
+            fi
+            attempt=$((attempt + 1))
+            sleep 2
+          done
+      - name: Prune dangling lab build images
+        if: always()
+        run: docker image prune --force --filter 'label=itsd85.lab=true'

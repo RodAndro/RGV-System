@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use RuntimeException;
 
 class DatabaseSeeder extends Seeder
 {
@@ -14,6 +15,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Production data is managed directly in Supabase.
+        if (! app()->environment(['local', 'testing'])) {
+            throw new RuntimeException('Sample data may only be seeded in local or testing environments.');
+        }
+
+        $this->call([
+            RoleAndPermissionSeeder::class,
+            CategorySeeder::class,
+            ProductSeeder::class,
+            UserSeeder::class,
+            ManagementDemoSeeder::class,
+        ]);
     }
 }

@@ -129,7 +129,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     Route::post('/users/{user}/impersonate', [ImpersonationController::class, 'start'])->name('users.impersonate');
     Route::post('/users/{user}/force-logout', [UserController::class, 'forceLogout'])->name('users.force-logout');
-    Route::post('/impersonation/stop', [ImpersonationController::class, 'stop'])->name('impersonation.stop');
     
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
@@ -185,6 +184,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/settings', [App\Http\Controllers\Admin\SettingsController::class, 'update'])->name('settings.update');
     Route::get('/trash', [TrashController::class, 'index'])->name('trash.index');
     Route::post('/trash/{type}/{id}/restore', [TrashController::class, 'restore'])->name('trash.restore');
+    Route::delete('/trash/{type}/force-delete', [TrashController::class, 'forceDeleteSelected'])->name('trash.force-delete-selected');
     Route::delete('/trash/{type}/{id}/force-delete', [TrashController::class, 'forceDelete'])->name('trash.force-delete');
     
     // AI Reports
@@ -192,6 +192,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/ai/forecast', [AiReportController::class, 'generateBookingForecast'])->name('ai.forecast');
     Route::get('/ai/inventory-recommendations', [AiReportController::class, 'generateInventoryRecommendations'])->name('ai.inventory-recommendations');
 });
+
+Route::post('/admin/impersonation/stop', [ImpersonationController::class, 'stop'])
+    ->middleware('auth')
+    ->name('impersonation.stop');
 
 // Employee Routes
 Route::middleware(['auth', 'employee', 'mfa'])->prefix('employee')->name('employee.')->group(function () {

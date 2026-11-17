@@ -1,5 +1,5 @@
-/// A user-facing API/application error with an optional HTTP status and
-/// per-field validation errors (as returned by Laravel's 422 responses).
+/// A user-facing application error with an optional HTTP status and
+/// per-field validation errors returned by Supabase RPCs.
 class AppException implements Exception {
   const AppException(
     this.message, {
@@ -16,7 +16,8 @@ class AppException implements Exception {
   /// Builds a human-readable message, falling back to per-field errors when
   /// the top-level message is generic.
   String get userMessage {
-    if (fieldErrors.isNotEmpty && (message.isEmpty || message == 'The given data was invalid.')) {
+    if (fieldErrors.isNotEmpty &&
+        (message.isEmpty || message == 'The given data was invalid.')) {
       final first = fieldErrors.values.expand((e) => e).toList();
       return first.isNotEmpty ? first.first : message;
     }

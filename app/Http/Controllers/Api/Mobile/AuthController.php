@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -75,30 +77,49 @@ class AuthController extends Controller
     public function verifyMfa(Request $request)
     {
         $request->validate([
-            'code' => ['required', 'string', 'size:6'],
+            'code' => ['required', 'string', 'regex:/^(?:[0-9]{6}|[a-f0-9]{8}-[a-f0-9]{8})$/i'],
             'device_name' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $user = $request->user();
+        $authenticated = $request->user();
 
-        if (! $user || ! $request->user()->tokenCan('mfa-verify')) {
+        if (! $authenticated || ! $authenticated->tokenCan('mfa-verify')) {
             return response()->json(['message' => 'MFA verification required.'], 403);
         }
 
-        $recoveryCodes = $user->mfa_recovery_codes ?? [];
+        return DB::transaction(function () use ($request, $authenticated) {
+            // Serialize recovery-code verification so concurrent requests
+            // cannot both consume the same shared credential.
+            $user = User::query()->lockForUpdate()->findOrFail($authenticated->id);
+            $recoveryCodes = $user->mfa_recovery_codes ?? [];
+            $totpValid = $user->verifyTotp($request->code);
+            $submittedCode = strtolower($request->code);
+            $recoveryCodeIndex = $totpValid ? false : array_search($submittedCode, $recoveryCodes, true);
 
-        if (! $user->verifyTotp($request->code) && ! in_array($request->code, $recoveryCodes, true)) {
-            throw ValidationException::withMessages([
-                'code' => ['Invalid verification code.'],
-            ]);
-        }
+            if (! $totpValid && $recoveryCodeIndex === false) {
+                throw ValidationException::withMessages([
+                    'code' => ['Invalid verification code.'],
+                ]);
+            }
 
-        $request->user()->currentAccessToken()->delete();
+            // Recovery codes are a shared, single-use credential. Consume
+            // them without logging the credential contents.
+            if ($recoveryCodeIndex !== false) {
+                unset($recoveryCodes[$recoveryCodeIndex]);
+                DB::table('users')->where('id', $user->id)->update([
+                    'mfa_recovery_codes' => json_encode(array_values($recoveryCodes), JSON_THROW_ON_ERROR),
+                    'updated_at' => now(),
+                ]);
+                AuditLogger::log('MFA recovery code used', $user, [], ['method' => 'recovery']);
+            }
 
-        $device = $request->input('device_name', 'Android App');
-        $token = $user->createToken($device, ['employee']);
+            $authenticated->currentAccessToken()->delete();
 
-        return $this->tokenResponse($user, $token->plainTextToken);
+            $device = $request->input('device_name', 'Android App');
+            $token = $user->createToken($device, ['employee']);
+
+            return $this->tokenResponse($user, $token->plainTextToken);
+        });
     }
 
     public function logout(Request $request)

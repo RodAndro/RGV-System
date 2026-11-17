@@ -14,7 +14,6 @@
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^2.10.1",
         "maatwebsite/excel": "*",
-        "openai-php/client": "*",
         "simplesoftwareio/simple-qrcode": "^4.2",
         "spatie/laravel-activitylog": "^4.12",
         "spatie/laravel-backup": "*",

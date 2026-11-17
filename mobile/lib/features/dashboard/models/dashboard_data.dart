@@ -16,13 +16,22 @@ class BorrowSummary {
   final int overdue;
 
   factory BorrowSummary.fromJson(Map<String, dynamic> json) => BorrowSummary(
-        total: json['total'] as int? ?? 0,
-        pending: json['pending'] as int? ?? 0,
-        approved: json['approved'] as int? ?? 0,
-        borrowed: json['borrowed'] as int? ?? 0,
-        returned: json['returned'] as int? ?? 0,
-        overdue: json['overdue'] as int? ?? 0,
-      );
+    total: json['total'] as int? ?? 0,
+    pending: json['pending'] as int? ?? 0,
+    approved: json['approved'] as int? ?? 0,
+    borrowed: json['borrowed'] as int? ?? 0,
+    returned: json['returned'] as int? ?? 0,
+    overdue: json['overdue'] as int? ?? 0,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'total': total,
+    'pending': pending,
+    'approved': approved,
+    'borrowed': borrowed,
+    'returned': returned,
+    'overdue': overdue,
+  };
 }
 
 class RecentRequest {
@@ -43,32 +52,43 @@ class RecentRequest {
   final List<String> items;
 
   factory RecentRequest.fromJson(Map<String, dynamic> json) => RecentRequest(
-        id: json['id'] as int,
-        requestNumber: json['request_number'] as String? ?? '',
-        status: json['status'] as String? ?? 'pending',
-        borrowDate: json['borrow_date'] as String?,
-        dueDate: json['due_date'] as String?,
-        items: (json['items'] as List? ?? const [])
-            .map((e) => e.toString())
-            .toList(),
-      );
+    id: json['id'] as int,
+    requestNumber: json['request_number'] as String? ?? '',
+    status: json['status'] as String? ?? 'pending',
+    borrowDate: json['borrow_date'] as String?,
+    dueDate: json['due_date'] as String?,
+    items: (json['items'] as List? ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'request_number': requestNumber,
+    'status': status,
+    'borrow_date': borrowDate,
+    'due_date': dueDate,
+    'items': items,
+  };
 }
 
 class DashboardData {
-  const DashboardData({
-    required this.summary,
-    required this.recentRequests,
-  });
+  const DashboardData({required this.summary, required this.recentRequests});
 
   final BorrowSummary summary;
   final List<RecentRequest> recentRequests;
 
   factory DashboardData.fromJson(Map<String, dynamic> json) => DashboardData(
-        summary: BorrowSummary.fromJson(
-          (json['summary'] as Map<String, dynamic>?) ?? const {},
-        ),
-        recentRequests: (json['recent_requests'] as List? ?? const [])
-            .map((e) => RecentRequest.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    summary: BorrowSummary.fromJson(
+      (json['summary'] as Map<String, dynamic>?) ?? const {},
+    ),
+    recentRequests: (json['recent_requests'] as List? ?? const [])
+        .map((e) => RecentRequest.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'summary': summary.toJson(),
+    'recent_requests': recentRequests.map((e) => e.toJson()).toList(),
+  };
 }

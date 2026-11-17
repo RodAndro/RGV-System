@@ -11,7 +11,7 @@ use BaconQrCode\Common\ErrorCorrectionLevel;
 use BaconQrCode\Encoder\Encoder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class InventoryController extends Controller
@@ -30,29 +30,29 @@ class InventoryController extends Controller
 
         if ($request->filled('letter')) {
             $letter = $request->letter;
-            $query->where('name', 'like', $letter . '%');
+            $query->where('name', 'like', $letter.'%');
         }
 
         if ($request->filled('q')) {
-            $search = '%' . $request->q . '%';
+            $search = '%'.$request->q.'%';
             $query->where(function ($query) use ($search) {
                 $query->where('item_code', 'like', $search)
-                      ->orWhere('name', 'like', $search)
-                      ->orWhere('description', 'like', $search);
+                    ->orWhere('name', 'like', $search)
+                    ->orWhere('description', 'like', $search);
             });
         }
 
         $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 10;
         $inventories = $query->latest()->paginate($perPage)->appends($request->except('page'));
         $categories = InventoryCategory::active()->get();
-        
+
         $stats = Cache::remember('admin.stats.inventory', now()->addSeconds(20), function () {
             $row = Inventory::query()->selectRaw("COUNT(*) as total, COUNT(CASE WHEN status = 'available' THEN 1 END) as available, COUNT(CASE WHEN status = 'borrowed' THEN 1 END) as borrowed, COUNT(CASE WHEN status = 'maintenance' THEN 1 END) as maintenance, COUNT(CASE WHEN status = 'damaged' THEN 1 END) as damaged")
                 ->first();
 
             return array_map('intval', $row->getAttributes());
         });
-        
+
         return view('admin.inventories.index', compact('inventories', 'categories', 'stats'));
     }
 
@@ -60,6 +60,7 @@ class InventoryController extends Controller
     {
         $categories = InventoryCategory::active()->get();
         $categoryUnits = $this->getCategoryUnits();
+
         return view('admin.inventories.create', compact('categories', 'categoryUnits'));
     }
 
@@ -100,6 +101,7 @@ class InventoryController extends Controller
     public function show(Inventory $inventory)
     {
         $inventory->load(['category', 'borrowItems']);
+
         return view('admin.inventories.show', compact('inventory'));
     }
 
@@ -107,6 +109,7 @@ class InventoryController extends Controller
     {
         $categories = InventoryCategory::active()->get();
         $categoryUnits = $this->getCategoryUnits();
+
         return view('admin.inventories.edit', compact('inventory', 'categories', 'categoryUnits'));
     }
 
@@ -148,6 +151,7 @@ class InventoryController extends Controller
     public function destroy(Inventory $inventory)
     {
         Inventory::destroy($inventory->id);
+
         return redirect()->route('admin.inventories.index')
             ->with('success', 'Inventory item deleted successfully.');
     }
@@ -155,6 +159,7 @@ class InventoryController extends Controller
     public function lowStock()
     {
         $inventories = Inventory::lowStock()->with(['category'])->get();
+
         return view('admin.inventories.low-stock', compact('inventories'));
     }
 
@@ -167,11 +172,12 @@ class InventoryController extends Controller
 
         $matrix = Encoder::encode($inventory->qrUrl(), ErrorCorrectionLevel::H())->getMatrix();
         $size = 600;
+        $labelHeight = 92;
         $quietZone = 4;
         $totalModules = $matrix->getWidth() + ($quietZone * 2);
         $moduleSize = intdiv($size, $totalModules);
         $offset = intdiv($size - ($totalModules * $moduleSize), 2) + ($quietZone * $moduleSize);
-        $image = imagecreatetruecolor($size, $size);
+        $image = imagecreatetruecolor($size, $size + $labelHeight);
         $white = imagecolorallocate($image, 255, 255, 255);
         $black = imagecolorallocate($image, 0, 0, 0);
         imagefill($image, 0, 0, $white);
@@ -191,21 +197,89 @@ class InventoryController extends Controller
             }
         }
 
+        $this->drawQrLabel(
+            $image,
+            '#'.$inventory->item_code,
+            $size,
+            $size,
+            $labelHeight,
+            $black,
+        );
+
         ob_start();
         imagejpeg($image, null, 95);
         $jpeg = ob_get_clean();
         imagedestroy($image);
 
-        $filename = \Illuminate\Support\Str::slug(implode('-', array_filter([
+        $filename = Str::slug(implode('-', array_filter([
             $inventory->item_code,
             $inventory->name,
             $inventory->category?->name,
-        ]))) . '.jpg';
+        ]))).'.jpg';
 
         return response($jpeg)->withHeaders([
             'Content-Type' => 'image/jpeg',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
+    }
+
+    /**
+     * Draws the item code centred in the band below the QR code.
+     *
+     * @param  \GdImage  $image
+     */
+    private function drawQrLabel($image, string $label, int $width, int $top, int $height, int $color): void
+    {
+        $font = resource_path('fonts/DejaVuSans-Bold.ttf');
+        $maxWidth = $width - 48;
+
+        if (function_exists('imagettftext') && is_readable($font)) {
+            $fontSize = 38;
+            $box = imagettfbbox($fontSize, 0, $font, $label);
+
+            while (is_array($box) && $fontSize > 16 && ($box[2] - $box[0]) > $maxWidth) {
+                $fontSize -= 2;
+                $box = imagettfbbox($fontSize, 0, $font, $label);
+            }
+
+            if (is_array($box)) {
+                $textWidth = $box[2] - $box[0];
+                $textHeight = $box[1] - $box[7];
+                $x = (int) round(($width - $textWidth) / 2) - $box[0];
+                $y = $top + (int) round(($height - $textHeight) / 2) - $box[7];
+
+                imagettftext($image, $fontSize, 0, $x, $y, $color, $font, $label);
+
+                return;
+            }
+        }
+
+        // Fallback when FreeType is unavailable: scale GD's bitmap font so the
+        // label is still legible on the 600px image.
+        $builtIn = 5;
+        $textWidth = imagefontwidth($builtIn) * strlen($label);
+        $textHeight = imagefontheight($builtIn);
+        $layer = imagecreatetruecolor($textWidth, $textHeight);
+        $layerWhite = imagecolorallocate($layer, 255, 255, 255);
+        imagefill($layer, 0, 0, $layerWhite);
+        imagestring($layer, $builtIn, 0, 0, $label, $color);
+
+        $scale = max(1, min(4, intdiv($maxWidth, $textWidth)));
+        $targetWidth = $textWidth * $scale;
+        $targetHeight = $textHeight * $scale;
+        imagecopyresized(
+            $image,
+            $layer,
+            intdiv($width - $targetWidth, 2),
+            $top + intdiv($height - $targetHeight, 2),
+            0,
+            0,
+            $targetWidth,
+            $targetHeight,
+            $textWidth,
+            $textHeight,
+        );
+        imagedestroy($layer);
     }
 
     /**
@@ -291,7 +365,7 @@ class InventoryController extends Controller
     private function getCategoryUnits(): array
     {
         $categories = InventoryCategory::active()->get();
-        
+
         $unitMapping = [
             'Electronics' => ['pcs', 'sets', 'boxes'],
             'Software' => ['licenses', 'pcs', 'subscriptions'],
@@ -306,7 +380,7 @@ class InventoryController extends Controller
         foreach ($categories as $category) {
             // Check if category has a specific unit mapping
             $categoryName = $category->name;
-            
+
             if (isset($unitMapping[$categoryName])) {
                 $result[$category->id] = $unitMapping[$categoryName];
             } else {

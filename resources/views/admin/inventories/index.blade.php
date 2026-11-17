@@ -130,7 +130,7 @@
                                         <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
                                             <p class="font-semibold text-sm text-gray-800 dark:text-gray-200">{{ $inventory->quantity }} {{ $inventory->unit }}</p>
                                             @if($inventory->isLowStock())
-                                                <span class="badge-mantis-danger text-xs"><i class="fas fa-exclamation-triangle mr-1"></i>Low Stock Alert</span>
+                                                <span class="low-stock-alert"><i class="fas fa-exclamation-triangle"></i>Low Stock Alert</span>
                                             @endif
                                         </td>
                                         <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">

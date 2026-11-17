@@ -24,7 +24,9 @@ class _QrScanScreenState extends State<QrScanScreen> {
 
   void _onDetect(BarcodeCapture capture) {
     if (_handled) return;
-    final value = capture.barcodes.isNotEmpty ? capture.barcodes.first.rawValue : null;
+    final value = capture.barcodes.isNotEmpty
+        ? capture.barcodes.first.rawValue
+        : null;
     if (value == null || value.isEmpty) return;
     _handled = true;
     Navigator.pop(context, value);
@@ -100,10 +102,10 @@ class _CameraErrorView extends StatelessWidget {
             Text(
               permissionDenied
                   ? 'Camera permission is required to scan QR codes.\n\n'
-                      'Enable camera access in your device settings, or enter the '
-                      'item code manually instead.'
+                        'Enable camera access in your device settings, or enter the '
+                        'item code manually instead.'
                   : 'The camera could not be opened. You can still enter the item '
-                      'code manually.',
+                        'code manually.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white, fontSize: 15),
             ),

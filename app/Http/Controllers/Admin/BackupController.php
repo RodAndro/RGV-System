@@ -13,10 +13,15 @@ use Throwable;
 
 class BackupController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $retention = $this->retentionInfo();
-        $backups = BackupMonitoring::latest()->paginate(20);
+        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100], true)
+            ? (int) $request->get('per_page')
+            : 10;
+        $backups = BackupMonitoring::latest()
+            ->paginate($perPage)
+            ->appends($request->except('page'));
 
         foreach ($backups as $backup) {
             if (

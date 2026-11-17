@@ -2,403 +2,417 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Booking;
+use App\Models\BorrowItem;
+use App\Models\BorrowRequest;
+use App\Models\BorrowReturnEvidence;
+use App\Models\Inventory;
+use App\Models\InventoryCategory;
+use App\Models\Report;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Schema;
 use PDO;
+use RuntimeException;
+use Throwable;
 
 class MigrateSqliteToSupabase extends Command
 {
     protected $signature = 'rvg:migrate-sqlite-to-supabase
         {--sqlite=database/database.sqlite : Path to the source SQLite database}
-        {--force : Run without confirmation}';
+        {--execute : Apply the merge into the configured PostgreSQL database (dry-run is the default)}
+        {--backup-confirmed : Confirm that protected source and target backups exist}
+        {--yes : Skip the interactive confirmation after preflight}';
 
-    protected $description = 'Migrate users, roles, inventory and borrow records from SQLite into Supabase PostgreSQL without data loss or duplicates.';
+    protected $description = 'Preflight, dry-run, or explicitly merge Laravel business and historical records into PostgreSQL.';
+
+    /**
+     * Parent tables precede their dependents. Runtime-only Laravel tables and
+     * the migrations repository are intentionally excluded.
+     */
+    public const TABLE_ORDER = [
+        'roles', 'permissions', 'users', 'inventory_categories', 'settings', 'suppliers',
+        'bookings', 'inventories', 'borrow_requests', 'borrow_return_evidences', 'borrow_items',
+        'notifications', 'notification_preferences', 'reports', 'activity_log', 'audit_logs',
+        'login_history', 'import_logs', 'export_logs', 'scheduled_tasks', 'api_rate_limits',
+        'backup_monitoring', 'model_has_permissions', 'model_has_roles', 'role_has_permissions',
+        'personal_access_tokens', 'mobile_return_idempotency', 'chatbot_interactions',
+    ];
+
+    private const REQUIRED_TABLES = [
+        'users', 'roles', 'permissions', 'inventory_categories', 'inventories',
+        'bookings', 'borrow_requests', 'borrow_items', 'notifications',
+    ];
+
+    /** Stable unique keys used to merge matching pre-existing PostgreSQL rows. */
+    private const NATURAL_KEYS = [
+        'roles' => ['name', 'guard_name'], 'permissions' => ['name', 'guard_name'],
+        'users' => ['email'], 'inventory_categories' => ['slug'], 'settings' => ['key'],
+        'bookings' => ['reference_number'], 'inventories' => ['item_code'],
+        'borrow_requests' => ['request_number'], 'borrow_return_evidences' => ['idempotency_key'],
+        'notification_preferences' => ['user_id', 'type'], 'reports' => ['report_number'],
+        'personal_access_tokens' => ['token'],
+    ];
+
+    /** Foreign keys and polymorphic user links requiring source-to-target IDs. */
+    private const FOREIGN_KEYS = [
+        'bookings' => ['employee_id' => 'users'],
+        'inventories' => ['category_id' => 'inventory_categories', 'supplier_id' => 'suppliers'],
+        'borrow_requests' => ['employee_id' => 'users', 'approved_by' => 'users'],
+        'borrow_return_evidences' => ['borrow_request_id' => 'borrow_requests', 'uploaded_by' => 'users'],
+        'borrow_items' => [
+            'borrow_request_id' => 'borrow_requests', 'inventory_id' => 'inventories',
+            'return_evidence_id' => 'borrow_return_evidences',
+        ],
+        'notifications' => ['user_id' => 'users'], 'notification_preferences' => ['user_id' => 'users'],
+        'reports' => ['generated_by' => 'users'], 'audit_logs' => ['user_id' => 'users'],
+        'login_history' => ['user_id' => 'users'], 'import_logs' => ['user_id' => 'users'],
+        'export_logs' => ['user_id' => 'users'], 'api_rate_limits' => ['user_id' => 'users'],
+        'model_has_permissions' => ['permission_id' => 'permissions'],
+        'model_has_roles' => ['role_id' => 'roles'],
+        'role_has_permissions' => ['permission_id' => 'permissions', 'role_id' => 'roles'],
+        'mobile_return_idempotency' => ['employee_id' => 'users', 'borrow_request_id' => 'borrow_requests'],
+        'chatbot_interactions' => ['user_id' => 'users'],
+    ];
 
     public function handle(): int
     {
-        $sqlitePath = base_path($this->option('sqlite'));
-
-        if (! is_file($sqlitePath)) {
-            $this->error("SQLite database not found at {$sqlitePath}.");
+        $path = realpath(base_path($this->option('sqlite')));
+        if (! $path || ! is_file($path)) {
+            $this->error('Source SQLite file does not exist.');
 
             return self::FAILURE;
         }
 
         if (config('database.default') !== 'pgsql') {
-            $this->error('The default connection must be pgsql (Supabase) to run this migration. Set DB_CONNECTION=pgsql in .env.');
+            $this->error('The configured default connection must be pgsql. This command never changes connection settings.');
 
             return self::FAILURE;
         }
 
-        if (! $this->option('force') && ! $this->confirm('Back up both databases before continuing. Continue with the migration?')) {
-            $this->warn('Aborted.');
+        if ($this->option('execute') && ! $this->option('backup-confirmed')) {
+            $this->error('Execution requires --backup-confirmed after you have protected source and target backups.');
 
             return self::FAILURE;
         }
 
-        $source = new PDO("sqlite:{$sqlitePath}");
-        $source->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $source->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-
+        $source = new PDO('sqlite:'.$path, options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+        $source->exec('PRAGMA foreign_keys = ON');
         $target = DB::connection('pgsql');
+        $fingerprint = hash('sha256', $path);
+        $phase = 'preflight';
 
-        $this->info('Migrating roles and permissions...');
-        $roleIdMap = $this->migrateRoles($source, $target);
-        $permissionIdMap = $this->migratePermissions($source, $target);
-        $this->migrateRolePermissions($source, $target, $roleIdMap, $permissionIdMap);
+        try {
+            $tables = $this->preflight($source, $fingerprint);
+            $this->showPlan($source, $tables);
 
-        $this->info('Migrating users...');
-        $userIdMap = $this->migrateUsers($source, $target);
-        $this->migrateModelRoles($source, $target, $userIdMap, $roleIdMap);
+            if (! $this->option('execute')) {
+                $this->info('Dry-run only. No rows were written. Add --execute --backup-confirmed after reviewing the plan.');
 
-        $this->info('Migrating inventory...');
-        $inventoryIdMap = $this->migrateInventories($source, $target);
-
-        $this->info('Migrating borrow requests and items...');
-        $requestIdMap = $this->migrateBorrowRequests($source, $target, $userIdMap);
-        $this->migrateBorrowItems($source, $target, $requestIdMap, $inventoryIdMap);
-
-        $this->newLine();
-        $this->info('Migration complete. Summary:');
-        $this->table(['Table', 'Migrated', 'Skipped (already present)'], [
-            ['roles', count($roleIdMap), $this->countRows($source, 'roles') - count($roleIdMap)],
-            ['permissions', count($permissionIdMap), $this->countRows($source, 'permissions') - count($permissionIdMap)],
-            ['users', count($userIdMap), $this->countRows($source, 'users') - count($userIdMap)],
-            ['inventories', count($inventoryIdMap), $this->countRows($source, 'inventories') - count($inventoryIdMap)],
-            ['borrow_requests', count($requestIdMap), $this->countRows($source, 'borrow_requests') - count($requestIdMap)],
-        ]);
-
-        return self::SUCCESS;
-    }
-
-    private function migrateRoles(PDO $source, $target): array
-    {
-        $map = [];
-
-        foreach ($this->all($source, 'SELECT * FROM roles ORDER BY id') as $row) {
-            $existing = $target->table('roles')->where('name', $row['name'])->first();
-
-            if ($existing) {
-                $map[(int) $row['id']] = (int) $existing->id;
-
-                continue;
+                return self::SUCCESS;
             }
 
-            $id = $target->table('roles')->insertGetId([
-                'name' => $row['name'],
-                'guard_name' => $row['guard_name'] ?? 'web',
-                'created_at' => $row['created_at'] ?? now(),
-                'updated_at' => $row['updated_at'] ?? now(),
-            ]);
+            if (! $this->option('yes') && ! $this->confirm('Merge source rows into this configured PostgreSQL database? Existing target rows will be preserved.')) {
+                $this->warn('Aborted without writing rows.');
 
-            $map[(int) $row['id']] = (int) $id;
-        }
-
-        return $map;
-    }
-
-    private function migratePermissions(PDO $source, $target): array
-    {
-        $map = [];
-
-        foreach ($this->all($source, 'SELECT * FROM permissions ORDER BY id') as $row) {
-            $existing = $target->table('permissions')->where('name', $row['name'])->first();
-
-            if ($existing) {
-                $map[(int) $row['id']] = (int) $existing->id;
-
-                continue;
+                return self::FAILURE;
             }
 
-            $id = $target->table('permissions')->insertGetId([
-                'name' => $row['name'],
-                'guard_name' => $row['guard_name'] ?? 'web',
-                'created_at' => $row['created_at'] ?? now(),
-                'updated_at' => $row['updated_at'] ?? now(),
-            ]);
-
-            $map[(int) $row['id']] = (int) $id;
-        }
-
-        return $map;
-    }
-
-    private function migrateRolePermissions(PDO $source, $target, array $roleIdMap, array $permissionIdMap): void
-    {
-        foreach ($this->all($source, 'SELECT * FROM role_has_permissions') as $row) {
-            $roleId = $roleIdMap[(int) $row['role_id']] ?? null;
-            $permissionId = $permissionIdMap[(int) $row['permission_id']] ?? null;
-
-            if (! $roleId || ! $permissionId) {
-                continue;
+            $counts = [];
+            foreach ($tables as $table) {
+                $phase = $table;
+                $counts[$table] = $this->migrateTable($source, $table, $fingerprint);
             }
 
-            $exists = $target->table('role_has_permissions')
-                ->where('role_id', $roleId)
-                ->where('permission_id', $permissionId)
-                ->exists();
+            $phase = 'final reconciliation';
+            $this->reconcile($source, $tables, $fingerprint, $counts);
+            $this->info('Migration merge and source-to-target key reconciliation completed.');
 
-            if ($exists) {
-                continue;
-            }
+            return self::SUCCESS;
+        } catch (Throwable $exception) {
+            $safeDetail = $exception instanceof RuntimeException ? ' '.$exception->getMessage() : '';
+            $this->error("Migration stopped during {$phase} with ".$exception::class.'.'.$safeDetail.' Database exception details and values are suppressed. Review the source/target schema, then retry.');
 
-            $target->table('role_has_permissions')->insert([
-                'role_id' => $roleId,
-                'permission_id' => $permissionId,
-            ]);
+            return self::FAILURE;
         }
     }
 
-    private function migrateUsers(PDO $source, $target): array
+    private function preflight(PDO $source, string $fingerprint): array
     {
-        $map = [];
-
-        foreach ($this->all($source, 'SELECT * FROM users ORDER BY id') as $row) {
-            $existing = $target->table('users')->where('email', $row['email'])->first();
-
-            if ($existing) {
-                $map[(int) $row['id']] = (int) $existing->id;
-
-                continue;
-            }
-
-            $id = $target->table('users')->insertGetId([
-                'name' => $row['name'],
-                'email' => $row['email'],
-                'email_verified_at' => $this->nullable($row['email_verified_at']),
-                'password' => $row['password'],
-                'remember_token' => $this->nullable($row['remember_token']),
-                'phone' => $this->nullable($row['phone'] ?? null),
-                'address' => $this->nullable($row['address'] ?? null),
-                'avatar_path' => $this->nullable($row['avatar_path'] ?? null),
-                'is_active' => (bool) ($row['is_active'] ?? true),
-                'last_login_at' => $this->nullable($row['last_login_at'] ?? null),
-                'mfa_enabled' => (bool) ($row['mfa_enabled'] ?? false),
-                'mfa_secret' => $this->nullable($row['mfa_secret'] ?? null),
-                'mfa_type' => $row['mfa_type'] ?? 'email',
-                'mfa_verified_at' => $this->nullable($row['mfa_verified_at'] ?? null),
-                'mfa_recovery_codes' => $this->jsonColumn($row['mfa_recovery_codes'] ?? null),
-                'lock_version' => (int) ($row['lock_version'] ?? 1),
-                'created_at' => $this->nullable($row['created_at']) ?? now(),
-                'updated_at' => $this->nullable($row['updated_at']) ?? now(),
-            ]);
-
-            $map[(int) $row['id']] = (int) $id;
+        $foreignKeyErrors = $source->query('PRAGMA foreign_key_check')->fetchAll();
+        if ($foreignKeyErrors !== []) {
+            throw new RuntimeException('SQLite source contains foreign-key orphans; repair or explicitly resolve them before migration.');
+        }
+        $sourceTables = array_column($source->query("SELECT name FROM sqlite_master WHERE type = 'table'")->fetchAll(), 'name');
+        $missingSourceTables = array_diff(self::REQUIRED_TABLES, $sourceTables);
+        if ($missingSourceTables !== []) {
+            throw new RuntimeException('SQLite source is missing required business tables: '.implode(', ', $missingSourceTables));
+        }
+        $tables = array_values(array_filter(self::TABLE_ORDER, fn ($table) => in_array($table, $sourceTables, true)));
+        if ($tables === []) {
+            throw new RuntimeException('No supported application tables were found in the SQLite source.');
         }
 
-        return $map;
-    }
-
-    private function migrateModelRoles(PDO $source, $target, array $userIdMap, array $roleIdMap): void
-    {
-        foreach ($this->all($source, 'SELECT * FROM model_has_roles') as $row) {
-            $roleId = $roleIdMap[(int) $row['role_id']] ?? null;
-            $modelId = $userIdMap[(int) $row['model_id']] ?? null;
-
-            if (! $roleId || ! $modelId) {
-                continue;
+        foreach (['data_migration_mappings', ...$tables] as $table) {
+            if (! Schema::connection('pgsql')->hasTable($table)) {
+                throw new RuntimeException("PostgreSQL table {$table} is missing. Apply the reviewed Laravel migrations first.");
             }
-
-            $exists = $target->table('model_has_roles')
-                ->where('role_id', $roleId)
-                ->where('model_id', $modelId)
-                ->exists();
-
-            if ($exists) {
-                continue;
-            }
-
-            $target->table('model_has_roles')->insert([
-                'role_id' => $roleId,
-                'model_type' => User::class,
-                'model_id' => $modelId,
-            ]);
-        }
-    }
-
-    private function migrateInventories(PDO $source, $target): array
-    {
-        $map = [];
-
-        foreach ($this->all($source, 'SELECT * FROM inventories ORDER BY id') as $row) {
-            $existing = $target->table('inventories')->where('item_code', $row['item_code'])->first();
-
-            if ($existing) {
-                $map[(int) $row['id']] = (int) $existing->id;
-
-                continue;
-            }
-
-            $id = $target->table('inventories')->insertGetId([
-                'item_code' => $row['item_code'],
-                'qr_token' => $this->inventoryQrToken($row['qr_token'] ?? null, $target),
-                'name' => $row['name'],
-                'brand' => $this->nullable($row['brand'] ?? null),
-                'description' => $this->nullable($row['description']),
-                'category_id' => (int) $row['category_id'],
-                'quantity' => (int) $row['quantity'],
-                'unit' => $row['unit'] ?? 'pcs',
-                'unit_cost' => $this->nullable($row['unit_cost']),
-                'status' => $row['status'] ?? 'available',
-                'condition' => $row['condition'] ?? 'good',
-                'location' => $this->nullable($row['location'] ?? null),
-                'low_stock_threshold' => (int) ($row['low_stock_threshold'] ?? 5),
-                'date_added' => $this->toDate($row['date_added']),
-                'is_active' => (bool) ($row['is_active'] ?? true),
-                'lock_version' => (int) ($row['lock_version'] ?? 1),
-                'created_at' => $this->nullable($row['created_at']) ?? now(),
-                'updated_at' => $this->nullable($row['updated_at']) ?? now(),
-                'deleted_at' => $this->nullable($row['deleted_at'] ?? null),
-            ]);
-
-            $map[(int) $row['id']] = (int) $id;
         }
 
-        return $map;
-    }
-
-    private function inventoryQrToken(mixed $sourceToken, $target): string
-    {
-        if (is_string($sourceToken)
-            && preg_match('/\\AQR-[A-Z0-9]{32}\\z/', $sourceToken) === 1
-            && ! $target->table('inventories')->where('qr_token', $sourceToken)->exists()) {
-            return $sourceToken;
+        foreach ($tables as $table) {
+            $sourceColumns = $this->sourceColumns($source, $table);
+            $targetColumns = Schema::connection('pgsql')->getColumnListing($table);
+            $missing = array_diff($sourceColumns, $targetColumns);
+            $missing = array_merge($missing, array_diff(self::NATURAL_KEYS[$table] ?? [], $sourceColumns));
+            if ($missing !== []) {
+                throw new RuntimeException("Schema mismatch for {$table}; target is missing source columns: ".implode(', ', $missing));
+            }
+            if ($this->primaryKey($source, $table) === []) {
+                throw new RuntimeException("Source table {$table} has no primary key and cannot be safely reconciled.");
+            }
         }
 
-        do {
-            $token = 'QR-'.Str::upper(Str::random(32));
-        } while ($target->table('inventories')->where('qr_token', $token)->exists());
+        $this->targetFingerprintCheck($fingerprint);
 
-        return $token;
+        return $tables;
     }
 
-    private function migrateBorrowRequests(PDO $source, $target, array $userIdMap): array
+    private function targetFingerprintCheck(string $fingerprint): void
     {
-        $map = [];
+        // Validate access and schema without emitting connection details.
+        DB::connection('pgsql')->select('select 1');
+        DB::connection('pgsql')->table('data_migration_mappings')->where('source_fingerprint', $fingerprint)->count();
+    }
 
-        foreach ($this->all($source, 'SELECT * FROM borrow_requests ORDER BY id') as $row) {
-            $existing = $target->table('borrow_requests')->where('request_number', $row['request_number'])->first();
+    private function showPlan(PDO $source, array $tables): void
+    {
+        $rows = [];
+        foreach ($tables as $table) {
+            $sourceCount = (int) $source->query('SELECT COUNT(*) FROM "'.$table.'"')->fetchColumn();
+            $rows[] = [$table, $sourceCount];
+        }
+        $this->table(['Table', 'Source rows'], $rows);
+    }
 
-            if ($existing) {
-                $map[(int) $row['id']] = (int) $existing->id;
+    private function migrateTable(PDO $source, string $table, string $fingerprint): int
+    {
+        $connection = DB::connection('pgsql');
+        $primaryKey = $this->primaryKey($source, $table);
+        $naturalKey = self::NATURAL_KEYS[$table] ?? [];
+        $rows = $source->query('SELECT * FROM "'.$table.'"')->fetchAll();
+        $mapped = 0;
 
-                continue;
-            }
+        foreach ($rows as $sourceRow) {
+            $connection->transaction(function () use ($connection, $sourceRow, $table, $fingerprint, $primaryKey, $naturalKey, &$mapped) {
+                $sourceKey = $this->keyJson($sourceRow, $primaryKey);
+                $existingMap = $connection->table('data_migration_mappings')
+                    ->where('source_fingerprint', $fingerprint)->where('source_table', $table)->where('source_key', $sourceKey)->first();
+                if ($existingMap) {
+                    $targetKey = json_decode($existingMap->target_key, true, flags: JSON_THROW_ON_ERROR);
+                    if (! $connection->table($table)->where($targetKey)->exists()) {
+                        throw new RuntimeException("Stored target mapping for {$table} no longer points to an existing row.");
+                    }
+                    $mapped++;
 
-            $id = $target->table('borrow_requests')->insertGetId([
-                'request_number' => $row['request_number'],
-                'employee_id' => $userIdMap[(int) $row['employee_id']] ?? null,
-                'approved_by' => $row['approved_by'] ? ($userIdMap[(int) $row['approved_by']] ?? null) : null,
-                'status' => $row['status'],
-                'reason' => $row['reason'],
-                'borrow_date' => $this->toDate($row['borrow_date']),
-                'due_date' => $this->toDate($row['due_date']),
-                'return_date' => $this->toDate($row['return_date'] ?? null),
-                'return_location' => $this->nullable($row['return_location'] ?? null),
-                'admin_remarks' => $this->nullable($row['admin_remarks'] ?? null),
-                'approved_at' => $this->nullable($row['approved_at']),
-                'rejected_at' => $this->nullable($row['rejected_at']),
-                'borrowed_at' => $this->nullable($row['borrowed_at']),
-                'returned_at' => $this->nullable($row['returned_at']),
-                'lock_version' => (int) ($row['lock_version'] ?? 1),
-                'created_at' => $this->nullable($row['created_at']) ?? now(),
-                'updated_at' => $this->nullable($row['updated_at']) ?? now(),
-                'deleted_at' => $this->nullable($row['deleted_at'] ?? null),
-            ]);
+                    return;
+                }
 
-            $map[(int) $row['id']] = (int) $id;
-            $this->newRequestIds[(int) $row['id']] = true;
+                $row = $this->mapForeignKeys($sourceRow, $table, $fingerprint);
+                $row = $this->mapPolymorphicKeys($row, $table, $fingerprint);
+                if ($table === 'mobile_return_idempotency') {
+                    $payload = json_decode($row['response_payload'], true, flags: JSON_THROW_ON_ERROR);
+                    $row['response_payload'] = json_encode($this->mapReturnResponseIds($payload, $fingerprint), JSON_THROW_ON_ERROR);
+                }
+                $existing = null;
+                if ($naturalKey !== [] && ! in_array(null, array_intersect_key($row, array_flip($naturalKey)), true)) {
+                    $query = $connection->table($table);
+                    foreach ($naturalKey as $column) {
+                        $query->where($column, $row[$column]);
+                    }
+                    $existing = $query->first();
+                }
+
+                if ($existing) {
+                    $targetKey = array_combine($primaryKey, array_map(fn ($key) => $existing->{$key}, $primaryKey));
+                } else {
+                    $targetKey = $this->insertRow($table, $row, $primaryKey, $sourceRow, $naturalKey !== []);
+                }
+
+                $connection->table('data_migration_mappings')->insert([
+                    'source_fingerprint' => $fingerprint, 'source_table' => $table,
+                    'source_key' => $sourceKey, 'target_key' => $this->keyJson($targetKey, $primaryKey),
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+                $mapped++;
+            });
         }
 
-        return $map;
-    }
-
-    private function migrateBorrowItems(PDO $source, $target, array $requestIdMap, array $inventoryIdMap): void
-    {
-        foreach ($this->all($source, 'SELECT * FROM borrow_items ORDER BY id') as $row) {
-            $sourceRequestId = (int) $row['borrow_request_id'];
-
-            // Only insert items for requests we just created; existing requests
-            // already have their items from a previous run.
-            if (! isset($this->newRequestIds[$sourceRequestId])) {
-                continue;
-            }
-
-            $requestId = $requestIdMap[$sourceRequestId] ?? null;
-            $inventoryId = $inventoryIdMap[(int) $row['inventory_id']] ?? null;
-
-            if (! $requestId || ! $inventoryId) {
-                continue;
-            }
-
-            $isReturned = (bool) ($row['is_returned'] ?? false);
-            $status = $target->table('borrow_requests')->where('id', $requestId)->value('status') ?? 'pending';
-            $reservedQuantity = (! $isReturned && in_array($status, ['approved', 'borrowed'], true))
-                ? (int) $row['quantity']
-                : 0;
-
-            $target->table('borrow_items')->insert([
-                'borrow_request_id' => $requestId,
-                'inventory_id' => $inventoryId,
-                'quantity' => (int) $row['quantity'],
-                'reserved_quantity' => $reservedQuantity,
-                'condition_borrowed' => $row['condition_borrowed'] ?? 'good',
-                'condition_returned' => $this->nullable($row['condition_returned'] ?? null),
-                'is_returned' => $isReturned,
-                'returned_at' => $this->nullable($row['returned_at'] ?? null),
-                'damage_notes' => $this->nullable($row['damage_notes'] ?? null),
-                'created_at' => $this->nullable($row['created_at']) ?? now(),
-                'updated_at' => $this->nullable($row['updated_at']) ?? now(),
-            ]);
+        $this->info("{$table}: {$mapped}/".count($rows).' source rows mapped.');
+        if (in_array('id', $primaryKey, true)) {
+            $sequence = $table.'_id_seq';
+            DB::connection('pgsql')->statement("SELECT setval(pg_get_serial_sequence('public.{$table}', 'id'), GREATEST(COALESCE((SELECT last_value FROM pg_sequences WHERE schemaname = 'public' AND sequencename = '{$sequence}'), 1), COALESCE((SELECT MAX(id) FROM public.{$table}), 1)), true)");
         }
+
+        return $mapped;
     }
 
-    private function all(PDO $source, string $sql): array
+    private function insertRow(string $table, array $row, array $primaryKey, array $sourceRow, bool $hasNaturalKey): array
     {
-        return $source->query($sql)->fetchAll();
+        $connection = DB::connection('pgsql');
+        $key = [];
+        foreach ($primaryKey as $column) {
+            $key[$column] = $row[$column] ?? $sourceRow[$column];
+        }
+
+        $existing = $connection->table($table)->where($key)->first();
+        if ($existing) {
+            if ($hasNaturalKey && count($primaryKey) === 1 && $primaryKey[0] === 'id') {
+                unset($row['id']);
+                $id = $connection->table($table)->insertGetId($row);
+
+                return ['id' => $id];
+            }
+            throw new RuntimeException("Primary-key conflict in {$table}; no matching natural key exists to prove whether this is a duplicate.");
+        }
+
+        $connection->table($table)->insert($row);
+
+        return $key;
     }
 
-    private function countRows(PDO $source, string $table): int
+    private function mapForeignKeys(array $row, string $table, string $fingerprint): array
     {
-        return (int) $source->query("SELECT COUNT(*) FROM {$table}")->fetchColumn();
+        foreach (self::FOREIGN_KEYS[$table] ?? [] as $column => $parentTable) {
+            if (! array_key_exists($column, $row) || $row[$column] === null) {
+                continue;
+            }
+            $mapped = DB::connection('pgsql')->table('data_migration_mappings')
+                ->where('source_fingerprint', $fingerprint)->where('source_table', $parentTable)
+                ->where('source_key', $this->keyJson(['id' => $row[$column]], ['id']))->value('target_key');
+
+            if ($mapped !== null) {
+                $row[$column] = json_decode($mapped, true, flags: JSON_THROW_ON_ERROR)['id'];
+            } elseif (! DB::connection('pgsql')->table($parentTable)->where('id', $row[$column])->exists()) {
+                throw new RuntimeException("Unmapped foreign key {$table}.{$column} references {$parentTable} id {$row[$column]}.");
+            }
+        }
+
+        return $row;
     }
 
-    private function nullable(mixed $value): mixed
+    private function mapPolymorphicKeys(array $row, string $table, string $fingerprint): array
     {
-        if ($value === null || $value === '') {
+        $morphs = match ($table) {
+            'model_has_roles', 'model_has_permissions' => [['model_type', 'model_id']],
+            'personal_access_tokens' => [['tokenable_type', 'tokenable_id']],
+            'activity_log' => [['causer_type', 'causer_id'], ['subject_type', 'subject_id']],
+            'audit_logs' => [['auditable_type', 'auditable_id']],
+            default => [],
+        };
+
+        $modelTables = [
+            User::class => 'users',
+            Booking::class => 'bookings',
+            Inventory::class => 'inventories',
+            InventoryCategory::class => 'inventory_categories',
+            BorrowRequest::class => 'borrow_requests',
+            BorrowItem::class => 'borrow_items',
+            BorrowReturnEvidence::class => 'borrow_return_evidences',
+            Report::class => 'reports',
+        ];
+
+        foreach ($morphs as [$typeColumn, $idColumn]) {
+            $parentTable = $modelTables[$row[$typeColumn] ?? ''] ?? null;
+            if ($parentTable === null || empty($row[$idColumn])) {
+                continue;
+            }
+            $mapped = DB::connection('pgsql')->table('data_migration_mappings')
+                ->where('source_fingerprint', $fingerprint)->where('source_table', $parentTable)
+                ->where('source_key', $this->keyJson(['id' => $row[$idColumn]], ['id']))->value('target_key');
+            if ($mapped !== null) {
+                $row[$idColumn] = json_decode($mapped, true, flags: JSON_THROW_ON_ERROR)['id'];
+            } elseif (! DB::connection('pgsql')->table($parentTable)->where('id', $row[$idColumn])->exists()) {
+                // Keep historical morphs whose subject was force-deleted in the source.
+                continue;
+            }
+        }
+
+        return $row;
+    }
+
+    private function mapReturnResponseIds(array $payload, string $fingerprint): array
+    {
+        if (! isset($payload['request']) || ! is_array($payload['request'])) {
+            return $payload;
+        }
+
+        $payload['request']['id'] = $this->mappedId('borrow_requests', $payload['request']['id'] ?? null, $fingerprint);
+        foreach ($payload['request']['items'] ?? [] as $index => $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $item['id'] = $this->mappedId('borrow_items', $item['id'] ?? null, $fingerprint);
+            $item['inventory_id'] = $this->mappedId('inventories', $item['inventory_id'] ?? null, $fingerprint);
+            $payload['request']['items'][$index] = $item;
+        }
+
+        return $payload;
+    }
+
+    private function mappedId(string $table, mixed $sourceId, string $fingerprint): mixed
+    {
+        if ($sourceId === null) {
             return null;
         }
+        $targetKey = DB::connection('pgsql')->table('data_migration_mappings')
+            ->where('source_fingerprint', $fingerprint)->where('source_table', $table)
+            ->where('source_key', $this->keyJson(['id' => $sourceId], ['id']))->value('target_key');
 
-        return $value;
+        return $targetKey === null ? $sourceId : json_decode($targetKey, true, flags: JSON_THROW_ON_ERROR)['id'];
     }
 
-    private function toDate(mixed $value): ?string
+    private function reconcile(PDO $source, array $tables, string $fingerprint, array $counts): void
     {
-        if ($value === null || $value === '') {
-            return null;
+        $rows = [];
+        foreach ($tables as $table) {
+            $sourceCount = (int) $source->query('SELECT COUNT(*) FROM "'.$table.'"')->fetchColumn();
+            $mapCount = DB::connection('pgsql')->table('data_migration_mappings')
+                ->where('source_fingerprint', $fingerprint)->where('source_table', $table)->count();
+            $targetFound = 0;
+            foreach (DB::connection('pgsql')->table('data_migration_mappings')
+                ->where('source_fingerprint', $fingerprint)->where('source_table', $table)->get(['target_key']) as $mapping) {
+                $targetKey = json_decode($mapping->target_key, true, flags: JSON_THROW_ON_ERROR);
+                $targetFound += DB::connection('pgsql')->table($table)->where($targetKey)->exists() ? 1 : 0;
+            }
+            if ($sourceCount !== $mapCount || $sourceCount !== $targetFound || $sourceCount !== ($counts[$table] ?? $sourceCount)) {
+                throw new RuntimeException("Final reconciliation failed for {$table}: source={$sourceCount}, mappings={$mapCount}.");
+            }
+            $rows[] = [$table, $sourceCount, $mapCount, $targetFound, 'OK'];
         }
-
-        $timestamp = strtotime((string) $value);
-
-        return $timestamp !== false ? date('Y-m-d', $timestamp) : substr((string) $value, 0, 10);
+        $this->table(['Table', 'Source', 'Mapped', 'Target rows found', 'Reconciled'], $rows);
     }
 
-    private function jsonColumn(mixed $value): ?string
+    private function sourceColumns(PDO $source, string $table): array
     {
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        if (is_string($value)) {
-            $decoded = json_decode($value, true);
-
-            return $decoded !== null ? json_encode($decoded) : json_encode([$value]);
-        }
-
-        return json_encode($value);
+        return array_column($source->query('PRAGMA table_info("'.$table.'")')->fetchAll(), 'name');
     }
 
-    private array $newRequestIds = [];
+    private function primaryKey(PDO $source, string $table): array
+    {
+        $columns = $source->query('PRAGMA table_info("'.$table.'")')->fetchAll();
+        usort($columns, fn ($a, $b) => $a['pk'] <=> $b['pk']);
+
+        return array_values(array_map(fn ($column) => $column['name'], array_filter($columns, fn ($column) => (int) $column['pk'] > 0)));
+    }
+
+    private function keyJson(array $row, array $columns): string
+    {
+        $key = [];
+        foreach ($columns as $column) {
+            $key[$column] = $row[$column] ?? null;
+        }
+
+        return json_encode($key, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+    }
 }

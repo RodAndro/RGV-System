@@ -1,201 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Borrow Request Details - RGV Multi-Tech Services</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    @vite(['resources/css/app.css'])
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1e40af;
-        }
-        .sidebar-link-mantis {
-            display: flex;
-            align-items: center;
-            padding: 12px 16px;
-            border-radius: 12px;
-            color: #64748b;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        .sidebar-link-mantis:hover {
-            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-            color: #2563eb;
-            transform: translateX(4px);
-        }
-        .sidebar-link-active-mantis {
-            display: flex;
-            align-items: justify-between;
-            padding: 12px 16px;
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            color: white;
-            border-radius: 12px;
-            font-weight: 600;
-            box-shadow: 0 4px 15px rgba(116, 195, 101, 0.3);
-        }
-        .dropdown-menu {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out;
-            padding-left: 48px;
-        }
-        .dropdown-menu.open {
-            max-height: 500px;
-            transition: max-height 0.3s ease-in;
-        }
-        .dropdown-item {
-            padding: 10px 16px;
-            color: #64748b;
-            font-weight: 500;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-            display: block;
-        }
-        .dropdown-item:hover {
-            background: #eff6ff;
-            color: #2563eb;
-        }
-        .chevron-icon {
-            transition: transform 0.3s ease;
-        }
-        .chevron-icon.rotate {
-            transform: rotate(180deg);
-        }
-        .nav-section {
-            margin-bottom: 8px;
-        }
-        .nav-section-title {
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #94a3b8;
-            padding: 8px 16px;
-            margin-top: 16px;
-        }
-        .card-mantis {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            border: 1px solid #e5e7eb;
-            transition: all 0.3s ease;
-        }
-        .card-mantis:hover {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        .btn-mantis {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            color: white;
-            padding: 10px 24px;
-            border-radius: 10px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(116, 195, 101, 0.3);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: none;
-            cursor: pointer;
-        }
-        .btn-mantis:hover {
-            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(116, 195, 101, 0.4);
-        }
-        .badge-mantis-warning {
-            display: inline-block;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            color: #d97706;
-        }
-        .badge-mantis-success {
-            display: inline-block;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-            color: #2563eb;
-        }
-        .badge-mantis-danger {
-            display: inline-block;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            color: #dc2626;
-        }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <div class="flex min-h-screen">
-        <!-- Sidebar -->
-        <aside class="w-72 bg-white border-r border-gray-200 fixed h-full shadow-xl z-50 flex flex-col">
-            <div class="p-6">
-                <div class="flex items-center mb-8">
-                    <div class="w-10 h-10 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-xl flex items-center justify-center shadow-lg shadow-[#2563eb]/30">
-                        <i class="fas fa-cogs text-white text-lg"></i>
-                    </div>
-                    <span class="font-bold text-lg text-gray-800 ml-3">RGV Employee</span>
-                </div>
-                <nav>
-                    <!-- Main Navigation -->
-                    <a href="{{ route('employee.dashboard') }}" class="sidebar-link-mantis">
-                        <i class="fas fa-tachometer-alt mr-3 w-5"></i>Dashboard
-                    </a>
+@extends('layouts.employee')
 
-                    <div class="nav-section-title">Borrow Management</div>
-                    
-                    <div class="nav-section">
-                        <div class="sidebar-link-mantis" onclick="toggleDropdown('borrow-dropdown')">
-                            <div class="flex items-center justify-between w-full">
-                                <span class="flex items-center">
-                                    <i class="fas fa-hand-holding mr-3 w-5"></i>Borrow Requests
-                                </span>
-                                <i class="fas fa-chevron-down chevron-icon text-xs" id="borrow-chevron"></i>
-                            </div>
-                        </div>
-                        <div class="dropdown-menu" id="borrow-dropdown">
-                            <a href="{{ route('employee.borrow-requests.index') }}" class="dropdown-item">My Requests</a>
-                            <a href="{{ route('employee.borrow-requests.create') }}" class="dropdown-item">New Request</a>
-                        </div>
-                    </div>
-                </nav>
-            </div>
-            <div class="mt-auto p-6 border-t border-gray-100">
-                <form action="{{ route('logout') }}" method="POST">
-                    @csrf
-                    <button type="submit" class="flex items-center px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl transition-all duration-300 w-full text-left font-medium">
-                        <i class="fas fa-sign-out-alt mr-3 w-5"></i>Logout
-                    </button>
-                </form>
-            </div>
-        </aside>
+@section('title', 'Borrow Request Details - RGV Multi-Tech Services')
 
-        <!-- Main Content -->
-        <main class="flex-1 ml-72">
-            <!-- Top Navigation -->
-            <header class="bg-white/80 backdrop-blur-xl border-b border-gray-200 sticky top-0 z-40">
-                <div class="flex justify-between items-center px-8 py-5">
-                    <div class="flex items-center space-x-4">
-                        <a href="{{ route('employee.borrow-requests.index') }}" class="text-gray-600 hover:text-[#2563eb] transition-colors flex items-center">
-                            <i class="fas fa-arrow-left mr-2"></i>Back to Requests
-                        </a>
-                        <h1 class="text-2xl font-bold text-gray-800">Borrow Request Details</h1>
-                    </div>
-                </div>
-            </header>
+@section('header', 'Borrow Request Details')
 
-            <!-- Content -->
-            <div class="p-8">
+@section('content')
+<div class="p-8">
+    <div class="mb-6">
+        <a href="{{ route('employee.borrow-requests.index') }}" class="inline-flex items-center text-gray-600 hover:text-[#2563eb] transition-colors">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Requests
+        </a>
+    </div>
                 @if(session('success'))
                     <div class="bg-gradient-to-r from-[#eff6ff] to-[#dbeafe] border border-[#2563eb] text-[#1e40af] px-4 py-3 rounded-xl mb-6">
                         {{ session('success') }}
@@ -409,9 +224,6 @@
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
-
     <!-- Return Modal -->
     <div id="returnModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 backdrop-blur-sm" onclick="if(event.target === this) hideReturnModal()">
         <div class="card-mantis p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
@@ -478,6 +290,7 @@
         </div>
     </div>
 
+    @push('scripts')
     <script>
         function showReturnModal() {
             document.getElementById('returnModal').classList.remove('hidden');
@@ -488,25 +301,6 @@
             document.getElementById('returnModal').classList.add('hidden');
             document.getElementById('returnModal').classList.remove('flex');
         }
-
-        function toggleDropdown(dropdownId) {
-            const dropdown = document.getElementById(dropdownId);
-            const chevron = document.getElementById(dropdownId.replace('-dropdown', '-chevron'));
-            
-            dropdown.classList.toggle('open');
-            chevron.classList.toggle('rotate');
-        }
-
-        // Keep dropdowns open based on current page
-        document.addEventListener('DOMContentLoaded', function() {
-            const currentPath = window.location.pathname;
-            
-            // Open relevant dropdown based on current route
-            if (currentPath.includes('borrow-requests')) {
-                document.getElementById('borrow-dropdown').classList.add('open');
-                document.getElementById('borrow-chevron').classList.add('rotate');
-            }
-        });
     </script>
-</body>
-</html>
+    @endpush
+@endsection

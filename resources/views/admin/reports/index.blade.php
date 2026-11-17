@@ -62,10 +62,10 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="card-mantis p-6">
+                <div class="card-mantis p-4">
                     <a href="{{ route('admin.reports.bookings') }}" class="block hover:opacity-80 transition-opacity">
                         <div class="flex items-center">
-                            <div class="bg-[#eff6ff] p-4 rounded-xl">
+                            <div class="bg-[#eff6ff] p-3 rounded-xl">
                                 <i class="fas fa-calendar-alt text-[#2563eb] text-2xl"></i>
                             </div>
                             <div class="ml-4">
@@ -74,7 +74,7 @@
                             </div>
                         </div>
                     </a>
-                    <div class="flex flex-wrap gap-1.5 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <div class="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                         <a href="{{ route('admin.reports.bookings', ['status' => 'pending']) }}" class="px-2.5 py-1 bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400 rounded-lg text-xs font-medium hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors">Pending</a>
                         <a href="{{ route('admin.reports.bookings', ['status' => 'approved']) }}" class="px-2.5 py-1 bg-green-50 text-green-700 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-green-100 dark:hover:bg-blue-900/40 transition-colors">Approved</a>
                         <a href="{{ route('admin.reports.bookings', ['status' => 'completed']) }}" class="px-2.5 py-1 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">Completed</a>
@@ -82,10 +82,10 @@
                     </div>
                 </div>
 
-                <div class="card-mantis p-6">
+                <div class="card-mantis p-4">
                     <a href="{{ route('admin.reports.inventory') }}" class="block hover:opacity-80 transition-opacity">
                         <div class="flex items-center">
-                            <div class="bg-[#eff6ff] p-4 rounded-xl">
+                            <div class="bg-[#eff6ff] p-3 rounded-xl">
                                 <i class="fas fa-boxes text-[#2563eb] text-2xl"></i>
                             </div>
                             <div class="ml-4">
@@ -94,7 +94,7 @@
                             </div>
                         </div>
                     </a>
-                    <div class="flex flex-wrap gap-1.5 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <div class="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                         <a href="{{ route('admin.reports.inventory', ['status' => 'available']) }}" class="px-2.5 py-1 bg-green-50 text-green-700 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-green-100 dark:hover:bg-blue-900/40 transition-colors">Available</a>
                         <a href="{{ route('admin.reports.inventory', ['status' => 'borrowed']) }}" class="px-2.5 py-1 bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400 rounded-lg text-xs font-medium hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors">Borrowed</a>
                         <a href="{{ route('admin.reports.inventory', ['status' => 'maintenance']) }}" class="px-2.5 py-1 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">Maintenance</a>
@@ -102,10 +102,10 @@
                     </div>
                 </div>
 
-                <div class="card-mantis p-6">
+                <div class="card-mantis p-4">
                     <a href="{{ route('admin.reports.borrow-requests') }}" class="block hover:opacity-80 transition-opacity">
                         <div class="flex items-center">
-                            <div class="bg-[#eff6ff] p-4 rounded-xl">
+                            <div class="bg-[#eff6ff] p-3 rounded-xl">
                                 <i class="fas fa-hand-holding text-[#2563eb] text-2xl"></i>
                             </div>
                             <div class="ml-4">
@@ -114,7 +114,7 @@
                             </div>
                         </div>
                     </a>
-                    <div class="flex flex-wrap gap-1.5 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <div class="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                         <a href="{{ route('admin.reports.borrow-requests', ['status' => 'pending']) }}" class="px-2.5 py-1 bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400 rounded-lg text-xs font-medium hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors">Pending</a>
                         <a href="{{ route('admin.reports.borrow-requests', ['status' => 'approved']) }}" class="px-2.5 py-1 bg-green-50 text-green-700 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-green-100 dark:hover:bg-blue-900/40 transition-colors">Approved</a>
                         <a href="{{ route('admin.reports.borrow-requests', ['status' => 'borrowed']) }}" class="px-2.5 py-1 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">Borrowed</a>

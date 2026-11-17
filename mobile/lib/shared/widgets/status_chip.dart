@@ -6,19 +6,47 @@ import '../../core/theme/app_theme.dart';
 ({String label, Color color, Color background}) _styleFor(String status) {
   switch (status.toLowerCase()) {
     case 'pending':
-      return (label: 'Pending', color: const Color(0xFFD97706), background: const Color(0xFFFEF3C7));
+      return (
+        label: 'Pending',
+        color: RgvColors.amber,
+        background: RgvColors.warningBackground,
+      );
     case 'approved':
-      return (label: 'Approved', color: const Color(0xFF2563EB), background: const Color(0xFFEFF6FF));
+      return (
+        label: 'Approved',
+        color: RgvColors.blue,
+        background: RgvColors.infoBackground,
+      );
     case 'rejected':
-      return (label: 'Rejected', color: const Color(0xFFDC2626), background: const Color(0xFFFEE2E2));
+      return (
+        label: 'Rejected',
+        color: RgvColors.danger,
+        background: RgvColors.dangerBackground,
+      );
     case 'borrowed':
-      return (label: 'Borrowed', color: const Color(0xFFD97706), background: const Color(0xFFFEF3C7));
+      return (
+        label: 'Borrowed',
+        color: RgvColors.amber,
+        background: RgvColors.warningBackground,
+      );
     case 'returned':
-      return (label: 'Returned', color: const Color(0xFF2563EB), background: const Color(0xFFEFF6FF));
+      return (
+        label: 'Returned',
+        color: RgvColors.blue,
+        background: RgvColors.infoBackground,
+      );
     case 'cancelled':
-      return (label: 'Cancelled', color: const Color(0xFFDC2626), background: const Color(0xFFFEE2E2));
+      return (
+        label: 'Cancelled',
+        color: RgvColors.danger,
+        background: RgvColors.dangerBackground,
+      );
     default:
-      return (label: status, color: RgvColors.slate, background: const Color(0xFFF1F5F9));
+      return (
+        label: status,
+        color: RgvColors.slate,
+        background: const Color(0xFFF1F5F9),
+      );
   }
 }
 

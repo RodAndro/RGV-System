@@ -59,17 +59,17 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">New Password (leave blank to keep current)</label>
-                    <div class="relative"><input type="password" name="password" id="password"
-                        class="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
-                        placeholder="Enter new password"><button type="button" onclick="togglePassword('password', 'eye-icon')" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"><i id="eye-icon" class="fas fa-eye"></i></button></div>
+                    <div class="relative"><input type="password" name="password" id="password" autocomplete="new-password"
+                        class="password-field w-full px-4 pr-12 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
+                        placeholder="Enter new password"><button type="button" onclick="togglePassword('password', 'eye-icon')" aria-label="Show password" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"><i id="eye-icon" class="fas fa-eye" aria-hidden="true"></i></button></div>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Minimum 8 characters. Leave blank to keep current password.</p>
                     @error('password')<p class="text-red-500 text-sm mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Confirm New Password</label>
-                    <div class="relative"><input type="password" name="password_confirmation" id="password_confirmation"
-                        class="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
-                        placeholder="Confirm new password"><button type="button" onclick="togglePassword('password_confirmation', 'eye-icon-confirm')" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"><i id="eye-icon-confirm" class="fas fa-eye"></i></button></div>
+                    <div class="relative"><input type="password" name="password_confirmation" id="password_confirmation" autocomplete="new-password"
+                        class="password-field w-full px-4 pr-12 py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
+                        placeholder="Confirm new password"><button type="button" onclick="togglePassword('password_confirmation', 'eye-icon-confirm')" aria-label="Show password" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"><i id="eye-icon-confirm" class="fas fa-eye" aria-hidden="true"></i></button></div>
                     @error('password_confirmation')<p class="text-red-500 text-sm mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div class="md:col-span-2">
@@ -93,6 +93,18 @@
 @endsection
 
 @push('scripts')
+<style>
+    .password-field::-ms-reveal,
+    .password-field::-ms-clear {
+        display: none;
+    }
+
+    .password-field::-webkit-credentials-auto-fill-button,
+    .password-field::-webkit-contacts-auto-fill-button {
+        visibility: hidden;
+        pointer-events: none;
+    }
+</style>
 <script>
     function togglePassword(inputId, iconId) { const input = document.getElementById(inputId); const icon = document.getElementById(iconId); if (input.type === 'password') { input.type = 'text'; icon.classList.replace('fa-eye', 'fa-eye-slash'); } else { input.type = 'password'; icon.classList.replace('fa-eye-slash', 'fa-eye'); } }
 </script>

@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Mail\EntityUpdateNotification;
 use App\Models\Booking;
+use App\Services\NotificationSettings;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 
@@ -26,7 +27,7 @@ class BookingObserver
 
     private function adminEmail(): ?string
     {
-        if (env('NOTIFICATION_EMAIL_ENABLED', 'true') !== 'true') {
+        if (!NotificationSettings::emailEnabled()) {
             return null;
         }
 

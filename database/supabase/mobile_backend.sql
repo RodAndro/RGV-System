@@ -1,3 +1,6 @@
+-- Supabase Auth and restricted RPCs used directly by the native Flutter app.
+-- Apply as the Supabase database owner after the Laravel migrations.
+
 create extension if not exists pgcrypto with schema extensions;
 
 create table if not exists public.mobile_return_idempotency (
@@ -12,6 +15,28 @@ create table if not exists public.mobile_return_idempotency (
 
 alter table public.mobile_return_idempotency enable row level security;
 revoke all on public.mobile_return_idempotency from anon, authenticated;
+
+create table if not exists public.mobile_borrow_idempotency (
+    employee_id bigint not null references public.users(id) on delete cascade,
+    idempotency_key varchar(64) not null,
+    request_hash char(64) not null,
+    response_payload jsonb,
+    created_at timestamptz not null default now(),
+    primary key (employee_id, idempotency_key)
+);
+
+alter table public.mobile_borrow_idempotency enable row level security;
+revoke all on public.mobile_borrow_idempotency from anon, authenticated;
+
+create table if not exists public.mobile_recent_request_dismissals (
+    employee_id bigint not null references public.users(id) on delete cascade,
+    borrow_request_id bigint not null references public.borrow_requests(id) on delete cascade,
+    dismissed_at timestamptz not null default now(),
+    primary key (employee_id, borrow_request_id)
+);
+
+alter table public.mobile_recent_request_dismissals enable row level security;
+revoke all on public.mobile_recent_request_dismissals from anon, authenticated;
 
 create or replace function public.link_mobile_employee()
 returns trigger
@@ -362,7 +387,15 @@ begin
                 left join public.inventories as inventory on inventory.id = item.inventory_id
                 where item.borrow_request_id = recent.id
             ), '[]'::jsonb)
-        ) order by recent.created_at desc) filter (where recent.id is not null), '[]'::jsonb)
+        ) order by recent.created_at desc) filter (
+            where recent.id is not null
+              and not exists (
+                  select 1
+                  from public.mobile_recent_request_dismissals as dismissed
+                  where dismissed.employee_id = v_employee_id
+                    and dismissed.borrow_request_id = recent.id
+              )
+        ), '[]'::jsonb)
     ) into v_result
     from (
         select * from public.borrow_requests
@@ -373,8 +406,46 @@ begin
 end;
 $$;
 
+create or replace function public.mobile_dismiss_recent_request(p_request_id bigint)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_employee_id bigint;
+begin
+    v_employee_id := public.mobile_assert_access();
+    if not exists (
+        select 1
+        from public.borrow_requests as request
+        where request.id = p_request_id
+          and request.employee_id = v_employee_id
+          and request.deleted_at is null
+    ) then
+        raise exception 'Borrow request not found.' using errcode = 'P0002';
+    end if;
+
+    insert into public.mobile_recent_request_dismissals (
+        employee_id, borrow_request_id, dismissed_at
+    ) values (
+        v_employee_id, p_request_id, now()
+    )
+    on conflict (employee_id, borrow_request_id)
+    do update set dismissed_at = excluded.dismissed_at;
+
+    return jsonb_build_object('dismissed', true, 'request_id', p_request_id);
+end;
+$$;
+
+drop function if exists public.mobile_create_borrow_request(date, date, text, jsonb);
+drop function if exists public.mobile_create_borrow_request(date, date, text, jsonb, text);
 create or replace function public.mobile_create_borrow_request(
-    p_borrow_date date, p_due_date date, p_reason text, p_items jsonb
+    p_borrow_date date,
+    p_due_date date,
+    p_reason text,
+    p_items jsonb,
+    p_idempotency_key text
 )
 returns jsonb
 language plpgsql
@@ -388,8 +459,49 @@ declare
     v_inventory public.inventories%rowtype;
     v_requested_count integer;
     v_distinct_count integer;
+    v_request_hash char(64);
+    v_previous_hash char(64);
+    v_cached_response jsonb;
+    v_rows integer;
 begin
     v_employee_id := public.mobile_assert_access();
+    if p_idempotency_key is null
+       or length(trim(p_idempotency_key)) = 0
+       or length(p_idempotency_key) > 64 then
+        raise exception 'The request idempotency key is invalid.' using errcode = '22023';
+    end if;
+    v_request_hash := encode(extensions.digest(
+        convert_to(jsonb_build_object(
+            'borrow_date', p_borrow_date,
+            'due_date', p_due_date,
+            'reason', p_reason,
+            'items', p_items
+        )::text, 'UTF8'),
+        'sha256'
+    ), 'hex');
+    insert into public.mobile_borrow_idempotency (
+        employee_id, idempotency_key, request_hash
+    ) values (
+        v_employee_id, trim(p_idempotency_key), v_request_hash
+    ) on conflict (employee_id, idempotency_key) do nothing;
+    get diagnostics v_rows = row_count;
+    if v_rows = 0 then
+        select request_hash, response_payload
+        into v_previous_hash, v_cached_response
+        from public.mobile_borrow_idempotency
+        where employee_id = v_employee_id
+          and idempotency_key = trim(p_idempotency_key)
+        for update;
+        if v_previous_hash <> v_request_hash then
+            raise exception 'This idempotency key was already used for a different request.'
+                using errcode = '22023';
+        end if;
+        if v_cached_response is null then
+            raise exception 'This request is still being processed.'
+                using errcode = 'P0001';
+        end if;
+        return v_cached_response;
+    end if;
     if p_borrow_date is null or p_borrow_date < current_date then
         raise exception 'Borrow date must be today or later.' using errcode = '22023';
     end if;
@@ -459,7 +571,12 @@ begin
         where id = v_item.inventory_id;
     end loop;
 
-    return public.mobile_request_payload(v_request_id);
+    v_cached_response := public.mobile_request_payload(v_request_id);
+    update public.mobile_borrow_idempotency
+    set response_payload = v_cached_response
+    where employee_id = v_employee_id
+      and idempotency_key = trim(p_idempotency_key);
+    return v_cached_response;
 end;
 $$;
 
@@ -515,7 +632,8 @@ begin
     v_employee_id := public.mobile_assert_access();
     select coalesce(jsonb_agg(jsonb_build_object(
         'borrow_item_id', item.id, 'request_number', request.request_number,
-        'request_id', request.id, 'borrow_date', request.borrow_date, 'due_date', request.due_date,
+        'request_id', request.id, 'status', request.status,
+        'borrow_date', request.borrow_date, 'due_date', request.due_date,
         'quantity', item.quantity, 'condition_borrowed', item.condition_borrowed,
         'inventory', jsonb_build_object(
             'id', inventory.id, 'item_code', inventory.item_code, 'name', inventory.name,
@@ -528,7 +646,7 @@ begin
     join public.borrow_items as item on item.borrow_request_id = request.id
     left join public.inventories as inventory on inventory.id = item.inventory_id
     where request.employee_id = v_employee_id and request.status = 'borrowed'
-      and request.deleted_at is null and item.is_returned = false;
+      and request.deleted_at is null and coalesce(item.is_returned, false) = false;
     return v_result;
 end;
 $$;
@@ -606,7 +724,7 @@ begin
         if not found then
             raise exception 'A selected item does not belong to this request.' using errcode = '22023';
         end if;
-        if not v_borrow_item.is_returned then
+        if not coalesce(v_borrow_item.is_returned, false) then
             v_restore := case when v_borrow_item.reserved_quantity > 0
                 then v_borrow_item.reserved_quantity else v_borrow_item.quantity end;
             update public.borrow_items
@@ -622,7 +740,8 @@ begin
     update public.borrow_requests set return_location = trim(p_return_location), updated_at = now()
     where id = p_request_id;
     if not exists (
-        select 1 from public.borrow_items where borrow_request_id = p_request_id and is_returned = false
+        select 1 from public.borrow_items         where borrow_request_id = p_request_id
+          and coalesce(is_returned, false) = false
     ) then
         update public.borrow_requests
         set status = 'returned', return_date = current_date, returned_at = now(), updated_at = now()
@@ -673,6 +792,12 @@ alter table public.borrow_items enable row level security;
 alter table public.roles enable row level security;
 alter table public.model_has_roles enable row level security;
 
+drop policy if exists mobile_employee_realtime_own_borrow_requests on public.borrow_requests;
+create policy mobile_employee_realtime_own_borrow_requests
+    on public.borrow_requests
+    for select to authenticated
+    using (employee_id = public.mobile_assert_access());
+
 revoke execute on function public.link_mobile_employee() from public, anon, authenticated;
 revoke execute on function public.sync_employee_password_to_auth() from public, anon, authenticated;
 revoke execute on function public.mobile_employee_id() from public, anon, authenticated;
@@ -684,7 +809,8 @@ revoke execute on function public.mobile_inventory_lookup(text) from public, ano
 revoke execute on function public.mobile_inventory_search(text, integer) from public, anon;
 revoke execute on function public.mobile_list_borrow_requests() from public, anon;
 revoke execute on function public.mobile_dashboard() from public, anon;
-revoke execute on function public.mobile_create_borrow_request(date, date, text, jsonb) from public, anon;
+revoke execute on function public.mobile_dismiss_recent_request(bigint) from public, anon;
+revoke execute on function public.mobile_create_borrow_request(date, date, text, jsonb, text) from public, anon;
 revoke execute on function public.mobile_cancel_borrow_request(bigint) from public, anon;
 revoke execute on function public.mobile_returnable_items() from public, anon;
 revoke execute on function public.mobile_return_borrow_items(bigint, text, text, jsonb) from public, anon;
@@ -695,8 +821,29 @@ grant execute on function public.mobile_inventory_lookup(text) to authenticated;
 grant execute on function public.mobile_inventory_search(text, integer) to authenticated;
 grant execute on function public.mobile_list_borrow_requests() to authenticated;
 grant execute on function public.mobile_dashboard() to authenticated;
-grant execute on function public.mobile_create_borrow_request(date, date, text, jsonb) to authenticated;
+grant execute on function public.mobile_dismiss_recent_request(bigint) to authenticated;
+grant execute on function public.mobile_create_borrow_request(date, date, text, jsonb, text) to authenticated;
 grant execute on function public.mobile_cancel_borrow_request(bigint) to authenticated;
 grant execute on function public.mobile_returnable_items() to authenticated;
 grant execute on function public.mobile_return_borrow_items(bigint, text, text, jsonb) to authenticated;
 grant execute on function public.mobile_update_employee_name(text) to authenticated;
+
+grant execute on function public.mobile_employee_id() to authenticated;
+grant execute on function public.mobile_assert_access() to authenticated;
+grant select on public.borrow_requests to authenticated;
+
+do $$
+begin
+    if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+       and not exists (
+           select 1 from pg_publication_tables
+           where pubname = 'supabase_realtime'
+             and schemaname = 'public'
+             and tablename = 'borrow_requests'
+       ) then
+        execute 'alter publication supabase_realtime add table public.borrow_requests';
+    end if;
+end;
+$$;
+
+notify pgrst, 'reload schema';

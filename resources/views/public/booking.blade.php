@@ -32,59 +32,17 @@
             max-height: calc(100dvh - 2rem);
             overflow: hidden;
             border: 1px solid #dbe4ea;
-            border-radius: 16px;
+            border-radius: 8px;
             background: #fff;
-            box-shadow: 0 24px 70px rgba(15, 45, 65, 0.28);
+            box-shadow: 0 12px 32px rgba(15, 45, 65, 0.2);
         }
-        .booking-review-field {
-            min-width: 0;
-            padding: 12px 14px;
-            border-left: 3px solid #0f6f9d;
-            border-radius: 8px;
-            background: #f6fafc;
+
+        .booking-review-table th,
+        .booking-review-table td {
+            padding-bottom: 0.375rem;
+            padding-top: 0.375rem;
         }
-        .booking-review-field dt {
-            margin-bottom: 4px;
-            color: #64748b;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .booking-review-field dd {
-            color: #172b3a;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        .booking-review-cancel {
-            min-height: 44px;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 0 18px;
-            color: #334155;
-            font-weight: 600;
-            transition: background-color 150ms ease, border-color 150ms ease;
-        }
-        .booking-review-cancel:hover {
-            border-color: #94a3b8;
-            background: #f1f5f9;
-        }
-        .booking-review-submit {
-            min-height: 44px;
-            border: 1px solid #0a5c83;
-            border-radius: 8px;
-            background: #0f6f9d;
-            padding: 0 20px;
-            color: #fff;
-            font-weight: 600;
-            transition: background-color 150ms ease, transform 150ms ease;
-        }
-        .booking-review-submit:hover {
-            background: #0a5c83;
-        }
-        .booking-review-submit:active {
-            transform: translateY(1px);
-        }
-        .booking-review-cancel:focus-visible,
-        .booking-review-submit:focus-visible,
+
         .booking-review-close:focus-visible {
             outline: 3px solid #93c5fd;
             outline-offset: 2px;
@@ -260,33 +218,64 @@
         </div>
     </section>
 
-    <div id="booking-review-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-5" role="dialog" aria-modal="true" aria-labelledby="booking-review-title" aria-describedby="booking-review-description" onclick="if (event.target === this) closeBookingReview()">
+    <div id="booking-review-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/60 p-3 sm:p-5" role="dialog" aria-modal="true" aria-labelledby="booking-review-title" aria-describedby="booking-review-description" onclick="if (event.target === this) closeBookingReview()">
         <div class="booking-review-panel flex flex-col">
-            <div class="flex items-start gap-4 bg-[#0f6f9d] px-5 py-5 text-white sm:px-7">
-                <span class="flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-white/15 text-lg" aria-hidden="true">
-                    <i class="fas fa-clipboard-check"></i>
-                </span>
-                <div class="min-w-0 flex-1">
-                    <h2 id="booking-review-title" class="text-xl font-bold">Review Booking Request</h2>
-                    <p id="booking-review-description" class="mt-1 text-sm text-sky-100">Please verify the information before submitting.</p>
+            <div class="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4 sm:px-6">
+                <div class="min-w-0">
+                    <h2 id="booking-review-title" class="text-lg font-semibold text-gray-800">Review Booking Request</h2>
+                    <p id="booking-review-description" class="mt-1 text-sm text-gray-500">Please verify the information before submitting.</p>
                 </div>
-                <button type="button" class="booking-review-close flex h-9 w-9 flex-none items-center justify-center rounded-lg text-white/80 transition hover:bg-white/15 hover:text-white" aria-label="Close review" onclick="closeBookingReview()">
+                <button type="button" class="booking-review-close flex h-9 w-9 flex-none items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-800" aria-label="Close review" onclick="closeBookingReview()">
                     <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
-            <dl class="grid flex-1 grid-cols-1 gap-3 overflow-y-auto px-5 py-5 sm:grid-cols-2 sm:px-7">
-                <div class="booking-review-field"><dt>Full Name</dt><dd id="review-full-name" class="break-words"></dd></div>
-                <div class="booking-review-field"><dt>Email Address</dt><dd id="review-email" class="break-words"></dd></div>
-                <div class="booking-review-field"><dt>Contact Number</dt><dd id="review-contact-number" class="break-words"></dd></div>
-                <div class="booking-review-field"><dt>Purpose Category</dt><dd id="review-purpose-category" class="break-words"></dd></div>
-                <div class="booking-review-field sm:col-span-2"><dt>Address</dt><dd id="review-address" class="whitespace-pre-wrap break-words"></dd></div>
-                <div class="booking-review-field"><dt>Preferred Date</dt><dd id="review-preferred-date" class="break-words"></dd></div>
-                <div class="booking-review-field"><dt>Preferred Time</dt><dd id="review-preferred-time" class="break-words"></dd></div>
-                <div class="booking-review-field sm:col-span-2"><dt>Reason / Description</dt><dd id="review-reason" class="whitespace-pre-wrap break-words"></dd></div>
-            </dl>
+            <div class="flex-1 overflow-y-auto">
+                <table class="booking-review-table w-full table-fixed border-collapse">
+                    <thead class="bg-gradient-to-r from-[#eff6ff] to-white">
+                        <tr>
+                            <th scope="col" class="w-[36%] border-b border-r border-gray-200 px-4 py-3 text-left text-xs font-semibold text-gray-700">Request detail</th>
+                            <th scope="col" class="border-b border-gray-200 px-4 py-3 text-left text-xs font-semibold text-gray-700">Provided information</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="hover:bg-gray-50">
+                            <th scope="row" class="border-b border-r border-gray-100 px-4 py-3 text-left text-xs font-medium text-gray-600">Full Name</th>
+                            <td id="review-full-name" class="break-words border-b border-gray-100 px-4 py-3 text-sm text-gray-800"></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <th scope="row" class="border-b border-r border-gray-100 px-4 py-3 text-left text-xs font-medium text-gray-600">Email Address</th>
+                            <td id="review-email" class="break-words border-b border-gray-100 px-4 py-3 text-sm text-gray-800"></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <th scope="row" class="border-b border-r border-gray-100 px-4 py-3 text-left text-xs font-medium text-gray-600">Contact Number</th>
+                            <td id="review-contact-number" class="break-words border-b border-gray-100 px-4 py-3 text-sm text-gray-800"></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <th scope="row" class="border-b border-r border-gray-100 px-4 py-3 text-left text-xs font-medium text-gray-600">Purpose Category</th>
+                            <td id="review-purpose-category" class="break-words border-b border-gray-100 px-4 py-3 text-sm text-gray-800"></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <th scope="row" class="border-b border-r border-gray-100 px-4 py-3 text-left text-xs font-medium text-gray-600">Address</th>
+                            <td id="review-address" class="whitespace-pre-wrap break-words border-b border-gray-100 px-4 py-3 text-sm text-gray-800"></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <th scope="row" class="border-b border-r border-gray-100 px-4 py-3 text-left text-xs font-medium text-gray-600">Preferred Date</th>
+                            <td id="review-preferred-date" class="break-words border-b border-gray-100 px-4 py-3 text-sm text-gray-800"></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <th scope="row" class="border-b border-r border-gray-100 px-4 py-3 text-left text-xs font-medium text-gray-600">Preferred Time</th>
+                            <td id="review-preferred-time" class="break-words border-b border-gray-100 px-4 py-3 text-sm text-gray-800"></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <th scope="row" class="border-r border-gray-100 px-4 py-3 text-left text-xs font-medium text-gray-600">Reason / Description</th>
+                            <td id="review-reason" class="whitespace-pre-wrap break-words px-4 py-3 text-sm text-gray-800"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
             <div class="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:gap-3 sm:px-7">
-                <button id="booking-review-cancel" type="button" onclick="closeBookingReview()" class="booking-review-cancel">Cancel</button>
-                <button type="button" onclick="confirmBookingSubmission()" class="booking-review-submit">Submit Booking Request</button>
+                <button id="booking-review-cancel" type="button" onclick="closeBookingReview()" class="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500">Cancel</button>
+                <button type="button" onclick="confirmBookingSubmission()" class="rounded-lg border border-[#0a5c83] bg-[#0f6f9d] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0a5c83] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f6f9d]">Submit Booking Request</button>
             </div>
         </div>
     </div>

@@ -72,6 +72,16 @@
                 </div>
             </header>
 
+            @if(session()->has('impersonate.original_id'))
+                <div class="mx-4 md:mx-8 mt-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 px-4 py-3 rounded-xl flex items-center justify-between gap-3">
+                    <span class="text-sm"><i class="fas fa-user-secret mr-2"></i>Impersonating <strong>{{ auth()->user()->name }}</strong></span>
+                    <form action="{{ route('impersonation.stop') }}" method="POST" class="flex-shrink-0">
+                        @csrf
+                        <button type="submit" class="px-3 py-1 bg-amber-600 text-white rounded-lg text-xs hover:bg-amber-700 whitespace-nowrap">Stop</button>
+                    </form>
+                </div>
+            @endif
+
             @php
                 $diskTotal = null; $diskFree = null;
                 try {

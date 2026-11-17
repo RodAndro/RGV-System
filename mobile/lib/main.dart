@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'core/config/app_config.dart';
+import 'core/network/mobile_api_client.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/providers/auth_provider.dart';
@@ -11,11 +12,12 @@ import 'features/dashboard/data/dashboard_repository.dart';
 import 'features/inventory/data/inventory_repository.dart';
 import 'features/return/data/return_repository.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const _BootstrapApp());
 }
 
+/// Builds the dependency graph once and reports invalid Supabase configuration.
 class _BootstrapApp extends StatefulWidget {
   const _BootstrapApp();
 
@@ -24,62 +26,44 @@ class _BootstrapApp extends StatefulWidget {
 }
 
 class _BootstrapAppState extends State<_BootstrapApp> {
-  late final Future<_AppDependencies> _initialization = _initializeApp();
+  late final Future<_AppDependencies> _dependencies = _initialize();
 
-  Future<_AppDependencies> _initializeApp() async {
+  Future<_AppDependencies> _initialize() async {
     AppConfig.validate();
+
     await Supabase.initialize(
       url: AppConfig.supabaseUrl,
       publishableKey: AppConfig.supabaseAnonKey,
     ).timeout(const Duration(seconds: 20));
 
     final supabase = Supabase.instance.client;
-    final authRepository = AuthRepository(supabase);
+    final api = MobileApiClient(supabase: supabase);
+    final authRepository = AuthRepository(supabase, api);
+
     return _AppDependencies(
-      authRepository: authRepository,
       authProvider: AuthProvider(repository: authRepository),
-      dashboardRepository: DashboardRepository(supabase),
-      inventoryRepository: InventoryRepository(supabase),
-      borrowRepository: BorrowRepository(supabase),
-      returnRepository: ReturnRepository(supabase),
+      authRepository: authRepository,
+      dashboardRepository: DashboardRepository(api),
+      inventoryRepository: InventoryRepository(api),
+      borrowRepository: BorrowRepository(api),
+      returnRepository: ReturnRepository(api),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<_AppDependencies>(
-      future: _initialization,
+      future: _dependencies,
       builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return _InitializationErrorApp(error: snapshot.error!);
-        }
-        if (!snapshot.hasData) {
-          return MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: buildAppTheme(),
-            home: const Scaffold(
-              body: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Starting employee app...'),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }
-
-        final dependencies = snapshot.requireData;
-        return RgvApp(
-          authProvider: dependencies.authProvider,
-          authRepository: dependencies.authRepository,
-          dashboardRepository: dependencies.dashboardRepository,
-          inventoryRepository: dependencies.inventoryRepository,
-          borrowRepository: dependencies.borrowRepository,
-          returnRepository: dependencies.returnRepository,
+        final data = snapshot.data;
+        if (data != null) return data.buildApp();
+        if (snapshot.hasError) return _StartupError(error: snapshot.error!);
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: buildAppTheme(),
+          home: const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          ),
         );
       },
     );
@@ -102,10 +86,19 @@ class _AppDependencies {
   final InventoryRepository inventoryRepository;
   final BorrowRepository borrowRepository;
   final ReturnRepository returnRepository;
+
+  Widget buildApp() => RgvApp(
+    authProvider: authProvider,
+    authRepository: authRepository,
+    dashboardRepository: dashboardRepository,
+    inventoryRepository: inventoryRepository,
+    borrowRepository: borrowRepository,
+    returnRepository: returnRepository,
+  );
 }
 
-class _InitializationErrorApp extends StatelessWidget {
-  const _InitializationErrorApp({required this.error});
+class _StartupError extends StatelessWidget {
+  const _StartupError({required this.error});
 
   final Object error;
 

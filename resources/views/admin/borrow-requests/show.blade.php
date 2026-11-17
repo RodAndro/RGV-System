@@ -6,11 +6,9 @@
 
 @section('content')
 <div class="p-8">
-    <div class="mb-6">
-        <a href="{{ route('admin.borrow-requests.index') }}" class="text-gray-600 hover:text-[#2563eb] transition-colors flex items-center">
-            <i class="fas fa-arrow-left mr-2"></i>Back to Borrow Requests
-        </a>
-    </div>
+    <a href="{{ route('admin.borrow-requests.index') }}" class="inline-flex items-center text-gray-600 hover:text-[#2563eb] transition-colors text-sm mb-3">
+        <i class="fas fa-arrow-left mr-1"></i>Back to Borrow Requests
+    </a>
 
     <div class="card-mantis p-6 mb-6">
         <div class="flex justify-between items-start mb-6">
@@ -58,19 +56,9 @@
                     @csrf
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Return Location</label>
-                        @if($locations->isNotEmpty())
-                            <select name="return_location" required
-                            class="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100">
-                                <option value="" disabled selected>Select a return location</option>
-                                @foreach($locations as $location)
-                                    <option value="{{ $location }}">{{ $location }}</option>
-                                @endforeach
-                            </select>
-                        @else
-                            <input type="text" name="return_location" required maxlength="255"
-                                class="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
-                                placeholder="Enter return location">
-                        @endif
+                        <input type="text" name="return_location" value="{{ old('return_location') }}" required maxlength="255"
+                            class="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-100"
+                            placeholder="Describe where the items were returned">
                     </div>
                     <button type="submit" class="btn-mantis" onclick="return confirm('Mark all items in this request as returned?')">
                         <i class="fas fa-undo mr-2"></i>Return Items

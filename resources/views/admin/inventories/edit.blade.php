@@ -6,6 +6,10 @@
 
 @section('content')
 <div class="p-4 md:p-8">
+    <a href="{{ route('admin.inventories.index') }}" class="inline-flex items-center text-gray-600 hover:text-[#2563eb] transition-colors text-sm mb-3">
+        <i class="fas fa-arrow-left mr-1"></i>Back to Inventory
+    </a>
+
     <div class="card-mantis p-6 md:p-8">
         @if(session('success'))
             <div class="bg-gradient-to-r from-[#eff6ff] to-[#dbeafe] dark:from-blue-900/20 dark:to-blue-800/10 border border-[#2563eb] dark:border-blue-700 text-[#1e40af] dark:text-blue-300 px-4 py-3 rounded-xl mb-6">

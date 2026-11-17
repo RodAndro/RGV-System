@@ -2,12 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../shared/widgets/async_states.dart';
+import '../../../shared/widgets/review_dialog.dart';
 import '../../../shared/widgets/status_chip.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../data/borrow_repository.dart';
 import '../models/borrow_request.dart';
 
@@ -18,29 +21,83 @@ class BorrowHistoryScreen extends StatefulWidget {
   State<BorrowHistoryScreen> createState() => _BorrowHistoryScreenState();
 }
 
-class _BorrowHistoryScreenState extends State<BorrowHistoryScreen> {
+class _BorrowHistoryScreenState extends State<BorrowHistoryScreen>
+    with WidgetsBindingObserver {
   late Future<List<BorrowRequest>> _future;
   Timer? _refreshTimer;
+  RealtimeChannel? _requestChannel;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _future = context.read<BorrowRepository>().listRequests();
-    _refreshTimer = Timer.periodic(
-      const Duration(seconds: 30),
-      (_) => _reload(),
-    );
+    final employeeId = context.read<AuthProvider>().user?.id;
+    if (employeeId != null) {
+      _requestChannel = context.read<BorrowRepository>().subscribeToRequestChanges(
+        employeeId: employeeId,
+        onChange: () {
+          if (mounted) _reload();
+        },
+        onError: (_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Live updates are unavailable. The list will continue refreshing periodically.',
+              ),
+            ),
+          );
+        },
+      );
+    }
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        _reload();
+      }
+    });
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    final requestChannel = _requestChannel;
+    if (requestChannel != null) unawaited(requestChannel.unsubscribe());
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _reload();
   }
 
   void _reload() {
     setState(() => _future = context.read<BorrowRepository>().listRequests());
   }
+
+  Future<void> _refresh() async {
+    final future = context.read<BorrowRepository>().listRequests();
+    setState(() => _future = future);
+    try {
+      await future;
+    } on AppException {
+      // FutureBuilder displays the request error in the history screen.
+    }
+  }
+
+  Widget _refreshableState(Widget child) => RefreshIndicator(
+    onRefresh: _refresh,
+    child: ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.75,
+          child: child,
+        ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -58,19 +115,25 @@ class _BorrowHistoryScreenState extends State<BorrowHistoryScreen> {
             final message = error is AppException
                 ? error.userMessage
                 : 'Could not load requests.';
-            return ErrorView(message: message, onRetry: _reload);
+            return _refreshableState(
+              ErrorView(message: message, onRetry: _reload),
+            );
           }
           final requests = snapshot.data ?? [];
           if (requests.isEmpty) {
-            return const EmptyState(
-              message: 'No borrow requests yet. Borrow an item to get started.',
-              icon: Icons.receipt_long_outlined,
+            return _refreshableState(
+              const EmptyState(
+                message:
+                    'No borrow requests yet. Borrow an item to get started.',
+                icon: Icons.receipt_long_outlined,
+              ),
             );
           }
           return RefreshIndicator(
-            onRefresh: () async => _reload(),
+            onRefresh: _refresh,
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
+              physics: const AlwaysScrollableScrollPhysics(),
               itemCount: requests.length,
               itemBuilder: (context, index) {
                 final request = requests[index];
@@ -93,19 +156,17 @@ class _RequestCard extends StatelessWidget {
   Future<void> _cancel(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cancel request?'),
-        content: Text(
-          'Cancel ${request.requestNumber}? Reserved stock will be released.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Keep'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Cancel request'),
+      builder: (_) => ReviewDialog(
+        title: 'Cancel request?',
+        subtitle: 'Please review this cancellation before continuing.',
+        cancelLabel: 'Keep',
+        confirmLabel: 'Cancel request',
+        isDestructive: true,
+        rows: [
+          ReviewDialogRow(label: 'Request', value: request.requestNumber),
+          const ReviewDialogRow(
+            label: 'Effect',
+            value: 'Reserved stock will be released.',
           ),
         ],
       ),

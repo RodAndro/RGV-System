@@ -21,32 +21,31 @@ class AuthProvider extends ChangeNotifier {
   String? _pendingMfaFactorId;
   String? _mfaSetupSecret;
   String? get mfaSetupSecret => _mfaSetupSecret;
+  String? _logoutWarning;
+  String? get logoutWarning => _logoutWarning;
 
   bool get isAuthenticated =>
       _status == AuthStatus.authenticated && _user != null;
 
-  /// Restores the Supabase Auth session persisted by supabase_flutter.
+  /// Restores a stored session only after Supabase confirms it. When the
+  /// backend is unreachable the employee sees the sign-in screen instead.
   Future<void> restoreSession() async {
-    if (!repository.hasSession) {
-      _status = AuthStatus.unauthenticated;
-      notifyListeners();
-      return;
-    }
-
     try {
-      _acceptLoginResult(await repository.restore());
-    } on AppException catch (e) {
-      if (e.isUnauthenticated || e.statusCode == 403) {
-        await repository.logout();
-        _clearSession();
-      } else {
+      if (!await repository.hasSession) {
         _status = AuthStatus.unauthenticated;
+        notifyListeners();
+        return;
       }
+      _acceptLoginResult(await repository.restore());
+    } on AppException catch (error) {
+      if (error.isNetworkError) _logoutWarning = error.userMessage;
+      _clearSession();
     }
     notifyListeners();
   }
 
   Future<void> login(String email, String password) async {
+    _logoutWarning = null;
     final result = await repository.login(email, password);
 
     _acceptLoginResult(result);
@@ -87,10 +86,14 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _logoutWarning = null;
     try {
       await repository.logout();
-    } on AppException {
-      // Best-effort: revoke locally even if the server is unreachable.
+    } on AppException catch (error) {
+      if (error.isNetworkError || (error.statusCode ?? 0) >= 500) {
+        _logoutWarning =
+            'You are signed out on this device, but Supabase could not confirm token revocation. Connect to the internet and sign in again to refresh your session.';
+      }
     } finally {
       _clearSession();
       notifyListeners();
@@ -98,11 +101,11 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> refreshUser() async {
-    if (!repository.hasSession) return;
     _user = await repository.me();
     notifyListeners();
   }
 
+  /// Returns true when the backend confirmed the change immediately.
   Future<void> updateName(String name) async {
     _user = await repository.updateName(name);
     notifyListeners();

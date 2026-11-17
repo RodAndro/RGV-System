@@ -24,7 +24,7 @@
         <div class="min-h-screen flex flex-col items-center justify-center px-4 py-8">
             <div class="mb-10">
                 <a href="/">
-                    <img src="{{ asset('images/RGV-Logo.png') }}" alt="RGV Multi-Tech Services logo" class="h-[160px] w-[160px] rounded-2xl object-cover shadow-lg shadow-[#2563eb]/20">
+                    <img src="{{ asset('images/RGV-Logo.png') }}" alt="RGV Multi-Tech Services logo" class="h-[160px] w-[160px] rounded-full object-cover shadow-lg shadow-[#2563eb]/20">
                 </a>
             </div>
 

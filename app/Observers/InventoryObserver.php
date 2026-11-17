@@ -6,6 +6,7 @@ use App\Mail\EntityUpdateNotification;
 use App\Models\Inventory;
 use App\Models\User;
 use App\Notifications\LowStockAlert;
+use App\Services\NotificationSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
@@ -13,7 +14,7 @@ class InventoryObserver
 {
     private function adminEmail(): ?string
     {
-        if (env('NOTIFICATION_EMAIL_ENABLED', 'true') !== 'true') {
+        if (!NotificationSettings::emailEnabled()) {
             return null;
         }
 

@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 
 class AuditLogController extends Controller
 {
@@ -48,9 +49,18 @@ class AuditLogController extends Controller
         return view('admin.audit.show', compact('auditLog'));
     }
 
-    public function clearAll()
+    public function clearAll(Request $request)
     {
+        $validated = $request->validate([
+            'password' => ['required', 'string'],
+        ]);
+
+        if (!Hash::check($validated['password'], auth()->user()->password)) {
+            return back()->withErrors(['password' => 'The password is incorrect.']);
+        }
+
         AuditLog::truncate();
+        Cache::forget('admin.audit.alert-summary');
 
         return back()->with('success', 'All audit logs have been cleared.');
     }

@@ -10,12 +10,6 @@
         </div>
     @endif
 
-    <div class="mb-6 bg-[#2563eb]/10 border border-[#2563eb]/30 p-4 rounded-lg text-center">
-        <p class="text-xs text-gray-500 mb-2">Current Code <span class="text-gray-400">(changes every 30s)</span></p>
-        <p id="totp-code" class="font-mono text-3xl font-bold text-[#2563eb] tracking-[0.3em] select-all">{{ $currentCode }}</p>
-        <p class="text-xs text-gray-400 mt-1">Expires in <span id="totp-countdown">30</span>s</p>
-    </div>
-
     <form method="POST" action="{{ route('mfa.verify') }}">
         @csrf
         <div>
@@ -27,20 +21,4 @@
         </div>
     </form>
 
-    <script>
-    (function() {
-        const codeEl = document.getElementById('totp-code');
-        const countdownEl = document.getElementById('totp-countdown');
-        if (!codeEl || !countdownEl) return;
-
-        function updateCountdown() {
-            const seconds = 30 - (Math.floor(Date.now() / 1000) % 30);
-            countdownEl.textContent = seconds;
-            if (seconds === 30) location.reload();
-        }
-
-        setInterval(updateCountdown, 1000);
-        updateCountdown();
-    })();
-    </script>
 </x-guest-layout>

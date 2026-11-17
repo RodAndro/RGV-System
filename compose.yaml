@@ -1,0 +1,66 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rgv-system-app:${APP_COMMIT:-local}
+    env_file: .env
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_COMMIT: ${APP_COMMIT:-}
+      DB_CONNECTION: pgsql
+      DB_HOST: ${DB_HOST:?Set Supabase DB_HOST in .env}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${DB_DATABASE:-postgres}
+      DB_USERNAME: ${DB_USERNAME:?Set Supabase DB_USERNAME in .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      DB_SSLMODE: ${DB_SSLMODE:-require}
+      DB_SSLROOTCERT: ${DB_SSLROOTCERT:-}
+      OLLAMA_BASE_URL: http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_started
+    volumes:
+      - app_storage:/var/www/html/storage/app
+      - app_logs:/var/www/html/storage/logs
+    expose:
+      - "8080"
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:0.40.16
+    volumes:
+      - ollama_models:/root/.ollama
+    expose:
+      - "11434"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    depends_on:
+      - app
+    networks:
+      - default
+      - mobile_api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  app_storage:
+  app_logs:
+  ollama_models:
+  caddy_data:
+  caddy_config:
+
+networks:
+  mobile_api:
+    name: rgv-mobile-api

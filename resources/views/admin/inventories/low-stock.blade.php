@@ -6,53 +6,76 @@
 
 @section('content')
 <div class="p-4 md:p-8">
-    <div class="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-exclamation-triangle text-white"></i>
+    <div class="mb-4">
+        <a href="{{ route('admin.inventories.index') }}" class="inline-flex items-center gap-2 text-[17px] font-semibold text-gray-700 hover:text-[#2563eb] transition-colors">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to Inventory</span>
+        </a>
+    </div>
+
+    <div class="mb-6 rounded-[10px] border border-[#f3b6b6] bg-[#f9e7e7] px-5 py-4 shadow-sm">
+        <div class="flex items-center gap-4">
+            <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-[#e53935] text-white shadow-sm">
+                <i class="fas fa-exclamation-triangle text-xl"></i>
             </div>
-            <div>
-                <h3 class="text-base font-bold text-gray-800 dark:text-gray-100">Low Stock Alert</h3>
-                <p class="text-sm text-red-600 dark:text-red-400 font-medium">{{ $inventories->count() }} item(s) below threshold</p>
+            <div class="leading-tight">
+                <h3 class="text-[20px] font-bold text-[#1f2937]">Low Stock Alert</h3>
+                <p class="mt-1 text-[16px] font-medium text-[#dc2626]">{{ $inventories->count() }} item(s) below threshold</p>
             </div>
         </div>
     </div>
 
     @if($inventories->count() > 0)
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            @foreach($inventories as $inventory)
-                <div class="card-mantis border-l-4 border-red-500 overflow-hidden">
-                    <div class="p-3">
-                        <p class="font-mono text-xs text-[#2563eb] truncate">{{ $inventory->item_code }}</p>
-                        <p class="font-semibold text-sm text-gray-800 dark:text-gray-100 truncate">{{ $inventory->name }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{ $inventory->category->name }}</p>
-
-                        <div class="space-y-1 mb-2">
-                            <div class="flex justify-between items-center px-2 py-1 bg-red-50 dark:bg-red-900/20 rounded text-xs">
-                                <span class="text-gray-500 dark:text-gray-400">Stock</span>
-                                <span class="font-bold text-red-600 dark:text-red-400">{{ $inventory->quantity }} {{ $inventory->unit }}</span>
-                            </div>
-                            <div class="flex justify-between items-center px-2 py-1 bg-yellow-50 dark:bg-yellow-900/20 rounded text-xs">
-                                <span class="text-gray-500 dark:text-gray-400">Min</span>
-                                <span class="font-bold text-yellow-600 dark:text-yellow-400">{{ $inventory->low_stock_threshold }} {{ $inventory->unit }}</span>
-                            </div>
-                        </div>
-
-                        <div class="text-xs text-gray-500 dark:text-gray-400 text-center mb-2">
-                            Need: <span class="font-bold text-red-600">{{ $inventory->low_stock_threshold - $inventory->quantity + 5 }} {{ $inventory->unit }}</span>
-                        </div>
-
-                        <div class="flex gap-1">
-                            <a href="{{ route('admin.inventories.show', $inventory) }}" class="flex-1 text-center px-2 py-1.5 bg-[#2563eb] text-white rounded text-xs font-medium hover:bg-[#1d4ed8] transition-colors">
-                                View
-                            </a>
-                            <a href="{{ route('admin.inventories.edit', $inventory) }}" class="flex-1 text-center px-2 py-1.5 bg-gray-600 text-white rounded text-xs font-medium hover:bg-gray-700 transition-colors">
-                                Restock
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            @endforeach
+        <div class="card-mantis overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead class="bg-gradient-to-r from-[#eff6ff] to-white dark:from-gray-800 dark:to-gray-900">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-r border-gray-200 dark:border-gray-700">Item Code</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-r border-gray-200 dark:border-gray-700">Name</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-r border-gray-200 dark:border-gray-700">Category</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-r border-gray-200 dark:border-gray-700">Quantity</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-r border-gray-200 dark:border-gray-700">Threshold</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-r border-gray-200 dark:border-gray-700">Status</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($inventories as $inventory)
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
+                                    <span class="font-mono text-xs font-semibold text-[#2563eb]">{{ $inventory->item_code }}</span>
+                                </td>
+                                <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
+                                    <p class="font-semibold text-sm text-gray-800 dark:text-gray-200">{{ $inventory->name }}</p>
+                                </td>
+                                <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400">
+                                    {{ $inventory->category?->name ?? 'Uncategorized' }}
+                                </td>
+                                <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
+                                    <p class="font-semibold text-sm text-gray-800 dark:text-gray-200">{{ $inventory->quantity }} {{ $inventory->unit }}</p>
+                                </td>
+                                <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
+                                    <span class="font-semibold text-sm text-yellow-600 dark:text-yellow-400">{{ $inventory->low_stock_threshold }} {{ $inventory->unit }}</span>
+                                </td>
+                                <td class="px-4 py-3 border-b border-r border-gray-100 dark:border-gray-700">
+                                    <span class="low-stock-alert"><i class="fas fa-exclamation-triangle"></i>Low Stock</span>
+                                </td>
+                                <td class="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                                    <div class="flex items-center gap-2">
+                                        <a href="{{ route('admin.inventories.show', $inventory) }}" class="w-9 h-9 bg-[#eff6ff] text-[#2563eb] rounded-lg flex items-center justify-center hover:bg-[#dbeafe] transition-colors" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ route('admin.inventories.edit', $inventory) }}" class="w-9 h-9 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center hover:bg-yellow-200 transition-colors" title="Restock">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
         </div>
     @else
         <div class="card-mantis p-16 text-center">
@@ -66,5 +89,6 @@
             </a>
         </div>
     @endif
+
 </div>
 @endsection

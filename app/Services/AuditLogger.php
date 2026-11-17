@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AuditLogger
 {
@@ -22,17 +23,19 @@ class AuditLogger
     {
         $request ??= request();
 
-        AuditLog::create([
-            'user_id' => Auth::user()?->getAuthIdentifier(),
-            'event' => $event,
-            'auditable_type' => $auditable ? $auditable::class : null,
-            'auditable_id' => $auditable?->getKey(),
-            'old_values' => self::clean($old),
-            'new_values' => self::clean($new),
-            'ip_address' => $request?->ip(),
-            'user_agent' => $request?->userAgent(),
-            'url' => $request?->fullUrl(),
-        ]);
+        DB::transaction(function () use ($event, $auditable, $old, $new, $request): void {
+            AuditLog::create([
+                'user_id' => Auth::user()?->getAuthIdentifier(),
+                'event' => $event,
+                'auditable_type' => $auditable ? $auditable::class : null,
+                'auditable_id' => $auditable?->getKey(),
+                'old_values' => self::clean($old),
+                'new_values' => self::clean($new),
+                'ip_address' => $request?->ip(),
+                'user_agent' => $request?->userAgent(),
+                'url' => $request?->fullUrl(),
+            ]);
+        });
     }
 
     public static function clean(array $values): array

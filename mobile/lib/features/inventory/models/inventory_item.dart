@@ -11,6 +11,7 @@ class InventoryItem {
     this.status = 'available',
     this.condition = 'good',
     this.isActive = true,
+    this.qrToken,
   });
 
   final int id;
@@ -24,6 +25,7 @@ class InventoryItem {
   final String status;
   final String condition;
   final bool isActive;
+  final String? qrToken;
 
   bool get isAvailable => isActive && status == 'available' && quantity > 0;
   String get availabilityLabel =>
@@ -41,5 +43,21 @@ class InventoryItem {
     status: json['status'] as String? ?? 'available',
     condition: json['condition'] as String? ?? 'good',
     isActive: json['is_active'] as bool? ?? true,
+    qrToken: json['qr_token'] as String?,
   );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'item_code': itemCode,
+    'name': name,
+    'brand': brand,
+    'description': description,
+    'category': category,
+    'quantity': quantity,
+    'unit': unit,
+    'status': status,
+    'condition': condition,
+    'is_active': isActive,
+    'qr_token': qrToken,
+  };
 }

@@ -1,8 +1,22 @@
 <?php
 
+use App\Http\Middleware\CamelCaseJsonResponse;
+use App\Http\Middleware\EnsureActiveEmployee;
+use App\Http\Middleware\ForceHttps;
+use App\Http\Middleware\IsAdmin;
+use App\Http\Middleware\IsEmployee;
+use App\Http\Middleware\LogApiRequest;
+use App\Http\Middleware\LogPageVisit;
+use App\Http\Middleware\RequireMfa;
+use App\Http\Middleware\RequireTokenAbility;
+use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\TieredRateLimitMiddleware;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\TrustProxies;
+use Illuminate\Support\Facades\Log;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,47 +27,46 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->replace(
-            \Illuminate\Http\Middleware\TrustProxies::class,
-            \App\Http\Middleware\TrustProxies::class
+            TrustProxies::class,
+            App\Http\Middleware\TrustProxies::class
         );
 
         $middleware->alias([
-            'admin' => \App\Http\Middleware\IsAdmin::class,
-            'employee' => \App\Http\Middleware\IsEmployee::class,
-            'api.rate' => \App\Http\Middleware\TieredRateLimitMiddleware::class,
-            'camel.json' => \App\Http\Middleware\CamelCaseJsonResponse::class,
-            'mfa' => \App\Http\Middleware\RequireMfa::class,
-            'active.employee' => \App\Http\Middleware\EnsureActiveEmployee::class,
+            'admin' => IsAdmin::class,
+            'employee' => IsEmployee::class,
+            'api.rate' => TieredRateLimitMiddleware::class,
+            'camel.json' => CamelCaseJsonResponse::class,
+            'mfa' => RequireMfa::class,
+            'active.employee' => EnsureActiveEmployee::class,
+            'token.ability' => RequireTokenAbility::class,
         ]);
 
-        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
-        $middleware->append(\App\Http\Middleware\ForceHttps::class);
-        $middleware->append(\App\Http\Middleware\LogPageVisit::class);
+        $middleware->append(SecurityHeaders::class);
+        $middleware->append(ForceHttps::class);
+        $middleware->append(LogPageVisit::class);
+        $middleware->append(LogApiRequest::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->renderable(function (\DomainException $e, $request) {
+        $exceptions->renderable(function (DomainException $e, $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json(['message' => $e->getMessage()], 422);
             }
         });
 
-        $exceptions->reportable(function (\Throwable $e) {
+        $exceptions->reportable(function (Throwable $e) {
             $source = str_replace('\\', '/', $e->getFile());
-            if ($e instanceof \Illuminate\Database\QueryException
-                || $e instanceof \PDOException
+            if ($e instanceof QueryException
+                || $e instanceof PDOException
                 || str_contains($source, '/Illuminate/Database/Connectors/')) {
                 return;
             }
 
             try {
-                \App\Models\AuditLog::create([
-                    'user_id' => auth()->id(),
-                    'event' => 'error',
-                    'old_values' => json_encode(['message' => $e->getMessage(), 'code' => $e->getCode()]),
-                    'new_values' => json_encode(['file' => $e->getFile(), 'line' => $e->getLine(), 'trace' => $e->getTraceAsString()]),
-                    'ip_address' => request()->ip(),
-                    'user_agent' => request()->userAgent(),
+                Log::error('Application exception.', [
+                    'exception' => $e::class,
+                    'request_id' => request()->headers->get('X-Request-ID'),
                 ]);
-            } catch (\Throwable) {}
+            } catch (Throwable) {
+            }
         });
     })->create();

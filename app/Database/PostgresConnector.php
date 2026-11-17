@@ -16,9 +16,15 @@ class PostgresConnector extends BasePostgresConnector
     {
         $dsn = parent::getDsn($config);
 
-        return isset($config['connect_timeout'])
-            ? $dsn.";connect_timeout={$config['connect_timeout']}"
-            : $dsn;
+        if (isset($config['connect_timeout'])) {
+            $dsn .= ";connect_timeout={$config['connect_timeout']}";
+        }
+
+        if (! empty($config['sslrootcert'])) {
+            $dsn .= ';sslrootcert='.$config['sslrootcert'];
+        }
+
+        return $dsn;
     }
 
     /**

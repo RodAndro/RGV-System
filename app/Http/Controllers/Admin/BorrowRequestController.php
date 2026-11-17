@@ -56,8 +56,7 @@ class BorrowRequestController extends Controller
     public function show(BorrowRequest $borrowRequest)
     {
         $borrowRequest->load(['employee', 'borrowItems.inventory']);
-        $locations = \App\Models\Inventory::whereNotNull('location')->distinct()->pluck('location');
-        return view('admin.borrow-requests.show', compact('borrowRequest', 'locations'));
+        return view('admin.borrow-requests.show', compact('borrowRequest'));
     }
 
     public function approve(BorrowRequest $borrowRequest)

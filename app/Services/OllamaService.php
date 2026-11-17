@@ -16,8 +16,8 @@ class OllamaService
     public function __construct()
     {
         $this->baseUrl = rtrim((string) config('services.ollama.base_url', 'http://127.0.0.1:11434'), '/');
-        $this->model = (string) config('services.ollama.model', 'llama3.1');
-        $this->timeout = (int) config('services.ollama.timeout', 60);
+        $this->model = (string) config('services.ollama.model', 'qwen3:1.7b');
+        $this->timeout = (int) config('services.ollama.timeout', 120);
     }
 
     public function generateText(string $prompt, ?string $model = null, ?string $systemPrompt = null): array
@@ -57,23 +57,22 @@ class OllamaService
                     return ['success' => true, 'text' => trim($text), 'raw' => $response->json()];
                 }
 
-                Log::warning('Ollama returned no message content', ['response' => $response->json()]);
+                Log::warning('Ollama returned no message content.');
 
                 return ['success' => false, 'error' => 'Ollama returned no message content', 'raw' => $response->json()];
             }
 
-            Log::warning('Ollama API error', ['status' => $response->status(), 'body' => $response->body()]);
+            Log::warning('Ollama API error.', ['status' => $response->status()]);
 
             return [
                 'success' => false,
                 'status' => $response->status(),
-                'body' => $response->body(),
                 'error' => "Ollama API returned status {$response->status()}",
             ];
         } catch (\Throwable $e) {
-            Log::error('Ollama service error: '.$e->getMessage(), ['exception' => get_class($e)]);
+            Log::error('Ollama service error.', ['exception' => get_class($e)]);
 
-            return ['success' => false, 'error' => "Ollama service unavailable: {$e->getMessage()}"];
+            return ['success' => false, 'error' => 'Ollama service unavailable.'];
         }
     }
 

@@ -51,8 +51,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       await context.read<AuthProvider>().updateName(name);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated.'),
+          SnackBar(
+            content: const Text('Profile updated.'),
             backgroundColor: RgvColors.success,
           ),
         );
@@ -87,10 +87,13 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFEE2E2),
+                        color: RgvColors.dangerBackground,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(_error!, style: const TextStyle(color: Color(0xFF991B1B))),
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(color: RgvColors.dangerText),
+                      ),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -121,7 +124,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                           ? const SizedBox(
                               height: 20,
                               width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
                             )
                           : const Text('Save Changes'),
                     ),
@@ -135,12 +141,17 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.lock_outline, color: RgvColors.primary),
+                  leading: const Icon(
+                    Icons.lock_outline,
+                    color: RgvColors.primary,
+                  ),
                   title: const Text('Change password'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const ChangePasswordScreen(),
+                    ),
                   ),
                 ),
               ],

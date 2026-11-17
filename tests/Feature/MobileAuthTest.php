@@ -106,6 +106,50 @@ class MobileAuthTest extends TestCase
         $verify->assertStatus(422)->assertJsonValidationErrors('code');
     }
 
+    public function test_mobile_mfa_consumes_a_shared_recovery_code_once(): void
+    {
+        $employee = $this->createEmployee(['password' => 'password']);
+        $employee->enableMfa('totp');
+        $recoveryCode = $employee->fresh()->mfa_recovery_codes[0];
+
+        $login = $this->postJson('/api/v1/mobile/auth/login', [
+            'email' => $employee->email,
+            'password' => 'password',
+        ])->assertOk();
+
+        $this->withToken($login->json('mfa_token'))
+            ->postJson('/api/v1/mobile/auth/mfa/verify', ['code' => strtoupper($recoveryCode)])
+            ->assertOk()
+            ->assertJsonStructure(['token', 'user']);
+
+        $this->assertNotContains($recoveryCode, $employee->fresh()->mfa_recovery_codes);
+
+        $secondLogin = $this->postJson('/api/v1/mobile/auth/login', [
+            'email' => $employee->email,
+            'password' => 'password',
+        ])->assertOk();
+
+        $this->withToken($secondLogin->json('mfa_token'))
+            ->postJson('/api/v1/mobile/auth/mfa/verify', ['code' => $recoveryCode])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('code');
+    }
+
+    public function test_mfa_challenge_token_cannot_access_employee_data_before_verification(): void
+    {
+        $employee = $this->createEmployee(['password' => 'password']);
+        $employee->enableMfa('totp');
+
+        $login = $this->postJson('/api/v1/mobile/auth/login', [
+            'email' => $employee->email,
+            'password' => 'password',
+        ])->assertOk();
+
+        $this->withToken($login->json('mfa_token'))
+            ->getJson('/api/v1/mobile/me')
+            ->assertForbidden();
+    }
+
     public function test_logout_revokes_token(): void
     {
         $employee = $this->createEmployee();

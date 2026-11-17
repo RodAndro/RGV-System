@@ -36,7 +36,12 @@ class GenerateExport implements ShouldQueue
                 $items = $export::buildQuery($log->filters ?? [])->limit(50000)->get();
                 $view = $log->type === 'bookings' ? 'pdf.bookings' : 'pdf.inventory';
                 $variable = $log->type === 'bookings' ? 'bookings' : 'inventories';
-                Storage::disk('local')->put($filePath, Pdf::loadView($view, [$variable => $items])->output());
+                $pdf = Pdf::loadView($view, [$variable => $items]);
+                if ($log->type === 'bookings') {
+                    $pdf->setPaper('a4', 'landscape');
+                }
+
+                Storage::disk('local')->put($filePath, $pdf->output());
             } else {
                 Excel::store($export, $filePath, 'local');
             }

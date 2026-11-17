@@ -4,13 +4,14 @@ namespace App\Observers;
 
 use App\Mail\EntityUpdateNotification;
 use App\Models\BorrowRequest;
+use App\Services\NotificationSettings;
 use Illuminate\Support\Facades\Mail;
 
 class BorrowRequestObserver
 {
     private function adminEmail(): ?string
     {
-        if (env('NOTIFICATION_EMAIL_ENABLED', 'true') !== 'true') {
+        if (!NotificationSettings::emailEnabled()) {
             return null;
         }
 

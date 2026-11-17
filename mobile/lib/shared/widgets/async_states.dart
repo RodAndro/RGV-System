@@ -64,7 +64,11 @@ class ErrorView extends StatelessWidget {
 
 /// Empty state with an icon and message.
 class EmptyState extends StatelessWidget {
-  const EmptyState({super.key, required this.message, this.icon = Icons.inbox_outlined});
+  const EmptyState({
+    super.key,
+    required this.message,
+    this.icon = Icons.inbox_outlined,
+  });
 
   final String message;
   final IconData icon;

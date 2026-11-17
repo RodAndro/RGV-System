@@ -72,9 +72,7 @@ class _AuthGateState extends State<AuthGate> {
     final status = context.watch<AuthProvider>().status;
     switch (status) {
       case AuthStatus.initializing:
-        return const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        );
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
       case AuthStatus.unauthenticated:
         return const LoginScreen();
       case AuthStatus.mfaPending:
