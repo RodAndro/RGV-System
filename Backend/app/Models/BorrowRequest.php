@@ -1,0 +1,114 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
+
+class BorrowRequest extends Model
+{
+    use HasFactory, LogsActivity, SoftDeletes;
+
+    protected $fillable = [
+        'request_number',
+        'employee_id',
+        'approved_by',
+        'status',
+        'reason',
+        'borrow_date',
+        'due_date',
+        'return_date',
+        'return_location',
+        'admin_remarks',
+        'approved_at',
+        'rejected_at',
+        'cancelled_at',
+        'borrowed_at',
+        'returned_at',
+    ];
+
+    protected $casts = [
+        'borrow_date' => 'date',
+        'due_date' => 'date',
+        'return_date' => 'date',
+        'approved_at' => 'datetime',
+        'rejected_at' => 'datetime',
+        'cancelled_at' => 'datetime',
+        'borrowed_at' => 'datetime',
+        'returned_at' => 'datetime',
+    ];
+
+    public function employee()
+    {
+        return $this->belongsTo(User::class, 'employee_id');
+    }
+
+    public function approvedBy()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function borrowItems()
+    {
+        return $this->hasMany(BorrowItem::class, 'borrow_request_id');
+    }
+
+    public function returnEvidences()
+    {
+        return $this->hasMany(BorrowReturnEvidence::class, 'borrow_request_id');
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('status', 'approved');
+    }
+
+    public function scopeBorrowed($query)
+    {
+        return $query->where('status', 'borrowed');
+    }
+
+    public function scopeOverdue($query)
+    {
+        return $query->where(function ($q) {
+            $q->where('status', 'overdue')
+              ->orWhere(function ($sub) {
+                  $sub->where('status', 'borrowed')
+                      ->whereDate('due_date', '<', today());
+              });
+        });
+    }
+
+    public function isOverdue(): bool
+    {
+        return $this->status === 'overdue'
+            || ($this->status === 'borrowed' && $this->due_date && $this->due_date->lt(today()));
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($request) {
+            if (empty($request->request_number)) {
+                $request->request_number = 'BR-'.strtoupper(uniqid());
+            }
+        });
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['status', 'approved_by', 'return_date'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
+}

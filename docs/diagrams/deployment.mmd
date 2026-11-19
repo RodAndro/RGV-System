@@ -1,0 +1,25 @@
+flowchart TB
+    subgraph Host["Self-hosted server"]
+        subgraph Compose["docker compose -p rgv"]
+            PROXY["caddy<br/>80:80 / 443:443"]
+            APP["app<br/>Laravel :8080"]
+            WEB["web<br/>nginx :80"]
+            DB[("db<br/>postgres:17-alpine")]
+            OLLAMA["ollama<br/>:11434"]
+            TUNNEL["tunnel<br/>cloudflared (profile: tunnel)"]
+        end
+        VOL1[("db-data")]
+        VOL2[("app_storage")]
+        VOL3[("app_logs")]
+        VOL4[("ollama_models")]
+    end
+
+    TUNNEL --> PROXY
+    PROXY --> APP
+    PROXY --> WEB
+    APP --> DB
+    APP --> OLLAMA
+    DB --- VOL1
+    APP --- VOL2
+    APP --- VOL3
+    OLLAMA --- VOL4

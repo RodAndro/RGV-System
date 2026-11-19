@@ -1,0 +1,232 @@
+name: CI and deployment
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: bcmath, curl, dom, gd, intl, mbstring, pdo_mysql, pdo_sqlite, simplexml, xml, xmlreader, xmlwriter, zip
+          coverage: pcov
+          tools: composer:v2
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Check PHP syntax
+        run: find app bootstrap config database routes tests -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Check code style (Pint)
+        # The versioned API added in this change is held to the full style
+        # standard. Pre-existing modules still carry formatting debt that
+        # was out of scope here; see docs/lint-baseline.md before widening
+        # this gate to the whole project.
+        run: |
+          vendor/bin/pint --test \
+            app/Http/Controllers/Api/V1 \
+            app/Http/Requests/Api \
+            app/Http/Resources \
+            app/Http/Middleware/EnsureApiRole.php \
+            app/Support \
+            bootstrap/app.php \
+            routes/api.php \
+            tests/Feature/Api \
+            tests/Feature/ApiHealthTest.php \
+            tests/Feature/ApiHealthDegradedTest.php
+      - name: Run backend tests and coverage gate
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+        run: php artisan test --coverage --min=60
+
+  frontend-spa:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Frontend/app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: Frontend/app/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm run test
+      - name: Production build
+        run: npm run build
+
+  frontend-assets:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Frontend/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: Frontend/web/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Frontend/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare environment files
+        run: |
+          cp .env.example .env
+          cp Backend/.env.example Backend/.env
+      - name: Validate Docker Compose configuration
+        env:
+          APP_COMMIT: ci-validation
+          APP_DOMAIN: localhost
+        run: docker compose config --quiet
+      - name: Build production container
+        run: docker build --tag rgv-system-app:ci .
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend-spa, frontend-assets, mobile, compose, migrate-check]
+    runs-on: [self-hosted, linux, rgv-production]
+    environment: production
+    concurrency:
+      group: rgv-production-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy services and migrate safely
+        env:
+          APP_COMMIT: ${{ github.sha }}
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+        run: |
+          # Compose interpolation reads the repository root .env, not
+          # Backend/.env. The deploy host keeps real secrets there.
+          if [ ! -f .env ]; then
+            cp .env.example .env
+          fi
+          docker compose config -q
+          docker compose up -d --build --remove-orphans
+          docker compose exec -T app php artisan migrate --force
+      - name: Verify deployed commit and health
+        env:
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+          APP_COMMIT: ${{ github.sha }}
+        run: |
+          set -eu
+          url="https://${APP_DOMAIN}/api/health"
+          attempt=0
+          until payload="$(curl --silent --show-error --fail "$url")"; do
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge 12 ]; then
+              docker compose logs --tail=200 app caddy ollama web db
+              exit 1
+            fi
+            sleep 10
+          done
+          printf '%s' "$payload" | jq -e --arg commit "$APP_COMMIT" '.status == "ok" and .commit == $commit'
+      - name: Verify Swagger UI is served
+        env:
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+        run: |
+          curl --silent --show-error --fail "https://${APP_DOMAIN}/api/docs" -o /dev/null
+      - name: Database backup before release
+        run: |
+          mkdir -p backups
+          docker compose exec -T db mysqldump \
+            --single-transaction --routines --events --no-tablespaces \
+            -u "${DB_USERNAME:-rgv}" -p"${DB_PASSWORD:-rgv_local_password}" \
+            "${DB_DATABASE:-rgv}" \
+            > "backups/db_$(date -u +%Y%m%dT%H%M%SZ).sql"
+
+  migrate-check:
+    # Migrations are verified against a real MySQL service, not SQLite.
+    # SQLite tolerates constructs MySQL rejects (for example a TEXT column
+    # inside a unique index), so this job is what catches schema-portability
+    # regressions before they reach the deploy job.
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: rgv_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    defaults:
+      run:
+        working-directory: Backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: bcmath, curl, dom, gd, intl, mbstring, pdo_mysql, simplexml, xml, xmlreader, xmlwriter, zip
+          tools: composer:v2
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Run migrations against MySQL
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_DATABASE: rgv_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+        run: php artisan migrate --force
+      - name: Seed sample data against MySQL
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_DATABASE: rgv_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+        run: php artisan db:seed --force

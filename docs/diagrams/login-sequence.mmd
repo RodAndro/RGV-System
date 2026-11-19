@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant SPA as React SPA
+    participant API as Laravel /api/v1
+    participant RL as RateLimiter
+    participant DB as PostgreSQL
+
+    U->>SPA: enter email + password
+    SPA->>SPA: client-side validation (zod)
+    SPA->>API: POST /api/v1/auth/login
+    API->>RL: tooManyAttempts(email|ip)
+    alt too many attempts
+        RL-->>API: blocked
+        API-->>SPA: 429 RATE_LIMITED
+        SPA-->>U: show retry guidance
+    else allowed
+        API->>DB: find user by email
+        API->>API: Hash::check(password)
+        alt invalid credentials
+            API->>RL: hit(key, 60s)
+            API-->>SPA: 401 UNAUTHENTICATED
+            SPA-->>U: show error banner
+        else valid
+            API->>RL: clear(key)
+            alt MFA enabled
+                API-->>SPA: 200 {mfa_required, mfa_token}
+                SPA-->>U: direct user to staff portal
+            else
+                API->>DB: create Sanctum token
+                API-->>SPA: 200 {token, user, roles}
+                SPA->>SPA: store token
+                SPA->>API: GET /api/v1/auth/me
+                API-->>SPA: user + roles
+                SPA-->>U: render role-based dashboard
+            end
+        end
+    end

@@ -1,0 +1,74 @@
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Models\AuditLog;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\View\View;
+
+class AuthenticatedSessionController extends Controller
+{
+    public function create(): View
+    {
+        $bruteForceDetected = ! app()->environment(['local', 'testing'])
+            && RateLimiter::attempts('failed-login-ip:' . request()->ip()) >= 3;
+
+        $captchaA = $captchaB = null;
+
+        if ($bruteForceDetected) {
+            $captchaA = rand(1, 10);
+            $captchaB = rand(1, 10);
+            session(['captcha_answer' => $captchaA + $captchaB, 'captcha_required' => true]);
+        } else {
+            session()->forget(['captcha_answer', 'captcha_required']);
+        }
+
+        return view('auth.login', compact('bruteForceDetected', 'captchaA', 'captchaB'));
+    }
+
+    /**
+     * Handle an incoming authentication request.
+     */
+    public function store(LoginRequest $request): RedirectResponse
+    {
+        $request->authenticate();
+
+        $request->session()->regenerate();
+
+        $user = Auth::user();
+
+        if ($user->mfa_enabled) {
+            Auth::guard('web')->logout();
+            cache(['mfa_recovery_' . $user->id => $user->mfa_recovery_codes ?? []], now()->addMinutes(10));
+            session(['mfa.pending' => $user->id]);
+            session(['mfa.remember' => $request->boolean('remember')]);
+            return redirect()->route('mfa.verify');
+        }
+
+        return redirect()->intended(route('dashboard', absolute: false));
+    }
+
+    /**
+     * Destroy an authenticated session.
+     */
+    public function destroy(Request $request): RedirectResponse
+    {
+        if ($request->session()->has('impersonate.original_id')) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Stop impersonating before logging out of your account.');
+        }
+
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+
+        $request->session()->regenerateToken();
+
+        return redirect('/');
+    }
+}

@@ -2,6 +2,7 @@
 
 - Prefers structured, step-by-step plans and explicit deliverable summaries (data analysis, database changes, app changes, config, import/testing results) over unstructured freeform output. Confidence: 0.7
 - Prefers attaching screenshots/images when reporting bugs or UI issues to provide visual context. Confidence: 0.65
+- When a defect persists, re-reports it with a verbatim transcript of the failing session (each user/assistant message with timestamps) plus a terse "still not responding correctly" — treat the pasted exchange as the reproduction case: find why that exact wording fails and prove the fix against those literal inputs, rather than assuming the previous fix covered real usage. Confidence: 0.7
 - Values blunt, honest gap-and-risk reporting over reassuring summaries: wants missing features, security holes, dead code, and overstated documentation named explicitly (with severity), not softened or omitted. For audit reports, wants a fixed structure: findings ordered by severity first, then changes made, then commands/tests run, then remaining risks — and when live access/credentials are unavailable, an exact list of which checks could not be performed plus safe commands/manual steps for them. Confidence: 0.85
 - Prefers dense, scannable output — comparison tables and prioritized lists — for large audit-style answers, with file paths/line references inline as proof. Confidence: 0.7
 - Calls the Flutter mobile app "the native application" — when the user says "native," they mean the Flutter code in `mobile/`. Confidence: 0.85

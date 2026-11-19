@@ -1,0 +1,26 @@
+services:
+  app:
+    image: itsd85-app:${APP_VERSION:-dev}
+    container_name: itsd85-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
+    environment:
+      APP_VERSION: ${APP_VERSION:-dev}
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - "8080:3000"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/health').then(async r => { const d = await r.json(); process.exit(r.ok && d.status === 'ok' && d.version === process.env.APP_VERSION ? 0 : 1); }).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 3

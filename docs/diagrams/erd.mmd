@@ -1,0 +1,95 @@
+erDiagram
+    USERS ||--o{ BOOKINGS : "employee_id"
+    USERS ||--o{ BORROW_REQUESTS : "employee_id"
+    USERS ||--o{ BORROW_REQUESTS : "approved_by"
+    USERS ||--o{ NOTIFICATIONS : "user_id"
+    USERS ||--o{ AUDIT_LOGS : "user_id"
+    USERS ||--o{ CHATBOT_INTERACTIONS : "user_id"
+
+    INVENTORY_CATEGORIES ||--o{ INVENTORIES : "category_id"
+
+    BORROW_REQUESTS ||--o{ BORROW_ITEMS : "borrow_request_id"
+    BORROW_REQUESTS ||--o{ BORROW_RETURN_EVIDENCES : "borrow_request_id"
+    INVENTORIES ||--o{ BORROW_ITEMS : "inventory_id"
+    BORROW_RETURN_EVIDENCES ||--o{ BORROW_ITEMS : "return_evidence_id"
+
+    USERS {
+        bigint id PK
+        string name
+        string email UK
+        string password "hashed"
+        boolean is_active
+        boolean mfa_enabled
+    }
+    INVENTORY_CATEGORIES {
+        bigint id PK
+        string name
+        string slug UK
+        boolean is_active
+    }
+    INVENTORIES {
+        bigint id PK
+        string item_code UK
+        string name
+        bigint category_id FK
+        int quantity
+        string status
+        string condition
+        int low_stock_threshold
+        string qr_token UK
+        softDeletes deleted_at
+    }
+    BORROW_REQUESTS {
+        bigint id PK
+        string request_number UK
+        bigint employee_id FK
+        bigint approved_by FK
+        string status
+        date borrow_date
+        date due_date
+        string return_location
+        softDeletes deleted_at
+    }
+    BORROW_ITEMS {
+        bigint id PK
+        bigint borrow_request_id FK
+        bigint inventory_id FK
+        int quantity
+        int reserved_quantity
+        boolean is_returned
+        string condition_returned
+    }
+    BORROW_RETURN_EVIDENCES {
+        bigint id PK
+        bigint borrow_request_id FK
+        bigint uploaded_by FK
+    }
+    BOOKINGS {
+        bigint id PK
+        string reference_number UK
+        string full_name
+        string status
+        bigint employee_id FK
+        date preferred_date
+        softDeletes deleted_at
+    }
+    NOTIFICATIONS {
+        uuid id PK
+        bigint user_id FK
+        string type
+        timestamp read_at
+    }
+    AUDIT_LOGS {
+        bigint id PK
+        bigint user_id FK
+        string event
+        string checksum
+    }
+    CHATBOT_INTERACTIONS {
+        bigint id PK
+        bigint user_id FK
+        string question_hash
+        text response
+        string model
+        int response_time_ms
+    }
