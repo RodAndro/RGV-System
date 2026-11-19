@@ -11,6 +11,11 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+        // Feature tests exercise Laravel responses, not the compiled frontend
+        // bundle. Disabling Vite keeps them independent of the separate asset
+        // build job and avoids requiring a generated manifest in CI.
+        $this->withoutVite();
+
         // Roles and permissions are cached in a static property. With
         // RefreshDatabase each test rolls its rows back, so a cached role can
         // outlive the row it points at and the next test raises

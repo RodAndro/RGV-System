@@ -86,6 +86,7 @@ class UserFeedbackFixesTest extends TestCase
             'unit_cost' => 100,
             'status' => 'available',
             'condition' => 'good',
+            'date_added' => now()->toDateString(),
         ]);
 
         $deletedItem = Inventory::create([
@@ -97,6 +98,7 @@ class UserFeedbackFixesTest extends TestCase
             'unit_cost' => 100,
             'status' => 'available',
             'condition' => 'good',
+            'date_added' => now()->toDateString(),
         ]);
         $deletedItem->delete();
 
@@ -132,6 +134,7 @@ class UserFeedbackFixesTest extends TestCase
 
         // Active borrowed request (not overdue)
         BorrowRequest::create([
+            'request_number' => 'BR-CURRENT-001',
             'employee_id' => $employee->id,
             'status' => 'borrowed',
             'reason' => 'Current task',
@@ -141,6 +144,7 @@ class UserFeedbackFixesTest extends TestCase
 
         // Overdue borrowed request
         BorrowRequest::create([
+            'request_number' => 'BR-OVERDUE-001',
             'employee_id' => $employee->id,
             'status' => 'borrowed',
             'reason' => 'Late item',
@@ -163,7 +167,7 @@ class UserFeedbackFixesTest extends TestCase
             ->get(route('admin.borrow-requests.index', ['status' => 'overdue']));
 
         $filterResponse->assertOk()
-            ->assertSee('Late item')
-            ->assertDontSee('Current task');
+            ->assertSee('BR-OVERDUE-001')
+            ->assertDontSee('BR-CURRENT-001');
     }
 }
