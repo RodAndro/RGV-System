@@ -1,8 +1,39 @@
 {$APP_DOMAIN:localhost} {
 	encode zstd gzip
-	handle /api/v1/mobile* {
-		reverse_proxy mobile-api:8081
+
+	# ---------------------------------------------------------------------
+	# 1. React SPA (the separate REST-only client).
+	#
+	# It lives under /app so that EVERY pre-existing URL keeps its current
+	# owner and behaviour. handle_path strips the /app prefix before
+	# forwarding, so nginx serves its normal asset paths while the SPA
+	# router still sees /app/... in the browser.
+	# ---------------------------------------------------------------------
+	handle_path /app/* {
+		reverse_proxy web:80
 	}
+
+	handle /app {
+		redir /app /app/ 308
+	}
+
+	# ---------------------------------------------------------------------
+	# 2. Everything else is the existing Laravel application. This is the
+	#    same behaviour as before this change, so all of these keep working
+	#    untouched:
+	#
+	#      /                      public welcome page
+	#      /booking, /track/*     public booking and tracking
+	#      /inventory/qr/{token}  public QR lookup
+	#      /login, /register, /forgot-password, /reset-password,
+	#      /verify-email, /confirm-password   Breeze auth screens
+	#      /dashboard             role-based redirect
+	#      /profile/*             profile and MFA
+	#      /admin/*               administrator portal
+	#      /employee/*            employee portal
+	#      /api/*                 versioned REST API + /api/docs
+	#      /session/*, /up        session + health probe
+	# ---------------------------------------------------------------------
 	handle {
 		reverse_proxy app:8080
 	}

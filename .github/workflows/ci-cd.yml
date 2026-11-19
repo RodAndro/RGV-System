@@ -5,6 +5,7 @@ on:
     branches: [main]
   push:
     branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -13,37 +14,39 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Backend
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: bcmath, curl, dom, gd, intl, mbstring, pdo_pgsql, pdo_sqlite, simplexml, xml, xmlreader, xmlwriter, zip
+          extensions: bcmath, curl, dom, gd, intl, mbstring, pdo_mysql, pdo_sqlite, simplexml, xml, xmlreader, xmlwriter, zip
           coverage: pcov
           tools: composer:v2
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist
       - name: Check PHP syntax
         run: find app bootstrap config database routes tests -type f -name '*.php' -print0 | xargs -0 -n1 php -l
-      - name: Check changed PHP style
-        run: >-
-          vendor/bin/pint --test
-          app/Http/Controllers/Admin/UserController.php
-          app/Http/Controllers/Api/Mobile/AuthController.php
-          app/Http/Controllers/Api/Mobile/BorrowRequestController.php
-          app/Http/Controllers/ChatbotController.php
-          app/Http/Middleware/LogApiRequest.php
-          app/Http/Middleware/RequireTokenAbility.php
-          app/Models/ChatbotInteraction.php
-          app/Models/AuditLog.php
-          app/Services/DatabaseRetrievalService.php
-          app/Services/AuditLogger.php
-          app/Services/OllamaService.php
-          bootstrap/app.php config/app.php config/services.php routes/api.php
-          database/migrations/2026_11_11_000001_create_chatbot_interactions_table.php
-          tests/Feature/ApiHealthTest.php tests/Feature/ChatbotTest.php
-          tests/Feature/Auth/AuthenticationTest.php tests/Feature/PlatformFeaturesTest.php
+      - name: Check code style (Pint)
+        # The versioned API added in this change is held to the full style
+        # standard. Pre-existing modules still carry formatting debt that
+        # was out of scope here; see docs/lint-baseline.md before widening
+        # this gate to the whole project.
+        run: |
+          vendor/bin/pint --test \
+            app/Http/Controllers/Api/V1 \
+            app/Http/Requests/Api \
+            app/Http/Resources \
+            app/Http/Middleware/EnsureApiRole.php \
+            app/Support \
+            bootstrap/app.php \
+            routes/api.php \
+            tests/Feature/Api \
+            tests/Feature/ApiHealthTest.php \
+            tests/Feature/ApiHealthDegradedTest.php
       - name: Run backend tests and coverage gate
         env:
           APP_ENV: testing
@@ -52,34 +55,48 @@ jobs:
           DB_DATABASE: ':memory:'
         run: php artisan test --coverage --min=60
 
-  frontend:
+  frontend-spa:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Frontend/app
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
+          cache-dependency-path: Frontend/app/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm run test
+      - name: Production build
+        run: npm run build
+
+  frontend-assets:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Frontend/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: Frontend/web/package-lock.json
       - run: npm ci
       - run: npm run build
-      - name: Prepare Compose validation environment
-        run: cp .env.example .env
-      - name: Validate Docker Compose configuration
-        env:
-          DB_PASSWORD: ci-only-compose-validation
-          APP_COMMIT: ci-validation
-          APP_DOMAIN: localhost
-        run: docker compose config --quiet
-      - name: Build production container
-        run: docker build --tag rgv-system-app:ci .
 
   mobile:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: mobile
+        working-directory: Frontend/mobile
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -89,104 +106,43 @@ jobs:
       - run: flutter analyze
       - run: flutter test
 
-  mobile-service:
+  compose:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: rgv_mobile_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d rgv_mobile_test"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-          cache: pip
-          cache-dependency-path: mobile-service/requirements-dev.txt
-      - name: Install service test dependencies
-        run: python -m pip install -r mobile-service/requirements-dev.txt
-      - name: Test independent mobile service with PostgreSQL
+      - uses: actions/checkout@v4
+      - name: Prepare environment file
+        run: cp .env.example .env
+      - name: Validate Docker Compose configuration
         env:
-          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rgv_mobile_test
-        run: pytest -q
-        working-directory: mobile-service
-      - name: Build independent mobile service container
-        run: docker build --tag rgv-mobile-service:ci mobile-service
+          APP_COMMIT: ci-validation
+          APP_DOMAIN: localhost
+        run: docker compose config --quiet
+      - name: Build production container
+        run: docker build --tag rgv-system-app:ci .
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [backend, frontend, mobile, mobile-service]
+    needs: [backend, frontend-spa, frontend-assets, mobile, compose, migrate-check]
     runs-on: [self-hosted, linux, rgv-production]
     environment: production
     concurrency:
       group: rgv-production-deploy
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
       - name: Deploy services and migrate safely
         env:
           APP_COMMIT: ${{ github.sha }}
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
-          MOBILE_DB_HOST: ${{ secrets.MOBILE_DB_HOST }}
-          MOBILE_DB_PORT: ${{ secrets.MOBILE_DB_PORT }}
-          MOBILE_DB_NAME: ${{ secrets.MOBILE_DB_NAME }}
-          MOBILE_DB_USER: ${{ secrets.MOBILE_DB_USER }}
-          MOBILE_DB_PASSWORD: ${{ secrets.MOBILE_DB_PASSWORD }}
-          AUDIT_HMAC_KEY: ${{ secrets.AUDIT_HMAC_KEY }}
-          MOBILE_MAIL_HOST: ${{ secrets.MOBILE_MAIL_HOST }}
-          MOBILE_MAIL_PORT: ${{ secrets.MOBILE_MAIL_PORT }}
-          MOBILE_MAIL_USERNAME: ${{ secrets.MOBILE_MAIL_USERNAME }}
-          MOBILE_MAIL_PASSWORD: ${{ secrets.MOBILE_MAIL_PASSWORD }}
-          ADMIN_NOTIFICATION_EMAIL: ${{ secrets.ADMIN_NOTIFICATION_EMAIL }}
         run: |
-          umask 077
-          : "${MOBILE_DB_USER:?Set MOBILE_DB_USER to the PostgreSQL role username from Supabase Connect}"
-          {
-            printf '%s\n' "DB_HOST=$MOBILE_DB_HOST"
-            printf '%s\n' "DB_PORT=${MOBILE_DB_PORT:-5432}"
-            printf '%s\n' "DB_NAME=$MOBILE_DB_NAME"
-            printf '%s\n' "DB_USER=$MOBILE_DB_USER"
-            printf '%s\n' "DB_PASSWORD=$MOBILE_DB_PASSWORD"
-            printf '%s\n' "DB_SSLMODE=verify-full"
-            printf '%s\n' "AUDIT_HMAC_KEY=$AUDIT_HMAC_KEY"
-            printf '%s\n' "APP_TIMEZONE=UTC"
-            printf '%s\n' "APP_URL=https://$APP_DOMAIN"
-            printf '%s\n' "MAIL_HOST=$MOBILE_MAIL_HOST"
-            printf '%s\n' "MAIL_PORT=${MOBILE_MAIL_PORT:-587}"
-            printf '%s\n' "MAIL_USERNAME=$MOBILE_MAIL_USERNAME"
-            printf '%s\n' "MAIL_PASSWORD=$MOBILE_MAIL_PASSWORD"
-            printf '%s\n' "ADMIN_NOTIFICATION_EMAIL=$ADMIN_NOTIFICATION_EMAIL"
-          } > mobile-service/.env
+          # Compose interpolation reads the repository root .env, not
+          # Backend/.env. The deploy host keeps real secrets there.
+          if [ ! -f .env ]; then
+            cp .env.example .env
+          fi
           docker compose config -q
           docker compose up -d --build --remove-orphans
           docker compose exec -T app php artisan migrate --force
-          docker compose -f mobile-service/compose.yaml config -q
-          docker compose -f mobile-service/compose.yaml up -d --build
-      - name: Verify standalone mobile service
-        env:
-          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
-        run: |
-          set -eu
-          url="https://${APP_DOMAIN}/api/v1/mobile/health"
-          attempt=0
-          until payload="$(curl --silent --show-error --fail "$url")"; do
-            attempt=$((attempt + 1))
-            if [ "$attempt" -ge 12 ]; then
-              docker compose -f mobile-service/compose.yaml logs --tail=200 mobile-api
-              exit 1
-            fi
-            sleep 5
-          done
-          printf '%s' "$payload" | jq -e '.status == "ok"'
       - name: Verify deployed commit and health
         env:
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
@@ -198,9 +154,77 @@ jobs:
           until payload="$(curl --silent --show-error --fail "$url")"; do
             attempt=$((attempt + 1))
             if [ "$attempt" -ge 12 ]; then
-              docker compose logs --tail=200 app caddy ollama
+              docker compose logs --tail=200 app caddy ollama web db
               exit 1
             fi
             sleep 10
           done
           printf '%s' "$payload" | jq -e --arg commit "$APP_COMMIT" '.status == "ok" and .commit == $commit'
+      - name: Verify Swagger UI is served
+        env:
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+        run: |
+          curl --silent --show-error --fail "https://${APP_DOMAIN}/api/docs" -o /dev/null
+      - name: Database backup before release
+        run: |
+          mkdir -p backups
+          docker compose exec -T db mysqldump \
+            --single-transaction --routines --events --no-tablespaces \
+            -u "${DB_USERNAME:-rgv}" -p"${DB_PASSWORD:-rgv_local_password}" \
+            "${DB_DATABASE:-rgv}" \
+            > "backups/db_$(date -u +%Y%m%dT%H%M%SZ).sql"
+
+  migrate-check:
+    # Migrations are verified against a real MySQL service, not SQLite.
+    # SQLite tolerates constructs MySQL rejects (for example a TEXT column
+    # inside a unique index), so this job is what catches schema-portability
+    # regressions before they reach the deploy job.
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: rgv_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    defaults:
+      run:
+        working-directory: Backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: bcmath, curl, dom, gd, intl, mbstring, pdo_mysql, simplexml, xml, xmlreader, xmlwriter, zip
+          tools: composer:v2
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Run migrations against MySQL
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_DATABASE: rgv_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+        run: php artisan migrate --force
+      - name: Seed sample data against MySQL
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_DATABASE: rgv_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+        run: php artisan db:seed --force

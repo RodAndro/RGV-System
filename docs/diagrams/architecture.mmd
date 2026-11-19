@@ -1,0 +1,17 @@
+flowchart LR
+    U["Browser<br/>phone or desktop"] -->|HTTPS| T["Cloudflare Tunnel"]
+    T --> P["Caddy reverse proxy<br/>only published ports 80/443"]
+
+    P -->|"/api/*"| A["Laravel 12<br/>REST API v1 + staff portal"]
+    P -->|"/admin, /employee, /login,<br/>/profile, /booking, /inventory, ..."| A
+    P -->|"all other paths"| W["React SPA<br/>static build on nginx"]
+
+    A --> DB[("PostgreSQL 17<br/>db-data volume")]
+    A --> O["Ollama<br/>local open-weight model"]
+
+    subgraph Docker["Docker Compose network (private)"]
+        A
+        DB
+        O
+        W
+    end

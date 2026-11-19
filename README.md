@@ -1,124 +1,228 @@
-# RGV System
+# RGV Multi-Tech Services
 
-RGV Multi-Tech Services business operations system: Laravel 12 web/API application and Flutter Android employee client.
+A technology-integrated operations system for a multi-tech services business: a REST API, a
+separate web client, a server-rendered staff portal, a relational database, and a locally hosted
+AI assistant.
 
-## Existing features
+- **Live URL:** <!-- TODO(team): add the public HTTPS address -->
+- **API docs:** <!-- TODO(team): https://<live-url>/api/docs --> (Swagger UI, served at `/api/docs`)
+- **Team:** <!-- TODO(team): names and roles (max 3) -->
+- **Section:** <!-- TODO(team): section -->
+- **Adviser/Instructor:** Rinante M. Buntod
 
-- Public booking, tracking, and inventory QR lookup.
-- Admin and employee portals for bookings, inventory, borrowing, reports, notifications, users, audit history, backups, and import/export.
-- Flutter employee workflows for login/MFA, dashboard, inventory search and QR lookup, borrow requests, returns, and account settings.
-- PostgreSQL as the relational source of truth; a separately deployed mobile API serves Flutter, while Laravel serves the web application.
-- Local Ollama inference for report insights and the admin chatbot. Chatbot report retrieval uses allow-listed aggregate queries and returns source references. No hosted AI fallback is used.
+> Items marked `TODO(team)` cannot be filled in from the repository alone and must be supplied by
+> the team before submission.
 
-## Requirements
+## Features (by role)
 
-- PHP 8.2+, Composer, a Supabase PostgreSQL project, Node.js 24+, and Flutter/Dart for Android work.
-- Docker Compose v2 for the container deployment.
+**Public (no account)**
 
-## Local development
+- Browse available inventory and resolve a physical item from its printed QR code.
+- Submit a service booking and track it by reference number.
 
-1. Install PHP and JavaScript dependencies:
+**Employee** (`employee` role)
 
-   ```powershell
-   composer install
-   Copy-Item .env.example .env
-   php artisan key:generate
-   ```
+- Sign in with a Sanctum bearer token; MFA supported.
+- Dashboard of own borrow requests and inventory availability.
+- Search and filter inventory; create borrow requests; cancel pending requests.
+- Return borrowed items with recorded condition.
 
-2. Set the Supabase PostgreSQL connection variables in `.env` from the project Dashboard's Connect panel. The example uses the shared Session pooler for IPv4 compatibility; use the direct endpoint only on IPv6-capable hosts. Require TLS (`DB_SSLMODE=require`) and keep the database password in the untracked `.env` or deployment secret store. Then run additive migrations:
+**Administrator** (`admin` role)
 
-   ```powershell
-   php artisan migrate
-   ```
+- Full CRUD over inventory items and borrow requests through the REST API.
+- Approve, reject, and complete borrow requests and bookings.
+- User management, reports, audit log, backups, import/export.
+- AI-assisted insights over aggregated report data, with a deterministic fallback.
 
-   Migrations do not reset or seed existing data. Do not use `migrate:fresh` or `db:wipe` on an existing database.
-   To populate local/test sample categories and inventory, run `php artisan db:seed`. Demo accounts are optional and are created only when `DEMO_*_EMAIL` and `DEMO_*_PASSWORD` are set in local `.env`; the sample seeder refuses to run in production.
+Role checks are enforced **on the server** for every protected endpoint. The client only decides
+which controls to render.
 
-3. Install frontend dependencies and build assets:
+## Architecture
 
-   ```powershell
-   npm.cmd ci
-   npm.cmd run build
-   ```
+```mermaid
+flowchart LR
+    B["Browser (phone / desktop)"] -->|HTTPS| T["Cloudflare Tunnel"]
+    T --> P["Reverse proxy (Caddy)"]
 
-4. Start Laravel and Vite for local work:
+    P -->|/api/*| A["Laravel 12 API + staff portal"]
+    P -->|/admin, /employee, /login, ...| A
+    P -->|everything else| W["React SPA (nginx)"]
 
-   ```powershell
-   composer run dev
-   ```
+    A --> D[("MySQL 8.4<br/>named volume")]
+    A --> O["Ollama (local LLM)"]
+```
 
-Mail uses Laravel's local log driver by default. Set up SMTP only when outbound email delivery is needed. Ollama is optional during development; if unavailable, the chatbot reports that local generation is offline and deterministic report summaries remain available.
+The reverse proxy serves the SPA under **`/app`** and forwards everything else to Laravel, so every
+pre-existing URL (`/`, `/booking`, `/login`, `/admin`, `/employee`, …) keeps its current behaviour.
+Only the proxy publishes ports; the database and the AI service are reachable only inside the
+Compose network. The browser never talks to the database or to Ollama directly.
 
-## Docker deployment
+- **Client application:** `Frontend/app` — React 18 + TypeScript, served at `/app`. All data comes from `/api/v1`.
+- **Staff portal:** Laravel Blade views served by the same API container (retained, not replaced).
+- **Mobile client:** `Frontend/mobile` — Flutter, employee workflows.
 
-Copy `.env.example` to `.env`, set a unique `APP_KEY` and strong `DB_PASSWORD`, and set `APP_DOMAIN` to the DNS name that points to this host. Use the Session Pooler host and username from Supabase Dashboard > Connect if this host is IPv4-only. Then:
+## Tech stack
+
+| Layer | Choice |
+|---|---|
+| Client | React 18, TypeScript, Vite, React Router, TanStack Query, Tailwind CSS |
+| Backend | Laravel 12 (PHP 8.2+), Sanctum tokens, Spatie permissions |
+| Database | MySQL 8.4, Eloquent migrations and seeders |
+| Integration | Ollama (open-weight model) for the report assistant |
+| Reverse proxy | Caddy 2 |
+| Containers | Docker Engine + Docker Compose |
+| CI/CD | GitHub Actions + self-hosted runner |
+| Tests | PHPUnit, Vitest + Testing Library, Flutter test |
+
+## Run locally
+
+### Docker (full stack)
 
 ```bash
+cp .env.example .env          # Compose reads this file for interpolation
+cp Backend/.env.example Backend/.env
 docker compose up -d --build
+docker compose exec app php artisan key:generate
 docker compose exec app php artisan migrate --force
+docker compose exec app php artisan db:seed
 docker compose exec ollama ollama pull qwen3:1.7b
 ```
 
-Caddy is the only service publishing ports 80/443. Laravel connects to the configured Supabase PostgreSQL endpoint over TLS; no second application database is started. Uploaded/application files, Ollama model files, logs, and Caddy certificates use named volumes. To use Cloudflare Tunnel, route the hostname to the Caddy service or host port; keep the tunnel credential outside the repository.
+The system is then reachable at `http://localhost` (staff portal) and `http://localhost/app/`
+(the web client).
 
-Deployment, rollback, backup, and restore procedures are in [docs/deployment.md](docs/deployment.md).
+> Compose interpolation reads the repository-root `.env`. `Backend/.env` is loaded into the
+> container as application configuration but does **not** satisfy `${...}` substitution.
 
-## CI/CD
+### Native development
 
-`.github/workflows/ci-cd.yml` runs backend tests/coverage, the web asset build, Flutter checks, and mobile-service tests against disposable PostgreSQL on pull requests to `main`, pushes to `main`, and manual workflow dispatches. Only a successful push to `main` can deploy. Production runner, GitHub environment, branch rules, and pipeline verification steps are documented in [docs/cicd-runbook.md](docs/cicd-runbook.md).
+```bash
+cd Backend && composer install && composer run dev     # API + Blade on :8000, reachable from the LAN
+cd Frontend/app && npm ci && npm run dev               # SPA on :5174 (proxies /api to :8000)
+cd Frontend/mobile && flutter pub get
+```
+
+### Connecting the Flutter app
+
+The native app talks only to Laravel. `composer run dev` starts the API on
+port 8000 and a local-network discovery responder. A physical phone discovers
+the current API address automatically when it shares a Wi-Fi/LAN with the
+computer. On Windows, run `scripts/allow-mobile-api-local-subnet.ps1` once in
+an Administrator PowerShell session. Its firewall rules use `LocalSubnet`, so
+they continue to cover the current network after the computer changes Wi-Fi.
+
+```bash
+# Android emulator (10.0.2.2 is the host machine)
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
+
+# Physical device on the same Wi-Fi/LAN (automatic discovery)
+cd Frontend/mobile && flutter run
+
+# Deployed build (HTTPS is required in release mode)
+flutter build apk --dart-define=API_BASE_URL=https://your-domain.example
+```
+
+Local discovery requires the phone and computer to be on the same network and
+that network to permit device-to-device traffic. Release APKs use a stable
+HTTPS API URL instead of local discovery.
+
+**Employee flow:** an administrator creates the employee at `/admin/users/create`, then that
+employee signs into the app with the same email and password. Laravel is the only source of
+identity — Supabase is not used.
+
+### MySQL
+
+Set up a local database before migrating:
+
+```bash
+mysql -u root -e "CREATE DATABASE rgv_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+cd Backend && php artisan migrate --seed
+```
+
+Configure `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME` and `DB_PASSWORD` in `Backend/.env`.
+
+## Test
+
+```bash
+# Backend (REST API + portal)
+cd Backend && php artisan test
+
+# SPA client
+cd Frontend/app && npm run lint && npm run test && npm run build
+
+# Blade asset pipeline
+cd Frontend/web && npm run build
+
+# Flutter
+cd Frontend/mobile && flutter analyze && flutter test
+```
+
+Backend tests run against in-memory SQLite, so they never touch the MySQL database configured in
+`Backend/.env`. Because SQLite accepts some SQL that MySQL rejects, CI also runs `migrate` and
+`db:seed` against a real MySQL service (`migrate-check` job) before any deploy.
+
+## Deployment
+
+Every merge to `main` triggers `.github/workflows/ci-cd.yml`:
+
+1. `backend` — PHP syntax, Pint on the API modules, PHPUnit with a 60% coverage gate.
+2. `frontend-spa` — ESLint, Vitest, production build.
+3. `frontend-assets`, `mobile` — asset build and Flutter analyze/test.
+4. `compose` — Compose configuration validation and container build.
+5. `deploy` — on a self-hosted runner: compose rebuild, migrations, then a health check that
+   requires `/api/health` to report the new commit ID.
+
+Hosting uses a self-hosted server plus a Cloudflare Tunnel for a public HTTPS address. Runbooks:
+[docs/deployment.md](docs/deployment.md), [docs/cicd-runbook.md](docs/cicd-runbook.md).
+
+## Demo accounts
+
+Sample data only. Created by `php artisan db:seed` when the `DEMO_*` variables are set:
+
+| Role | Email | Password |
+|---|---|---|
+| Administrator | <!-- TODO(team): demo admin email --> | <!-- TODO(team): demo admin password --> |
+| Employee | <!-- TODO(team): demo employee email --> | <!-- TODO(team): demo employee password --> |
 
 ## API
 
-- Health: `GET /api/health` (database availability, version, and commit).
-- OpenAPI YAML: `GET /api/docs`.
-- Web API: Laravel health and documentation endpoints above. The Flutter app does not call Laravel or the optional legacy `mobile-service`.
-- The admin chatbot remains available at `POST /api/chatbot/query` through the authenticated web session and CSRF protection.
+- Base path: `/api/v1`. Resources are plural and hyphenated.
+- Authentication: `Authorization: Bearer <token>` from `POST /api/v1/auth/login`.
+- Errors share one envelope: `{"error": {"code", "message", "details"}}`.
+- List endpoints accept `page`, `limit`, `sort`, `q` and return `meta` with `total` and
+  `total_pages`.
+- Interactive reference: `/api/docs` (Swagger UI). Machine-readable:
+  [docs/api/openapi.yaml](docs/api/openapi.yaml).
+- Health: `GET /api/health` → status, version, commit ID, database connectivity.
 
-## Flutter client
+## Documentation
 
-The mobile app connects directly to the shared Supabase project using Supabase Auth and restricted database RPCs. It reads current data and submits each transaction to Supabase online; it does not cache business records or queue writes. If Supabase is unreachable, the operation fails visibly and is not reported as saved. Laravel does not need to be running for native workflows. Apply [database/supabase/mobile_backend.sql](database/supabase/mobile_backend.sql) after the Laravel migrations and configure the public project URL/key as build-time defines.
+| Document | Location |
+|---|---|
+| System documentation (D1) | [docs/01-system-documentation](docs/01-system-documentation) |
+| User manual (D2) | [docs/02-user-manual](docs/02-user-manual) |
+| API reference (D3) | [docs/03-api/openapi.yaml](docs/03-api/openapi.yaml) |
+| Research paper (D4) | [docs/04-paper](docs/04-paper) |
+| Architecture | [docs/architecture.md](docs/architecture.md) |
+| Deployment and recovery | [docs/deployment.md](docs/deployment.md) |
+| CI/CD runbook | [docs/cicd-runbook.md](docs/cicd-runbook.md) |
+| Backup/restore drill record | [docs/evaluation/backup-restore-drill.md](docs/evaluation/backup-restore-drill.md) |
+| Branch ruleset | [.github/rulesets/protect-main.json](.github/rulesets/protect-main.json) |
+| Lint baseline | [docs/lint-baseline.md](docs/lint-baseline.md) |
+| ITSD 85 compliance matrix | [docs/ITSD85-final-project-compliance.md](docs/ITSD85-final-project-compliance.md) |
 
-```powershell
-cd mobile
-flutter pub get
-flutter run `
-  --dart-define=SUPABASE_URL=https://fywtxrptaqcmkzsgfehp.supabase.co `
-  --dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
-```
+## Operations scripts
 
-See [mobile/README.md](mobile/README.md) for employee account linking and APK build instructions. The Flutter client must never receive the Laravel server's Supabase secret key or a PostgreSQL connection string.
+| Script | Purpose |
+|---|---|
+| `scripts/backup.sh` | Consistent MySQL dump outside the database volume |
+| `scripts/restore.sh` | Restore into a separate database and verify row counts |
+| `scripts/setup-branch-ruleset.sh` | Apply the committed `main` branch ruleset |
 
-## Verification
+## License and credits
 
-```powershell
-php artisan test
-vendor/bin/pint --test
-npm.cmd run build
-cd mobile
-flutter analyze
-flutter test
-```
+MIT License — see [LICENSE](LICENSE).
 
-Test configuration uses in-memory SQLite. It does not connect to the database configured in `.env`.
-
-## Existing data migration
-
-SQLite-to-Supabase migration is an explicit operator-run operation. Review [docs/data-migration.md](docs/data-migration.md), make protected backups of both databases, run the dry-run and preflight, then require the explicit execution flag. This repository does not connect to or migrate a live database automatically.
-
-## Project documentation
-
-- [Initial audit and implementation plan](docs/project-audit-and-implementation-plan.md)
-- [Official ITSD 85 final-project compliance matrix](docs/ITSD85-final-project-compliance.md)
-- [CI/CD lab adaptation and verification runbook](docs/cicd-runbook.md)
-- [Architecture and runtime services](docs/architecture.md)
-- [Backup, restore, and deployment](docs/deployment.md)
-- [Requirements traceability](docs/requirements-traceability.md)
-- [Complete system documentation](docs/Complete%20System%20Documentation.md) ([PDF](docs/Complete%20System%20Documentation.pdf))
-- [Complete database schema](docs/Complete%20Database%20Schema.md) ([PDF](docs/Complete%20Database%20Schema.pdf))
-- [System features and role permissions](docs/System%20Features%20and%20Role%20Permissions.md) ([PDF](docs/System%20Features%20and%20Role%20Permissions.pdf))
-- [Chatbot evaluation set](docs/evaluation/chatbot-questions.json)
-- [OpenAPI document](docs/openapi.yaml)
-- [Web system API reference](RGV-System-API.md)
-- [Mobile API reference](RGV-Mobile-API.md)
-
-MIT License.
+Third-party components keep their own licenses: Laravel, React, MySQL, Caddy, Ollama and the
+selected open-weight model. AI assistance used while developing this system is declared in the
+acknowledgement sections of the system documentation and the research paper.

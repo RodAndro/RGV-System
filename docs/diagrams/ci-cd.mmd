@@ -1,0 +1,27 @@
+flowchart LR
+    DEV["Developer<br/>branch + pull request"] --> GH["GitHub"]
+
+    GH -->|pull_request| B1
+    GH -->|push: main| B1
+
+    subgraph PR["Pull request checks (ubuntu-latest)"]
+        B1["backend<br/>php -l, Pint, PHPUnit + 60% coverage"]
+        B2["frontend-spa<br/>ESLint, Vitest, build"]
+        B3["frontend-assets<br/>Vite build"]
+        B4["mobile<br/>dart format, analyze, test"]
+        B5["compose<br/>config validate + image build"]
+    end
+
+    B1 --> D
+    B2 --> D
+    B3 --> D
+    B4 --> D
+    B5 --> D
+
+    D["deploy<br/>self-hosted runner<br/>needs: all checks"]
+    D --> D1["docker compose up -d --build"]
+    D1 --> D2["php artisan migrate --force"]
+    D2 --> D3["GET /api/health<br/>assert status=ok and commit=SHA"]
+    D3 --> D4["GET /api/docs reachable"]
+    D4 --> D5["pg_dump backup"]
+    D5 --> LIVE["Public HTTPS address<br/>new commit live"]

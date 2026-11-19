@@ -1,6 +1,6 @@
 <?php
 
-require dirname(__DIR__).'/vendor/autoload.php';
+require dirname(__DIR__).'/Backend/vendor/autoload.php';
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -9,7 +9,7 @@ use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\Extension\GithubFlavoredMarkdownExtension;
 use League\CommonMark\MarkdownConverter;
 
-$root = dirname(__DIR__);
+$root = dirname(__DIR__).'/Backend';
 $documents = [
     [
         'source' => 'Complete System Documentation.md',

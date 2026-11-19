@@ -1,6 +1,6 @@
 # RGV CI/CD Runbook
 
-This runbook adapts the ITSD 85 CI/CD lab to the existing Laravel, Supabase PostgreSQL, Ollama, Caddy, and Flutter project. Supabase PostgreSQL is the shared production database; the deployment host runs Laravel and runtime services. Pull request CI runs on GitHub-hosted runners; only successful pushes to `main` reach the self-hosted deployment runner.
+This runbook adapts the ITSD 85 CI/CD lab to the existing Laravel, MySQL, Ollama, Caddy, and Flutter project. MySQL is the production database; the deployment host runs Laravel and runtime services. Pull request CI runs on GitHub-hosted runners; only successful pushes to `main` reach the self-hosted deployment runner.
 
 ## Pipeline
 
@@ -20,13 +20,13 @@ flowchart LR
     HEALTH --> LIVE[Deployment verified]
 ```
 
-CI jobs use GitHub-hosted Linux machines. The production runner connects outbound to GitHub, so the deployment server does not need a public SSH endpoint for Actions. Only Caddy publishes application web ports; Ollama remains on the private Compose network and Laravel reaches Supabase PostgreSQL over TLS.
+CI jobs use GitHub-hosted Linux machines. The production runner connects outbound to GitHub, so the deployment server does not need a public SSH endpoint for Actions. Only Caddy publishes application web ports; Ollama remains on the private Compose network and Laravel reaches MySQL inside the private Compose network.
 
 ## Required GitHub and server setup
 
 1. Provision a Linux deployment host with Docker Engine and the Docker Compose v2 plugin. Configure DNS/TLS or an operator-managed HTTPS tunnel for the hostname.
 2. Create a dedicated, unprivileged deployment account. Give it Docker access and install the GitHub Actions runner as a service under that account. Register labels `self-hosted`, `linux`, and `rgv-production`; use the current runner download/configuration commands from the repository's GitHub Actions settings. Never store the one-time registration token in the repository.
-3. Provision the deployment checkout and private `.env` on the host. Set a unique `APP_KEY`, Supabase connection values from Dashboard > Connect, `APP_ENV=production`, `APP_DEBUG=false`, and correct `APP_URL`/`APP_DOMAIN`. Confirm the host can run `docker compose config -q` before enabling deployments.
+3. Provision the deployment checkout and private `.env` on the host. Set a unique `APP_KEY`, MySQL connection values, `APP_ENV=production`, `APP_DEBUG=false`, and correct `APP_URL`/`APP_DOMAIN`. Confirm the host can run `docker compose config -q` before enabling deployments.
 4. In GitHub, create the `production` environment and add `APP_DOMAIN` as an environment variable. Keep runtime secrets in the host's `.env`; they are not CI variables.
 5. Protect `main`: require pull requests, block force pushes, and require the `backend`, `frontend`, and `mobile` check jobs. Deployment is not a required PR check because it is only eligible after merge.
 6. Limit repository write access to trusted maintainers. On a public repository, require approval for external-contributor workflows. The workflow does not schedule PR jobs on the self-hosted production runner.
@@ -83,7 +83,7 @@ Do not fill results with estimates. Capture real run links, timestamps, commit I
 5. **Commit SHA as version:** It identifies precisely which source revision produced the deployed response and provides an immutable image tag for selecting a previous application build.
 6. **Rollback options:** A revert PR is the normal auditable path and automatically reruns checks/deployment. Reusing a previous tagged image is faster for an emergency, but does not undo database migrations and must be schema-compatible.
 7. **Self-hosted runner risks:** Jobs can execute repository code with the runner account's host access. Keep untrusted PRs off that runner, require approvals for external contributions, restrict write access, use a dedicated low-privilege account, and protect `main` with required checks.
-8. **Free tooling:** GitHub Actions hosted runners provide CI for public repositories within GitHub's current policy; a self-hosted runner uses the team's own Linux host for deployment. Docker Compose, Laravel, PostgreSQL, Caddy, and the local Ollama integration are open-source components. Confirm current account/service terms before representing a hosting setup as zero-cost.
+8. **Free tooling:** GitHub Actions hosted runners provide CI for public repositories within GitHub's current policy; a self-hosted runner uses the team's own Linux host for deployment. Docker Compose, Laravel, MySQL, Caddy, and the local Ollama integration are open-source components. Confirm current account/service terms before representing a hosting setup as zero-cost.
 
 ## Evidence checklist
 

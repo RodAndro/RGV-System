@@ -1,60 +1,141 @@
 # Deployment, rollback, and database recovery
 
+The stack is defined by `compose.yaml`: `db` (MySQL 8.4), `app` (Laravel),
+`web` (React SPA on nginx), `caddy` (reverse proxy), `ollama`, and an optional
+`tunnel` (Cloudflare).
+
 ## Initial deployment
 
-1. Install Docker Engine and the Compose v2 plugin on the Linux host. Configure the DNS name in `APP_DOMAIN` and make ports 80/443 reachable, or configure an operator-managed Cloudflare Tunnel to route the hostname to Caddy.
-2. Clone the repository on the host. Copy `.env.example` to `.env`; set a unique `APP_KEY`, production `APP_URL`/`APP_DOMAIN`, and `APP_ENV=production`, `APP_DEBUG=false`. Set PostgreSQL host, port, database, username, and password from Supabase Dashboard > Connect. The example uses the shared Session pooler for IPv4 compatibility; use the direct endpoint only on IPv6-capable hosts. Keep the password in the untracked `.env` or deployment secret store. TLS is required by default.
-3. Start the services and run only additive migrations:
+1. Install Docker Engine and Docker Compose on a Linux host.
+
+2. Clone the repository. Copy `.env.example` to `.env` at the repository root
+   (Compose reads this file for variable interpolation) and copy
+   `Backend/.env.example` to `Backend/.env` for the application itself.
+
+3. In both files set a unique `APP_KEY`, `APP_ENV=production`,
+   `APP_DEBUG=false`, the production `APP_URL`/`APP_DOMAIN`, and the MySQL
+   connection values (`DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`,
+   `DB_PASSWORD`). Leave `DB_HOST` empty to use the bundled `db` container.
+   Keep real values out of version control.
+
+4. Start the stack and prepare the database:
 
    ```bash
    docker compose up -d --build
-   docker compose exec app php artisan migrate --force
-   docker compose exec ollama ollama pull qwen3:1.7b
-   curl --fail https://$APP_DOMAIN/api/health
+   docker compose exec -T app php artisan key:generate --force
+   docker compose exec -T app php artisan migrate --force
+   docker compose exec -T app php artisan db:seed --force
+   docker compose exec -T ollama ollama pull qwen3:1.7b
    ```
 
-4. Apply [`database/supabase/mobile_backend.sql`](../database/supabase/mobile_backend.sql) once as the Supabase database owner after migrations. Set Laravel's `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and server-only `SUPABASE_SECRET_KEY` so the admin UI can provision employee Auth identities. Older projects can use the legacy `SUPABASE_SERVICE_ROLE_KEY` JWT. The native app uses only the public URL and publishable key as build-time Dart defines; it does not require the mobile service or Laravel to be running.
-5. The first model download may take several minutes. If Ollama is stopped or the model is missing, the web app remains available and the chatbot returns a clear local-model-unavailable message.
+5. Verify:
 
-Application storage, log, model, and Caddy data volumes survive normal rebuilds. Only Caddy publishes a port; Supabase PostgreSQL is reached over TLS and is not exposed through this Compose stack.
+   ```bash
+   curl -fs http://localhost/api/health
+   curl -fs http://localhost/api/docs -o /dev/null
+   ```
+
+`/api/health` must report `status: ok`, `database: ok`, and the deployed
+commit.
+
+6. The system is then reachable at `http://localhost` (staff portal) and
+   `http://localhost/app/` (web client). For a real hostname, point DNS at the
+   server; Caddy obtains a certificate automatically.
+
+Only Caddy publishes ports (80/443). MySQL and Ollama are reachable only
+inside the Compose network.
+
+## Environment variables (names only)
+
+Root `.env` (Compose interpolation): `APP_DOMAIN`, `APP_COMMIT`, `DB_DATABASE`,
+`DB_USERNAME`, `DB_PASSWORD`, `DB_ROOT_PASSWORD`, `DB_PORT`, `DB_HOST`,
+`FRONTEND_URL`, `OLLAMA_BASE_URL`, `TUNNEL_TOKEN`.
+
+`Backend/.env` (application): `APP_*`, `DB_*`, `SESSION_*`, `CACHE_STORE`,
+`QUEUE_CONNECTION`, `MAIL_*`, `OLLAMA_*`, `FRONTEND_URL`, `APP_VERSION`,
+`APP_COMMIT`, `SANCTUM_*`. The complete list with placeholders is in
+`Backend/.env.example`.
 
 ## CI/CD and access controls
 
-`.github/workflows/ci-cd.yml` runs backend checks, frontend production build, Flutter checks, and legacy mobile-service tests against a disposable PostgreSQL instance on PRs to `main`, pushes to `main`, and manual dispatch. Deployment runs only after all test jobs pass on a push to `main` and only on the self-hosted runner labeled `rgv-production`; pull requests and manual dispatches do not deploy. The native app's runtime does not depend on that optional service.
+`.github/workflows/ci-cd.yml` runs on pull requests to `main`, pushes to
+`main`, and manual dispatch:
 
-The deployment host must have Docker Engine and Compose v2, outbound HTTPS access to GitHub, and a persistent checkout/runner service. Register the GitHub Actions runner under an unprivileged deployment account that can use Docker, with labels `self-hosted`, `linux`, and `rgv-production`. The Node 24 based checkout/setup actions require Actions Runner `v2.327.1` or later. Install it as a service and confirm it returns to `Idle` after a host reboot. Do not put the one-time runner registration token, private SSH keys, or `.env` in the repository.
+- `backend` - PHP syntax, Pint on the API modules, PHPUnit with a coverage gate.
+- `frontend-spa` - ESLint, Vitest, production build.
+- `frontend-assets` and `mobile` - asset build and Flutter analyze/test.
+- `compose` - Compose configuration validation and container build.
+- `migrate-check` - `migrate` and `db:seed` against a real MySQL service, so
+  schema problems cannot pass on SQLite alone.
 
-On GitHub, create the `production` environment and set its `APP_DOMAIN` variable. Protect `main` with pull requests, block force pushes, and require the `backend`, `frontend`, and `mobile` checks. Keep deployment restricted to trusted maintainers. PR workflows run on GitHub-hosted runners; deployment is limited to a successful push on `main`, so untrusted fork code never runs on the production runner. For a public repository, also require approval for workflows from external contributors under Actions settings.
-
-The app image is tagged `rgv-system-app:<commit-sha>` during deployment. Application files, logs, Ollama models, and Caddy state use named volumes. Deployment concurrency prevents overlapping releases. See [the CI/CD runbook](cicd-runbook.md) for pipeline verification, release evidence, and recovery steps.
+Deployment runs only on a push to `main` after every job passes, on the
+self-hosted runner labelled `rgv-production`. It rebuilds images, runs
+migrations, then requires `/api/health` to report `status: ok` and the new
+commit SHA before succeeding.
 
 ## Rollback
 
-1. Identify the last known healthy commit and restore its source with a reviewed revert commit or `git checkout` on the deployment host.
-2. Preferred: create a revert branch/commit, open a PR, wait for the required CI checks, and merge. The main workflow will build and deploy the revert, then verify its new commit ID at `/api/health`.
-3. Do not run down migrations automatically. Database migrations must remain backward-compatible; if a schema rollback is needed, take a new backup and use a reviewed, migration-specific recovery plan.
-4. Verify `/api/health`, deployed commit, login, and a read-only workflow. Preserve all named volumes.
-
-For an emergency app-only rollback, first confirm the previous commit image still exists with `docker image ls rgv-system-app`. From the same deployment checkout and Compose project used by the runner, set `APP_COMMIT` to the previous healthy image tag and run `docker compose up -d --no-build app`. Verify `/api/health` reports that selected version. This does not roll back database migrations; use it only when the prior app version remains compatible with the current schema. Then revert the bad Git commit through the normal PR path so a later deployment does not reintroduce it.
-
-## PostgreSQL backup
-
-Create the backup directory on a protected host and use the `pg_dump` version supported by the Supabase PostgreSQL server. Use the dashboard's direct endpoint for backup tooling, and store connection settings in environment variables or a protected password file (never in shell history or command arguments). Write a compressed logical dump outside the application volume:
+Images are tagged with the commit SHA (`rgv-system-app:${APP_COMMIT}`). To
+roll back, check out the previous commit and redeploy, or pin `APP_COMMIT` to
+the last known-good SHA and run:
 
 ```bash
-mkdir -p backups
-pg_dump --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USERNAME" --dbname="$DB_DATABASE" --format=custom --no-owner --no-privileges > "backups/rgv-$(date -u +%Y%m%dT%H%M%SZ).dump"
+docker compose up -d --build
 ```
 
-Restrict backup permissions and copy backups to a separately protected location. The dump contains personal and operational data. Back up `app_storage` separately when it contains user uploads or backup artifacts; discover the exact Compose volume name with `docker volume ls` and archive it read-only. Do not put backups in Git or expose them under `public/`.
+Migrations are additive; a rollback of application code does not require
+reverting the schema.
+
+## MySQL backup
+
+Write dumps outside the container and outside the application volume:
+
+```bash
+mkdir -p ~/backups
+docker compose exec -T db mysqldump \
+  --single-transaction --routines --events --no-tablespaces \
+  -u "$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" \
+  > ~/backups/rgv-$(date -u +%Y%m%dT%H%M%SZ).sql
+```
+
+`--single-transaction` gives a consistent snapshot for InnoDB without locking
+the tables. Copy dumps off the host. A backup step also runs in the deploy
+workflow.
 
 ## Restore and verification
 
-Restore into a separately provisioned empty Supabase project/database first, then validate schema, users, role links, foreign keys, row counts, and representative workflows before changing deployment configuration. The restore target must be explicitly approved and must not be the active production database.
+Restore into a **separate** empty database first; never restore over the live
+database:
 
 ```bash
-pg_restore --host="$RESTORE_DB_HOST" --port="$RESTORE_DB_PORT" --username="$RESTORE_DB_USERNAME" --dbname="$RESTORE_DB_NAME" --no-owner --no-privileges < backups/rgv-YYYYMMDDTHHMMSSZ.dump
-psql --host="$RESTORE_DB_HOST" --port="$RESTORE_DB_PORT" --username="$RESTORE_DB_USERNAME" --dbname="$RESTORE_DB_NAME" -c 'select count(*) from users;'
+docker compose exec -T db mysql \
+  -u "$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" < ~/backups/rgv-2026-11-20.sql
 ```
 
-Do not restore over an existing production database until an independently verified backup exists and a maintenance window is approved. This procedure is documented but was not run against the user's database during this task.
+Validate before switching any configuration:
+
+```bash
+docker compose exec -T db mysql -u "$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" \
+  -e "SELECT COUNT(*) FROM users; SELECT COUNT(*) FROM inventories;"
+```
+
+Then check schema parity, role links, foreign keys, row counts and a
+representative workflow. Record the date, the dump file and the row counts
+checked.
+
+The admin UI also exposes an import/restore action backed by
+`DatabaseBackupRestoreService`, which shells out to the `mysql` client.
+
+## Monitoring
+
+- `/api/health` reports status, version, commit and database connectivity.
+- Application logs are written to the `app_logs` volume.
+- Request logging records method, path, status, user and duration; bodies and
+  tokens are never logged.
+
+## Known issues
+
+- Docker Compose, Caddy routing and the public HTTPS address have not been
+  executed on the development machine (Docker is not installed there).
+- A backup restore drill must still be performed and recorded on the deployed
+  database.

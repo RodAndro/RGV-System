@@ -1,0 +1,2598 @@
+openapi: 3.0.3
+info:
+  title: 'RGV Multi-Tech Services API'
+  version: 1.0.0
+  description: |
+    REST API for the RGV Multi-Tech Services system.
+
+    ## Conventions
+    - Versioned base path: `/api/v1`
+    - Resources are plural, lower-case and hyphenated.
+    - Dates and timestamps are ISO 8601 UTC (`2026-11-05T08:30:00Z`).
+    - List endpoints accept `page`, `limit`, `sort` (prefix `-` for
+      descending), `q` and resource-specific filters, and return a
+      `meta` block with `page`, `limit`, `total` and `total_pages`.
+
+    ## Authentication
+    Obtain a bearer token from `POST /api/v1/auth/login` and send it as
+    `Authorization: Bearer <token>` on every protected request.
+
+    ## Error format
+    All errors share one envelope:
+    ```json
+    {
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "message": "Some fields are invalid.",
+        "details": [{ "field": "email", "message": "Must be a valid email address." }]
+      }
+    }
+    ```
+servers:
+  -
+    url: /api
+    description: 'Same-origin deployment behind the reverse proxy'
+tags:
+  -
+    name: Health
+  -
+    name: Authentication
+  -
+    name: Inventories
+  -
+    name: 'Inventory categories'
+  -
+    name: 'Borrow requests'
+  -
+    name: Bookings
+  -
+    name: 'Legacy mobile API'
+  -
+    name: 'AI integration'
+  -
+    name: 'Mobile app'
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: 'Application and database health'
+      description: |
+        Used by the CI/CD pipeline to confirm the deployed commit is live.
+        Returns 503 when the database probe fails.
+      security: {  }
+      responses:
+        200:
+          description: 'Application and database are available'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              example:
+                status: ok
+                version: 1.0.0
+                commit: 3f2a1b9c
+                database: ok
+                checked_at: '2026-11-05T08:30:00+00:00'
+        503:
+          description: 'Database is unavailable'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              example:
+                status: degraded
+                version: 1.0.0
+                commit: 3f2a1b9c
+                database: unavailable
+                checked_at: '2026-11-05T08:30:00+00:00'
+  /openapi.yaml:
+    get:
+      tags:
+        - Health
+      summary: 'This OpenAPI document (YAML)'
+      security: {  }
+      responses:
+        200:
+          description: 'OpenAPI specification'
+          content:
+            application/yaml:
+              schema:
+                type: string
+        404:
+          description: 'Specification file is missing'
+  /v1/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: 'Obtain a bearer token'
+      security: {  }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: employee@example.test
+                password:
+                  type: string
+                  format: password
+                  example: secret-password
+                device_name:
+                  type: string
+                  example: web
+      responses:
+        200:
+          description: 'Token issued, or an MFA challenge when MFA is enabled'
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  -
+                    $ref: '#/components/schemas/LoginResponse'
+                  -
+                    $ref: '#/components/schemas/MfaChallenge'
+              examples:
+                token:
+                  value:
+                    token: 1|abcdefghijklmnop
+                    token_type: Bearer
+                    user:
+                      id: 2
+                      name: 'Demo Employee'
+                      email: employee@example.test
+                      phone: null
+                      is_active: true
+                      mfa_enabled: false
+                      roles: [employee]
+                mfa:
+                  value:
+                    mfa_required: true
+                    mfa_type: totp
+                    mfa_token: 2|mfatokenvalue
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        422:
+          $ref: '#/components/responses/ValidationError'
+        429:
+          $ref: '#/components/responses/RateLimited'
+  /v1/auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: 'Current authenticated user'
+      responses:
+        200:
+          description: 'The authenticated user'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+  /v1/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: 'Revoke the current token'
+      responses:
+        200:
+          description: 'Token revoked'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message: { type: string, example: 'Logged out.' }
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+  /v1/inventories:
+    get:
+      tags:
+        - Inventories
+      summary: 'List inventory items'
+      description: 'Paginated, searchable, filterable and sortable. Any authenticated role.'
+      parameters:
+        -
+          $ref: '#/components/parameters/Page'
+        -
+          $ref: '#/components/parameters/Limit'
+        -
+          $ref: '#/components/parameters/Sort'
+        -
+          $ref: '#/components/parameters/Search'
+        -
+          name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - available
+              - borrowed
+              - maintenance
+              - damaged
+        -
+          name: category_id
+          in: query
+          schema:
+            type: integer
+        -
+          name: low_stock
+          in: query
+          schema:
+            type: boolean
+      responses:
+        200:
+          description: 'A page of inventory items'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryList'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - Inventories
+      summary: 'Create an inventory item (admin)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryInput'
+      responses:
+        201:
+          description: Created
+          headers:
+            Location:
+              schema:
+                type: string
+              description: 'URL of the created resource'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Inventory'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/ValidationError'
+  '/v1/inventories/{inventory}':
+    parameters:
+      -
+        name: inventory
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags:
+        - Inventories
+      summary: 'Retrieve one inventory item'
+      responses:
+        200:
+          description: 'The inventory item'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Inventory'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        404:
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Inventories
+      summary: 'Replace an inventory item (admin)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryInput'
+      responses:
+        200:
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Inventory'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      tags:
+        - Inventories
+      summary: 'Partially update an inventory item (admin)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryInput'
+      responses:
+        200:
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Inventory'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags:
+        - Inventories
+      summary: 'Delete an inventory item (admin, soft delete)'
+      responses:
+        204:
+          description: Deleted
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+  /v1/inventory-categories:
+    get:
+      tags:
+        - 'Inventory categories'
+      summary: 'List inventory categories'
+      parameters:
+        -
+          $ref: '#/components/parameters/Page'
+        -
+          $ref: '#/components/parameters/Limit'
+        -
+          $ref: '#/components/parameters/Sort'
+        -
+          $ref: '#/components/parameters/Search'
+        -
+          name: is_active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        200:
+          description: 'A page of categories'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryCategory'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+  '/v1/inventory-categories/{inventoryCategory}':
+    parameters:
+      -
+        name: inventoryCategory
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags:
+        - 'Inventory categories'
+      summary: 'Retrieve one category'
+      responses:
+        200:
+          description: 'The category'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/InventoryCategory'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        404:
+          $ref: '#/components/responses/NotFound'
+  /v1/borrow-requests:
+    get:
+      tags:
+        - 'Borrow requests'
+      summary: 'List borrow requests'
+      description: |
+        Employees see only their own requests. Administrators see all
+        requests and may filter by `employee_id`.
+      parameters:
+        -
+          $ref: '#/components/parameters/Page'
+        -
+          $ref: '#/components/parameters/Limit'
+        -
+          $ref: '#/components/parameters/Sort'
+        -
+          $ref: '#/components/parameters/Search'
+        -
+          name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - pending
+              - approved
+              - borrowed
+              - returned
+              - rejected
+              - cancelled
+        -
+          name: employee_id
+          in: query
+          description: 'Administrators only.'
+          schema:
+            type: integer
+      responses:
+        200:
+          description: 'A page of borrow requests'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BorrowRequestList'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+    post:
+      tags:
+        - 'Borrow requests'
+      summary: 'Create a borrow request'
+      description: 'Reserves stock immediately. Rejected with 422 when stock is insufficient.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BorrowRequestInput'
+      responses:
+        201:
+          description: Created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowRequest'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        422:
+          $ref: '#/components/responses/ValidationError'
+  '/v1/borrow-requests/{borrowRequest}':
+    parameters:
+      -
+        name: borrowRequest
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags:
+        - 'Borrow requests'
+      summary: 'Retrieve one borrow request'
+      responses:
+        200:
+          description: 'The borrow request'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowRequest'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - 'Borrow requests'
+      summary: 'Change borrow request status (admin)'
+      description: |
+        State transitions are expressed as a status change, per the REST
+        conventions: `approved`, `rejected`, `borrowed` or `returned`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BorrowStatusInput'
+      responses:
+        200:
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BorrowRequest'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags:
+        - 'Borrow requests'
+      summary: 'Delete a borrow request (admin, soft delete)'
+      responses:
+        204:
+          description: Deleted
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+  /v1/bookings:
+    get:
+      tags:
+        - Bookings
+      summary: 'List bookings (admin)'
+      parameters:
+        -
+          $ref: '#/components/parameters/Page'
+        -
+          $ref: '#/components/parameters/Limit'
+        -
+          $ref: '#/components/parameters/Sort'
+        -
+          $ref: '#/components/parameters/Search'
+        -
+          name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - pending
+              - approved
+              - rejected
+              - completed
+              - cancelled
+        -
+          name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        200:
+          description: 'A page of bookings'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Booking'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+  '/v1/bookings/{booking}':
+    parameters:
+      -
+        name: booking
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags:
+        - Bookings
+      summary: 'Retrieve one booking (admin)'
+      responses:
+        200:
+          description: 'The booking'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+  /inventories:
+    get:
+      tags:
+        - 'Legacy mobile API'
+      summary: 'Public inventory list (cursor paginated)'
+      description: 'Unversioned public endpoint retained for backwards compatibility.'
+      security: {  }
+      parameters:
+        -
+          name: status
+          in: query
+          schema:
+            type: string
+        -
+          name: category_id
+          in: query
+          schema:
+            type: integer
+        -
+          name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        200:
+          description: 'Cursor-paginated inventory records'
+        429:
+          $ref: '#/components/responses/RateLimited'
+  /v1/mobile/auth/login:
+    post:
+      tags:
+        - 'Mobile app'
+      summary: 'Employee sign-in for the Flutter app'
+      description: |
+        Verifies the password, checks the account is active and holds the
+        employee role, then issues a Sanctum token. Returns an MFA challenge
+        when multi-factor authentication is enabled.
+      security: {  }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: employee@example.test
+                password:
+                  type: string
+                  format: password
+                device_name:
+                  type: string
+                  example: flutter-android
+      responses:
+        200:
+          description: 'Token issued, or an MFA challenge'
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  -
+                    $ref: '#/components/schemas/LoginResponse'
+                  -
+                    $ref: '#/components/schemas/MfaChallenge'
+        422:
+          $ref: '#/components/responses/ValidationError'
+        429:
+          $ref: '#/components/responses/RateLimited'
+  /v1/ai/insights:
+    get:
+      tags:
+        - 'AI integration'
+      summary: 'Aggregate business insights (admin)'
+      description: |
+        Runs allow-listed aggregate queries and asks the local model for a short
+        advisory summary. Falls back to a deterministic summary when the model is
+        unavailable. Every call is recorded for traceability.
+      responses:
+        200:
+          description: 'Insights payload'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AiReport'
+              example:
+                data:
+                  report: insights
+                  generated_text: 'There are 12 bookings (3 pending, 4 approved) and 38 inventory items...'
+                  source: model
+                  confidence: 0.6
+                  confidence_note: 'Single-pass generation; not a calibrated probability.'
+                  model: 'qwen3:1.7b'
+                  response_time_ms: 1840
+                  disclosure: 'Machine-generated. Confirm with a staff member before acting.'
+                  inputs:
+                    total_bookings: 12
+                    pending_bookings: 3
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+  /v1/ai/forecast:
+    get:
+      tags:
+        - 'AI integration'
+      summary: 'Booking demand forecast (admin)'
+      responses:
+        200:
+          description: 'Forecast payload'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AiReport'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+  /v1/ai/inventory-recommendations:
+    get:
+      tags:
+        - 'AI integration'
+      summary: 'Inventory reorder recommendations (admin)'
+      responses:
+        200:
+          description: 'Recommendation payload'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AiReport'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+  /chatbot/query:
+    post:
+      tags:
+        - 'AI integration'
+      summary: 'Admin report assistant (session authenticated)'
+      description: |
+        Portal-only assistant restricted to the reports module. Uses allow-listed
+        aggregate retrieval and refuses out-of-scope questions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  maxLength: 500
+                  example: 'How many bookings are pending?'
+                pageType:
+                  type: string
+                  enum:
+                    - reports
+                    - bookings
+                    - inventory
+                    - borrow_requests
+                    - users
+      responses:
+        200:
+          description: 'Assistant answer with source references'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  response:
+                    type: string
+                  sources:
+                    type: array
+                    items:
+                      type: string
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/ValidationError'
+        429:
+          $ref: '#/components/responses/RateLimited'
+  /v1/mobile/auth/mfa/verify:
+    post:
+      tags:
+        - 'Mobile app'
+      summary: 'Complete an MFA challenge'
+      description: 'Accepts a 6-digit TOTP code or an 8-8 recovery code and returns an employee token.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  example: '123456'
+      responses:
+        200:
+          description: 'Token issued'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        422:
+          $ref: '#/components/responses/ValidationError'
+  /v1/mobile/auth/logout:
+    post:
+      tags:
+        - 'Mobile app'
+      summary: 'Revoke the current token'
+      responses:
+        200:
+          description: 'Logged out'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+  /v1/mobile/me:
+    get:
+      tags:
+        - 'Mobile app'
+      summary: 'Current employee profile'
+      responses:
+        200:
+          description: 'The authenticated employee'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+  /v1/mobile/dashboard:
+    get:
+      tags:
+        - 'Mobile app'
+      summary: 'Borrow summary and recent requests'
+      responses:
+        200:
+          description: 'Dashboard payload'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  employee:
+                    $ref: '#/components/schemas/User'
+                  summary:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      pending: { type: integer }
+                      approved: { type: integer }
+                      borrowed: { type: integer }
+                      returned: { type: integer }
+                      overdue: { type: integer }
+                  recent_requests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BorrowRequest'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+  '/v1/mobile/dashboard/recent-requests/{requestId}/dismiss':
+    post:
+      tags:
+        - 'Mobile app'
+      summary: 'Hide a recent request from the dashboard'
+      parameters:
+        -
+          name: requestId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Dismissed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dismissed:
+                    type: boolean
+                  request_id:
+                    type: integer
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        404:
+          $ref: '#/components/responses/NotFound'
+  /v1/mobile/inventory/lookup:
+    get:
+      tags:
+        - 'Mobile app'
+      summary: 'Resolve a scanned QR code or item code'
+      parameters:
+        -
+          name: code
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Matching inventory item'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/Inventory'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        422:
+          $ref: '#/components/responses/ValidationError'
+  /v1/mobile/inventory/search:
+    get:
+      tags:
+        - 'Mobile app'
+      summary: 'Search inventory'
+      parameters:
+        -
+          name: q
+          in: query
+          schema:
+            type: string
+        -
+          name: limit
+          in: query
+          schema:
+            type: integer
+            maximum: 100
+            default: 50
+      responses:
+        200:
+          description: 'Matching items'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Inventory'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+  /v1/mobile/borrow-requests:
+    get:
+      tags:
+        - 'Mobile app'
+      summary: "List the employee's borrow requests"
+      responses:
+        200:
+          description: 'Borrow requests'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BorrowRequest'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+    post:
+      tags:
+        - 'Mobile app'
+      summary: 'Submit a borrow request (idempotent)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - idempotency_key
+                - borrow_date
+                - due_date
+                - reason
+                - items
+              properties:
+                idempotency_key:
+                  type: string
+                  maxLength: 64
+                borrow_date:
+                  type: string
+                  format: date
+                due_date:
+                  type: string
+                  format: date
+                reason:
+                  type: string
+                  maxLength: 2000
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required:
+                      - inventory_id
+                      - quantity
+                    properties:
+                      inventory_id: { type: integer }
+                      quantity: { type: integer, minimum: 1 }
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request:
+                    $ref: '#/components/schemas/BorrowRequest'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        409:
+          description: 'Duplicate idempotency key with different content'
+        422:
+          $ref: '#/components/responses/ValidationError'
+  /v1/mobile/borrow-requests/returnable:
+    get:
+      tags:
+        - 'Mobile app'
+      summary: 'Items currently available to return'
+      responses:
+        200:
+          description: 'Returnable lines'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+  '/v1/mobile/borrow-requests/{borrowRequest}':
+    parameters:
+      -
+        name: borrowRequest
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags:
+        - 'Mobile app'
+      summary: "Retrieve one of the employee's request"
+      responses:
+        200:
+          description: 'The request'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request:
+                    $ref: '#/components/schemas/BorrowRequest'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+  '/v1/mobile/borrow-requests/{borrowRequest}/cancel':
+    post:
+      tags:
+        - 'Mobile app'
+      summary: 'Cancel a pending request'
+      parameters:
+        -
+          name: borrowRequest
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request:
+                    $ref: '#/components/schemas/BorrowRequest'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          description: 'Only pending requests can be cancelled'
+  '/v1/mobile/borrow-requests/{borrowRequest}/return':
+    post:
+      tags:
+        - 'Mobile app'
+      summary: 'Return items (idempotent)'
+      parameters:
+        -
+          name: borrowRequest
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - idempotency_key
+                - return_location
+                - items
+              properties:
+                idempotency_key:
+                  type: string
+                  maxLength: 64
+                return_location:
+                  type: string
+                  maxLength: 255
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required:
+                      - borrow_item_id
+                      - condition_returned
+                    properties:
+                      borrow_item_id: { type: integer }
+                      condition_returned: { type: string, enum: [new, good, fair, poor, damaged] }
+                      damage_notes: { type: string, nullable: true }
+      responses:
+        200:
+          description: Returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request:
+                    $ref: '#/components/schemas/BorrowRequest'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/ValidationError'
+  /v1/mobile/profile:
+    patch:
+      tags:
+        - 'Mobile app'
+      summary: "Update the employee's own name"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+      responses:
+        200:
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        422:
+          $ref: '#/components/responses/ValidationError'
+  /v1/mobile/password:
+    put:
+      tags:
+        - 'Mobile app'
+      summary: "Change the employee's password"
+      description: 'Requires the current password and revokes all other tokens.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - current_password
+                - new_password
+                - new_password_confirmation
+              properties:
+                current_password:
+                  type: string
+                  format: password
+                new_password:
+                  type: string
+                  format: password
+                new_password_confirmation:
+                  type: string
+                  format: password
+      responses:
+        200:
+          description: 'Password updated'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        401:
+          $ref: '#/components/responses/Unauthenticated'
+        422:
+          $ref: '#/components/responses/ValidationError'
+/v1/ai/insights:
+  get:
+    tags:
+      - 'AI integration'
+    summary: 'Aggregate business insights (admin)'
+    description: |
+      Runs allow-listed aggregate queries and asks the local model for a short
+      advisory summary. Falls back to a deterministic summary when the model is
+      unavailable. Every call is recorded for traceability.
+    responses:
+      200:
+        description: 'Insights payload'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  $ref: '#/components/schemas/AiReport'
+            example:
+              data:
+                report: insights
+                generated_text: 'There are 12 bookings (3 pending, 4 approved) and 38 inventory items...'
+                source: model
+                confidence: 0.6
+                confidence_note: 'Single-pass generation; not a calibrated probability.'
+                model: 'qwen3:1.7b'
+                response_time_ms: 1840
+                disclosure: 'Machine-generated. Confirm with a staff member before acting.'
+                inputs:
+                  total_bookings: 12
+                  pending_bookings: 3
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+      403:
+        $ref: '#/components/responses/Forbidden'
+/v1/ai/forecast:
+  get:
+    tags:
+      - 'AI integration'
+    summary: 'Booking demand forecast (admin)'
+    responses:
+      200:
+        description: 'Forecast payload'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  $ref: '#/components/schemas/AiReport'
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+      403:
+        $ref: '#/components/responses/Forbidden'
+/v1/ai/inventory-recommendations:
+  get:
+    tags:
+      - 'AI integration'
+    summary: 'Inventory reorder recommendations (admin)'
+    responses:
+      200:
+        description: 'Recommendation payload'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  $ref: '#/components/schemas/AiReport'
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+      403:
+        $ref: '#/components/responses/Forbidden'
+/chatbot/query:
+  post:
+    tags:
+      - 'AI integration'
+    summary: 'Admin report assistant (session authenticated)'
+    description: |
+      Portal-only assistant restricted to the reports module. Uses allow-listed
+      aggregate retrieval and refuses out-of-scope questions.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+            properties:
+              message:
+                type: string
+                maxLength: 500
+                example: 'How many bookings are pending?'
+              pageType:
+                type: string
+                enum:
+                  - reports
+                  - bookings
+                  - inventory
+                  - borrow_requests
+                  - users
+    responses:
+      200:
+        description: 'Assistant answer with source references'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                response:
+                  type: string
+                sources:
+                  type: array
+                  items:
+                    type: string
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+      403:
+        $ref: '#/components/responses/Forbidden'
+      422:
+        $ref: '#/components/responses/ValidationError'
+      429:
+        $ref: '#/components/responses/RateLimited'
+/v1/mobile/auth/login:
+  post:
+    tags:
+      - 'Mobile app'
+    summary: 'Employee sign-in for the Flutter app'
+    description: |
+      Verifies the password, checks the account is active and holds the
+      employee role, then issues a Sanctum token. Returns an MFA challenge
+      when multi-factor authentication is enabled.
+    security: {  }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - email
+              - password
+            properties:
+              email:
+                type: string
+                format: email
+                example: employee@example.test
+              password:
+                type: string
+                format: password
+              device_name:
+                type: string
+                example: flutter-android
+    responses:
+      200:
+        description: 'Token issued, or an MFA challenge'
+        content:
+          application/json:
+            schema:
+              oneOf:
+                -
+                  $ref: '#/components/schemas/LoginResponse'
+                -
+                  $ref: '#/components/schemas/MfaChallenge'
+      422:
+        $ref: '#/components/responses/ValidationError'
+      429:
+        $ref: '#/components/responses/RateLimited'
+/v1/mobile/auth/mfa/verify:
+  post:
+    tags:
+      - 'Mobile app'
+    summary: 'Complete an MFA challenge'
+    description: 'Accepts a 6-digit TOTP code or an 8-8 recovery code and returns an employee token.'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - code
+            properties:
+              code:
+                type: string
+                example: '123456'
+    responses:
+      200:
+        description: 'Token issued'
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginResponse'
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+      422:
+        $ref: '#/components/responses/ValidationError'
+/v1/mobile/auth/logout:
+  post:
+    tags:
+      - 'Mobile app'
+    summary: 'Revoke the current token'
+    responses:
+      200:
+        description: 'Logged out'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+/v1/mobile/me:
+  get:
+    tags:
+      - 'Mobile app'
+    summary: 'Current employee profile'
+    responses:
+      200:
+        description: 'The authenticated employee'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user:
+                  $ref: '#/components/schemas/User'
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+/v1/mobile/dashboard:
+  get:
+    tags:
+      - 'Mobile app'
+    summary: 'Borrow summary and recent requests'
+    responses:
+      200:
+        description: 'Dashboard payload'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employee:
+                  $ref: '#/components/schemas/User'
+                summary:
+                  type: object
+                  properties:
+                    total:
+                      type: integer
+                    pending:
+                      type: integer
+                    approved:
+                      type: integer
+                    borrowed:
+                      type: integer
+                    returned:
+                      type: integer
+                    overdue:
+                      type: integer
+                recent_requests:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/BorrowRequest'
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+'/v1/mobile/dashboard/recent-requests/{requestId}/dismiss':
+  post:
+    tags:
+      - 'Mobile app'
+    summary: 'Hide a recent request from the dashboard'
+    parameters:
+      -
+        name: requestId
+        in: path
+        required: true
+        schema:
+          type: integer
+    responses:
+      200:
+        description: Dismissed
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dismissed:
+                  type: boolean
+                request_id:
+                  type: integer
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+      404:
+        $ref: '#/components/responses/NotFound'
+/v1/mobile/inventory/lookup:
+  get:
+    tags:
+      - 'Mobile app'
+    summary: 'Resolve a scanned QR code or item code'
+    parameters:
+      -
+        name: code
+        in: query
+        required: true
+        schema:
+          type: string
+    responses:
+      200:
+        description: 'Matching inventory item'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                item:
+                  $ref: '#/components/schemas/Inventory'
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+      422:
+        $ref: '#/components/responses/ValidationError'
+/v1/mobile/inventory/search:
+  get:
+    tags:
+      - 'Mobile app'
+    summary: 'Search inventory'
+    parameters:
+      -
+        name: q
+        in: query
+        schema:
+          type: string
+      -
+        name: limit
+        in: query
+        schema:
+          type: integer
+          maximum: 100
+          default: 50
+    responses:
+      200:
+        description: 'Matching items'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Inventory'
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+/v1/mobile/borrow-requests:
+  get:
+    tags:
+      - 'Mobile app'
+    summary: "List the employee's borrow requests"
+    responses:
+      200:
+        description: 'Borrow requests'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                requests:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/BorrowRequest'
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+  post:
+    tags:
+      - 'Mobile app'
+    summary: 'Submit a borrow request (idempotent)'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - idempotency_key
+              - borrow_date
+              - due_date
+              - reason
+              - items
+            properties:
+              idempotency_key:
+                type: string
+                maxLength: 64
+              borrow_date:
+                type: string
+                format: date
+              due_date:
+                type: string
+                format: date
+              reason:
+                type: string
+                maxLength: 2000
+              items:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  required:
+                    - inventory_id
+                    - quantity
+                  properties:
+                    inventory_id:
+                      type: integer
+                    quantity:
+                      type: integer
+                      minimum: 1
+    responses:
+      201:
+        description: Created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                request:
+                  $ref: '#/components/schemas/BorrowRequest'
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+      409:
+        description: 'Duplicate idempotency key with different content'
+      422:
+        $ref: '#/components/responses/ValidationError'
+/v1/mobile/borrow-requests/returnable:
+  get:
+    tags:
+      - 'Mobile app'
+    summary: 'Items currently available to return'
+    responses:
+      200:
+        description: 'Returnable lines'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+'/v1/mobile/borrow-requests/{borrowRequest}':
+  parameters:
+    -
+      name: borrowRequest
+      in: path
+      required: true
+      schema:
+        type: integer
+  get:
+    tags:
+      - 'Mobile app'
+    summary: "Retrieve one of the employee's request"
+    responses:
+      200:
+        description: 'The request'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                request:
+                  $ref: '#/components/schemas/BorrowRequest'
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+      403:
+        $ref: '#/components/responses/Forbidden'
+      404:
+        $ref: '#/components/responses/NotFound'
+'/v1/mobile/borrow-requests/{borrowRequest}/cancel':
+  post:
+    tags:
+      - 'Mobile app'
+    summary: 'Cancel a pending request'
+    parameters:
+      -
+        name: borrowRequest
+        in: path
+        required: true
+        schema:
+          type: integer
+    responses:
+      200:
+        description: Cancelled
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                request:
+                  $ref: '#/components/schemas/BorrowRequest'
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+      403:
+        $ref: '#/components/responses/Forbidden'
+      409:
+        description: 'Only pending requests can be cancelled'
+'/v1/mobile/borrow-requests/{borrowRequest}/return':
+  post:
+    tags:
+      - 'Mobile app'
+    summary: 'Return items (idempotent)'
+    parameters:
+      -
+        name: borrowRequest
+        in: path
+        required: true
+        schema:
+          type: integer
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - idempotency_key
+              - return_location
+              - items
+            properties:
+              idempotency_key:
+                type: string
+                maxLength: 64
+              return_location:
+                type: string
+                maxLength: 255
+              items:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  required:
+                    - borrow_item_id
+                    - condition_returned
+                  properties:
+                    borrow_item_id:
+                      type: integer
+                    condition_returned:
+                      type: string
+                      enum: [new, good, fair, poor, damaged]
+                    damage_notes:
+                      type: string
+                      nullable: true
+    responses:
+      200:
+        description: Returned
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                request:
+                  $ref: '#/components/schemas/BorrowRequest'
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+      403:
+        $ref: '#/components/responses/Forbidden'
+      422:
+        $ref: '#/components/responses/ValidationError'
+/v1/mobile/profile:
+  patch:
+    tags:
+      - 'Mobile app'
+    summary: "Update the employee's own name"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - name
+            properties:
+              name:
+                type: string
+                maxLength: 255
+    responses:
+      200:
+        description: Updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user:
+                  $ref: '#/components/schemas/User'
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+      422:
+        $ref: '#/components/responses/ValidationError'
+/v1/mobile/password:
+  put:
+    tags:
+      - 'Mobile app'
+    summary: "Change the employee's password"
+    description: 'Requires the current password and revokes all other tokens.'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - current_password
+              - new_password
+              - new_password_confirmation
+            properties:
+              current_password:
+                type: string
+                format: password
+              new_password:
+                type: string
+                format: password
+              new_password_confirmation:
+                type: string
+                format: password
+    responses:
+      200:
+        description: 'Password updated'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+      401:
+        $ref: '#/components/responses/Unauthenticated'
+      422:
+        $ref: '#/components/responses/ValidationError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Sort:
+      name: sort
+      in: query
+      description: 'Field to sort by. Prefix with `-` for descending.'
+      schema:
+        type: string
+        example: '-created_at'
+    Search:
+      name: q
+      in: query
+      description: "Free-text search across the resource's searchable fields."
+      schema:
+        type: string
+  responses:
+    Unauthenticated:
+      description: 'Missing or invalid bearer token'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: UNAUTHENTICATED
+              message: 'Authentication is required.'
+              details: {  }
+    Forbidden:
+      description: 'Authenticated but not permitted'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: FORBIDDEN
+              message: 'You do not have permission to perform this action.'
+              details: {  }
+    NotFound:
+      description: 'Resource does not exist'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: NOT_FOUND
+              message: 'The requested resource does not exist.'
+              details: {  }
+    ValidationError:
+      description: 'Validation failed'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: 'Some fields are invalid.'
+              details:
+                -
+                  field: email
+                  message: 'Must be a valid email address.'
+    RateLimited:
+      description: 'Too many requests'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: RATE_LIMITED
+              message: 'Too many requests. Please try again later.'
+              details: {  }
+  schemas:
+    AiReport:
+      type: object
+      properties:
+        report:
+          type: string
+          enum:
+            - insights
+            - forecast
+            - inventory-recommendations
+        generated_text:
+          type: string
+          description: 'Model answer, or a deterministic summary when the model is unavailable.'
+        source:
+          type: string
+          enum:
+            - model
+            - deterministic-fallback
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: 'Advisory score; 0 when a deterministic fallback was used.'
+        confidence_note:
+          type: string
+        model:
+          type: string
+          nullable: true
+        response_time_ms:
+          type: integer
+        disclosure:
+          type: string
+          description: 'Machine-generated advisory notice shown to users.'
+        inputs:
+          type: object
+          description: 'The aggregate data the answer was based on.'
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+            - details
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+    Meta:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - degraded
+        version:
+          type: string
+        commit:
+          type: string
+          nullable: true
+        database:
+          type: string
+          enum:
+            - ok
+            - unavailable
+        checked_at:
+          type: string
+          format: date-time
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        mfa_enabled:
+          type: boolean
+        roles:
+          type: array
+          items:
+            type: string
+            enum:
+              - admin
+              - employee
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        token_type:
+          type: string
+          example: Bearer
+        user:
+          $ref: '#/components/schemas/User'
+    MfaChallenge:
+      type: object
+      properties:
+        mfa_required:
+          type: boolean
+        mfa_type:
+          type: string
+        mfa_token:
+          type: string
+    Inventory:
+      type: object
+      properties:
+        id:
+          type: integer
+        item_code:
+          type: string
+        name:
+          type: string
+        brand:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        category_id:
+          type: integer
+        category:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        quantity:
+          type: integer
+        unit:
+          type: string
+        unit_cost:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - available
+            - borrowed
+            - maintenance
+            - damaged
+        condition:
+          type: string
+          enum:
+            - new
+            - good
+            - fair
+            - poor
+        location:
+          type: string
+          nullable: true
+        low_stock_threshold:
+          type: integer
+        is_low_stock:
+          type: boolean
+        is_active:
+          type: boolean
+        date_added:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    InventoryInput:
+      type: object
+      required:
+        - item_code
+        - name
+        - category_id
+        - quantity
+        - unit
+        - status
+        - condition
+        - low_stock_threshold
+        - date_added
+      properties:
+        item_code:
+          type: string
+          maxLength: 255
+          example: INV-0001
+        name:
+          type: string
+          maxLength: 255
+          example: 'Extension cord'
+        brand:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        category_id:
+          type: integer
+          example: 1
+        quantity:
+          type: integer
+          minimum: 0
+          example: 10
+        unit:
+          type: string
+          example: piece
+        unit_cost:
+          type: number
+          minimum: 0
+          nullable: true
+        status:
+          type: string
+          enum:
+            - available
+            - borrowed
+            - maintenance
+            - damaged
+        condition:
+          type: string
+          enum:
+            - new
+            - good
+            - fair
+            - poor
+        location:
+          type: string
+          nullable: true
+        low_stock_threshold:
+          type: integer
+          minimum: 0
+          example: 3
+        date_added:
+          type: string
+          format: date
+        is_active:
+          type: boolean
+    InventoryList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Inventory'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    InventoryCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+    BorrowItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        inventory_id:
+          type: integer
+        inventory:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            item_code:
+              type: string
+            name:
+              type: string
+            unit:
+              type: string
+        quantity:
+          type: integer
+        reserved_quantity:
+          type: integer
+        condition_borrowed:
+          type: string
+        condition_returned:
+          type: string
+          nullable: true
+        is_returned:
+          type: boolean
+        returned_at:
+          type: string
+          format: date-time
+          nullable: true
+        damage_notes:
+          type: string
+          nullable: true
+    BorrowRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        request_number:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending
+            - approved
+            - borrowed
+            - returned
+            - rejected
+            - cancelled
+        reason:
+          type: string
+        employee_id:
+          type: integer
+        employee:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+        approved_by:
+          type: integer
+          nullable: true
+        admin_remarks:
+          type: string
+          nullable: true
+        borrow_date:
+          type: string
+          format: date
+        due_date:
+          type: string
+          format: date
+        return_date:
+          type: string
+          format: date
+          nullable: true
+        return_location:
+          type: string
+          nullable: true
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+        borrowed_at:
+          type: string
+          format: date-time
+          nullable: true
+        returned_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BorrowItem'
+    BorrowRequestList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BorrowRequest'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    BorrowRequestInput:
+      type: object
+      required:
+        - reason
+        - borrow_date
+        - due_date
+        - items
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+          example: 'Field inspection supplies'
+        borrow_date:
+          type: string
+          format: date
+          example: '2026-11-20'
+        due_date:
+          type: string
+          format: date
+          example: '2026-11-22'
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - inventory_id
+              - quantity
+            properties:
+              inventory_id:
+                type: integer
+                example: 1
+              quantity:
+                type: integer
+                minimum: 1
+                example: 2
+    BorrowStatusInput:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - approved
+            - rejected
+            - borrowed
+            - returned
+        remarks:
+          type: string
+          nullable: true
+          description: 'Required for rejection reasons.'
+        return_location:
+          type: string
+          nullable: true
+        items:
+          type: array
+          description: 'Required when status is `returned`.'
+          items:
+            type: object
+            required:
+              - borrow_item_id
+              - condition_returned
+            properties:
+              borrow_item_id:
+                type: integer
+              condition_returned:
+                type: string
+                enum:
+                  - new
+                  - good
+                  - fair
+                  - poor
+                  - damaged
+              damage_notes:
+                type: string
+                nullable: true
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+        reference_number:
+          type: string
+        full_name:
+          type: string
+        email:
+          type: string
+        contact_number:
+          type: string
+        address:
+          type: string
+          nullable: true
+        preferred_date:
+          type: string
+          format: date
+        preferred_time:
+          type: string
+          nullable: true
+        purpose_category:
+          type: string
+          nullable: true
+        reason:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - pending
+            - approved
+            - rejected
+            - completed
+            - cancelled
+        remarks:
+          type: string
+          nullable: true
+        employee:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        created_at:
+          type: string
+          format: date-time
+security:
+  -
+    bearerAuth: {  }
